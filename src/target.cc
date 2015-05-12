@@ -3,14 +3,10 @@
 #include "hub.hpp"
 
 target_t::target_t(message_hub_t *hub) :
-        parent_hub(hub),
-        target_id(target_id_t::assign()) {
-    parent_hub->add_target(this);
-}
+        target_id(target_id_t::assign()),
+        membership(hub, this) { }
 
-target_t::~target_t() {
-    parent_hub->remove_target(this);
-}
+target_t::~target_t() { }
 
 target_id_t target_t::id() const {
     return target_id;

@@ -4,22 +4,19 @@
 #include <tuple>
 #include <utility>
 
+#include "hub.hpp"
 #include "message.hpp"
 #include "serialize.hpp"
 
 class read_message_t;
 class message_hub_t;
 
-class message_callback_t {
+class handler_callback_t {
 public:
-    message_callback_t(message_hub_t *hub);
-    virtual ~message_callback_t();
+    virtual ~handler_callback_t();
     virtual write_message_t handle(read_message_t *msg) = 0;
     virtual void handle_noreply(read_message_t *msg) = 0;
-
     virtual handler_id_t id() const = 0;
-private:
-    message_hub_t *parent_hub;
 };
 
 template <class T>
@@ -33,9 +30,9 @@ private:
 };
 
 template <typename Impl, typename Res, typename... Args>
-class handler_t : public message_callback_t, public unique_handler_t<Impl> {
+class handler_t : public handler_callback_t, public unique_handler_t<Impl> {
 public:
-    handler_t(message_hub_t *hub) : message_callback_t(hub) { }
+    handler_t(message_hub_t *hub) : membership(hub, this) { }
 
     write_message_t handle(read_message_t *msg) {
         Res res = handle(std::index_sequence_for<Args...>{},
@@ -69,6 +66,8 @@ private:
     static Res handle(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&args) {
         return Impl::call(std::get<N>(args)...);
     }
+
+    message_hub_t::membership_t<handler_callback_t> membership;
 };
 
 #endif // HANDLER_HPP_

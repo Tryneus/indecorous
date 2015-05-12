@@ -1,11 +1,10 @@
 #ifndef TARGET_HPP_
 #define TARGET_HPP_
 
+#include "hub.hpp"
 #include "id.hpp"
 #include "message.hpp"
 #include "stream.hpp"
-
-class message_hub_t;
 
 class target_t {
 public:
@@ -15,8 +14,8 @@ public:
     target_id_t id() const;
 
 private:
-    message_hub_t *parent_hub;
     target_id_t target_id;
+    message_hub_t::membership_t<target_t> membership;
 };
 
 class local_target_t : public target_t {
