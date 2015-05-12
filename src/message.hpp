@@ -4,10 +4,10 @@
 #include <cstddef>
 #include <vector>
 
-#include "include/id.hpp"
-#include "include/serialize.hpp"
+#include "id.hpp"
+#include "serialize.hpp"
 
-class fake_stream_t;
+class stream_t;
 
 class write_message_t {
 public:
@@ -32,7 +32,7 @@ public:
     handler_id_t handler_id;
     request_id_t request_id;
 
-    static read_message_t parse(fake_stream_t *stream);
+    static read_message_t parse(stream_t *stream);
 
 private:
     read_message_t(std::vector<char> &&_buffer,

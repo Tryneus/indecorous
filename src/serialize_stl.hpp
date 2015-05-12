@@ -1,7 +1,7 @@
 #ifndef SERIALIZE_STL_HPP_
 #define SERIALIZE_STL_HPP_
 
-#include "include/serialize.hpp"
+#include "serialize.hpp"
 
 #include <cstddef>
 #include <string>

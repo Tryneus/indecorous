@@ -1,16 +1,15 @@
-#include "include/serialize.hpp"
+#include "serialize.hpp"
 
 #include <endian.h>
 
-#include "include/debug.hpp"
-#include "include/message.hpp"
+#include "debug.hpp"
+#include "message.hpp"
 
 // Specializations for integral and unchangable types
-template <> size_t serialized_size(const bool &item) {
+template <> size_t serialized_size(const bool &) {
     return 1;
 }
 template <> int serialize(write_message_t *msg, bool &&item) {
-
     msg->buffer.push_back(static_cast<char>(item));
     return 0;
 }

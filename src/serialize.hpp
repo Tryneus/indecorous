@@ -28,13 +28,15 @@ size_t full_serialized_size(const Args &...args) {
         size_t value;
     } acc;
 
-    auto dummy = { acc.add(serialized_size(args))... };
+    __attribute__((unused)) auto dummy =
+        { acc.add(serialized_size(args))... };
     return acc.value;
 }
 
 template <typename... Args>
 int full_serialize(write_message_t *msg, Args &&...args) {
-    auto dummy = { serialize(msg, std::forward<Args>(args))... };
+    __attribute__((unused)) auto dummy =
+        { serialize(msg, std::forward<Args>(args))... };
     return 0;
 }
 

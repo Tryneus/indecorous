@@ -1,8 +1,8 @@
-#include "include/message.hpp"
+#include "message.hpp"
 
 #include <cassert>
 
-#include "include/stream.hpp"
+#include "stream.hpp"
 
 struct message_header_t {
     static const uint64_t HEADER_MAGIC = 0x302ca58d7f47e0be;
@@ -32,7 +32,7 @@ message_header_t message_header_t::deserialize(read_message_t *msg) {
                               ::deserialize<uint64_t>(msg) });
 }
 
-read_message_t read_message_t::parse(fake_stream_t *stream) {
+read_message_t read_message_t::parse(stream_t *stream) {
     static_assert(sizeof(message_header_t) == sizeof(uint64_t) * 4, "error");
 
     std::vector<char> header_buffer;
@@ -56,9 +56,9 @@ read_message_t::read_message_t(std::vector<char> &&_buffer,
                                handler_id_t &&_handler_id,
                                request_id_t &&_request_id) :
     buffer(std::move(_buffer)),
+    offset(0),
     handler_id(std::move(_handler_id)),
-    request_id(std::move(_request_id)),
-    offset(0) { }
+    request_id(std::move(_request_id)) { }
 
 char read_message_t::pop() {
     return buffer[offset++];

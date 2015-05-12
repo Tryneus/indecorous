@@ -1,7 +1,7 @@
-#include "include/serialize_stl.hpp"
+#include "serialize_stl.hpp"
 
-#include "include/debug.hpp"
-#include "include/message.hpp"
+#include "debug.hpp"
+#include "message.hpp"
 
 template <> size_t serialized_size(const std::string &item) {
     return serialized_size(size_t()) + item.size();

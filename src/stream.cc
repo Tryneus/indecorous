@@ -1,10 +1,15 @@
-#include "include/stream.hpp"
+#include "stream.hpp"
 
 #include <cassert>
 
-#include "include/message.hpp"
+#include "debug.hpp"
+#include "message.hpp"
 
-void fake_stream_t::read(char *buffer, size_t length) {
+stream_t::~stream_t() { }
+
+dummy_stream_t::dummy_stream_t() { }
+
+void dummy_stream_t::read(char *buffer, size_t length) {
     assert(data.size() >= length);
     for (size_t i = 0; i < length; ++i) {
         *(buffer++) = data[i];
@@ -12,6 +17,18 @@ void fake_stream_t::read(char *buffer, size_t length) {
     data.erase(data.begin(), data.begin() + length);
 }
 
-void fake_stream_t::write(write_message_t &&msg) {
+void dummy_stream_t::write(write_message_t &&msg) {
     std::copy(msg.buffer.begin(), msg.buffer.end(), std::back_inserter(data));
+}
+
+tcp_stream_t::tcp_stream_t(int _fd) : fd(_fd) { }
+
+void tcp_stream_t::read(char *, size_t) {
+    // TODO: implement
+    printf("Unimplemented tcp_stream_t::read with fd: %d\n", fd);
+}
+
+void tcp_stream_t::write(write_message_t &&) {
+    // TODO: implement
+    printf("Unimplemented tcp_stream_t::write with fd: %d\n", fd);
 }
