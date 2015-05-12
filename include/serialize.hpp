@@ -14,6 +14,11 @@ class write_message_t;
     int serialize(write_message_t *msg); \
     static Type deserialize(read_message_t *msg)
 
+template <typename T>
+size_t serialized_size(const T &item) {
+    return item.serialized_size();
+}
+
 template <typename... Args>
 size_t full_serialized_size(const Args &...args) {
     class accumulator_t {
@@ -25,11 +30,6 @@ size_t full_serialized_size(const Args &...args) {
 
     auto dummy = { acc.add(serialized_size(args))... };
     return acc.value;
-}
-
-template <typename T>
-size_t serialized_size(const T &item) {
-    return item.serialized_size();
 }
 
 template <typename... Args>

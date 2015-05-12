@@ -2,6 +2,7 @@
 
 #include <endian.h>
 
+#include "include/debug.hpp"
 #include "include/message.hpp"
 
 // Specializations for integral and unchangable types
@@ -9,10 +10,12 @@ template <> size_t serialized_size(const bool &item) {
     return 1;
 }
 template <> int serialize(write_message_t *msg, bool &&item) {
+
     msg->buffer.push_back(static_cast<char>(item));
     return 0;
 }
 template <> bool deserialize(read_message_t *msg) {
+    printf("deserializing bool, offset: %zu\n", msg->offset);
     return static_cast<bool>(msg->pop());
 }
 
@@ -27,6 +30,7 @@ template <> int serialize(write_message_t *msg, uint64_t &&item) {
     return 0;
 }
 template <> uint64_t deserialize(read_message_t *msg) {
+    printf("deserializing uint64_t, offset: %zu\n", msg->offset);
     uint64_t buffer;
     for (size_t i = 0; i < sizeof(buffer); ++i) {
         reinterpret_cast<char *>(&buffer)[i] = msg->pop();

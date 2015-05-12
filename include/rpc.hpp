@@ -27,6 +27,7 @@ public:
     static // TODO: make this not static
     int call(std::string s, bool flag) {
         printf("called with %s, %s\n", s.c_str(), flag ? "true" : "false");
+        return -1;
     }
 };
 

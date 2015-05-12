@@ -1,5 +1,6 @@
 #include "include/serialize_stl.hpp"
 
+#include "include/debug.hpp"
 #include "include/message.hpp"
 
 template <> size_t serialized_size(const std::string &item) {
@@ -15,9 +16,12 @@ template <> int serialize(write_message_t *msg, std::string &&item) {
 }
 template <> std::string deserialize(read_message_t *msg) {
     std::string res;
+    printf("Deserializing string, offset: %zu\n", msg->offset);
     size_t length = deserialize<size_t>(msg);
+    printf("Got length %zu, offset: %zu\n", length, msg->offset);
     for (size_t i = 0; i < length; ++i) {
         res.push_back(msg->pop());
+        printf("Got character %c, offset: %zu\n", res[res.size() - 1], msg->offset);
     }
     return res;
 }
