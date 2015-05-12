@@ -51,6 +51,9 @@ public:
         return this->handler_id();
     }
 
+    // The client calls this to error at compilation if the args don't line up
+    static void check_args(Args &&...) { }
+
 private:
     template <typename T>
     static std::tuple<T> parse(read_message_t *msg) {
@@ -64,7 +67,7 @@ private:
 
     template <size_t... N>
     static Res handle(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&args) {
-        return Impl::call(std::get<N>(args)...);
+        return Impl::call(std::move(std::get<N>(args))...);
     }
 
     message_hub_t::membership_t<handler_callback_t> membership;

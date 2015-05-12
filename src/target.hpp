@@ -24,6 +24,7 @@ public:
 
     template <class Handler, typename... Args>
     void noreply_call(Args &&...args) {
+        Handler::check_args(std::forward<Args>(args)...);
         write_message_t msg = write_message_t::create(Handler::handler_id(),
                                                       request_id_t::noreply(),
                                                       std::forward<Args>(args)...);

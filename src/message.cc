@@ -61,6 +61,7 @@ read_message_t::read_message_t(std::vector<char> &&_buffer,
     request_id(std::move(_request_id)) { }
 
 char read_message_t::pop() {
+    assert(offset < buffer.size());
     return buffer[offset++];
 }
 
