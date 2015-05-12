@@ -1,9 +1,6 @@
-#include <string>
-#include <map>
-#include <vector>
 #include <stdint.h>
-#include <cassert>
-#include <stdio.h>
+#include <tuple>
+#include <utility>
 
 #include "include/id.hpp"
 #include "include/message.hpp"
@@ -15,19 +12,24 @@ template <typename Impl, typename Res, typename... Args>
 class base_handler_t {
 public:
     static // TODO: make this not static
-    Res handle(read_message_t &&msg) {
-        read_message_t local(std::move(msg));
-        return Impl::call(deserialize<Args>(&local)...);
+    Res handle(read_message_t *msg) {
+        return handle(std::index_sequence_for<Args...>{}, parse<Args...>(msg));
     }
-};
 
-class read_handler_t : public base_handler_t<read_handler_t, int, std::string, bool> {
-public:
-    static const handler_id_t id;
-    static // TODO: make this not static
-    int call(std::string s, bool flag) {
-        printf("called with %s, %s\n", s.c_str(), flag ? "true" : "false");
-        return -1;
+private:
+    template <typename T>
+    static std::tuple<T> parse(read_message_t *msg) {
+        return std::tuple<T>(deserialize<T>(msg));
+    }
+
+    template <typename T, typename... Subargs>
+    static std::tuple<T, Subargs...> parse(read_message_t *msg) {
+        return std::tuple_cat(std::tuple<T>(deserialize<T>(msg)), parse<Subargs...>(msg));
+    }
+
+    template <size_t... N>
+    static Res handle(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&args) {
+        return Impl::call(std::get<N>(args)...);
     }
 };
 
