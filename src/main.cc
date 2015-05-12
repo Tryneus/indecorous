@@ -4,6 +4,7 @@
 #include "target.hpp"
 #include "serialize_stl.hpp"
 
+template <typename T>
 class movable_object_t {
 public:
     movable_object_t(movable_object_t &&other) : data(std::move(other.data)) {
@@ -14,39 +15,46 @@ public:
         data = std::move(other.data);
         return *this;
     }
-    movable_object_t(int _data) : data(_data) { }
+    movable_object_t(T _data) : data(_data) { }
 
     DECLARE_SERIALIZABLE(movable_object_t);
 
     static size_t total_moves;
-    int data;
+    T data;
 
 private:
     movable_object_t(const movable_object_t &) = delete;
     movable_object_t &operator = (const movable_object_t &) = delete;
 };
 
-size_t movable_object_t::total_moves = 0;
+template<>
+size_t movable_object_t<uint64_t>::total_moves = 0;
 
-size_t movable_object_t::serialized_size() const {
-    return ::serialized_size<uint64_t>(data);
+template<>
+size_t movable_object_t<char>::total_moves = 0;
+
+template <typename T>
+size_t movable_object_t<T>::serialized_size() const {
+    return ::serialized_size<uint64_t>(static_cast<uint64_t>(data));
 }
 
-int movable_object_t::serialize(write_message_t *msg) {
-    return ::serialize<uint64_t>(msg, data);
+template <typename T>
+int movable_object_t<T>::serialize(write_message_t *msg) {
+    return ::serialize<uint64_t>(msg, static_cast<uint64_t>(data));
 }
 
-movable_object_t movable_object_t::deserialize(read_message_t *msg) {
-    return movable_object_t(::deserialize<uint64_t>(msg));
+template <typename T>
+movable_object_t<T> movable_object_t<T>::deserialize(read_message_t *msg) {
+    return movable_object_t<T>(static_cast<T>(::deserialize<uint64_t>(msg)));
 }
 
-class read_handler_t : public handler_t<read_handler_t, int, std::string, bool, movable_object_t> {
+class read_handler_t : public handler_t<read_handler_t, int, std::string, bool, movable_object_t<uint64_t>, movable_object_t<char> > {
 public:
     read_handler_t(message_hub_t *hub) : handler_t(hub) { }
 
     static
-    int call(std::string s, bool flag, movable_object_t item) {
-        printf("called with %s, %s, %d\n", s.c_str(), flag ? "true" : "false", item.data);
+    int call(std::string s, bool flag, movable_object_t<uint64_t> item_a, movable_object_t<char> item_b) {
+        printf("called with %s, %s, %ld, %c\n", s.c_str(), flag ? "true" : "false", item_a.data, item_b.data);
         return -1;
     }
 };
@@ -60,12 +68,13 @@ int main() {
     local_target_t target(&hub);
     read_handler_t read_handler(&hub);
 
-    target.noreply_call<read_handler_t>(std::string("stuff"), true, movable_object_t(5));
+    target.noreply_call<read_handler_t>(std::string("stuff"), true, movable_object_t<uint64_t>(5), movable_object_t<char>('a'));
 
     read_message_t message = read_message_t::parse(&target.stream);
     read_handler.handle(&message);
 
-    printf("Total moves of movable_object_t: %zu\n", movable_object_t::total_moves);
+    printf("Total moves of movable_object_t<uint64_t>: %zu\n", movable_object_t<uint64_t>::total_moves);
+    printf("Total moves of movable_object_t<char>: %zu\n", movable_object_t<char>::total_moves);
 
     return 0;
 }
