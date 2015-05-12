@@ -13,7 +13,7 @@ class base_handler_t {
 public:
     static // TODO: make this not static
     Res handle(read_message_t *msg) {
-        return handle(std::index_sequence_for<Args...>{}, parse<Args...>(msg));
+        return handle(std::index_sequence_for<Args...>{}, std::tuple<Args...>{deserialize<Args>(msg)...});
     }
 
 private:
