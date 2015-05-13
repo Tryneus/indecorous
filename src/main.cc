@@ -21,7 +21,7 @@ public:
 private:
     data_t(const data_t &) = delete;
     data_t &operator = (const data_t &) = delete;
-    SERIALIZABLE_3(data_t, x, y, z);
+    SERIALIZABLE(data_t, x, y, z);
 };
 
 class read_callback_t {
