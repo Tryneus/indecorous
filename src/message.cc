@@ -14,22 +14,22 @@ struct message_header_t {
 };
 
 size_t message_header_t::serialized_size() const {
-    return sizeof(message_header_t);
+    return full_serialized_size(header_magic, handler_id, request_id, payload_size);
 }
 
 int message_header_t::serialize(write_message_t *msg) {
-    ::serialize(msg, std::move(header_magic));
-    ::serialize(msg, std::move(handler_id));
-    ::serialize(msg, std::move(request_id));
-    ::serialize(msg, std::move(payload_size));
-    return 0;
+    return full_serialize(msg,
+                          std::move(header_magic),
+                          std::move(handler_id),
+                          std::move(request_id),
+                          std::move(payload_size));
 }
 
 message_header_t message_header_t::deserialize(read_message_t *msg) {
-    return message_header_t({ ::deserialize<uint64_t>(msg),
-                              ::deserialize<uint64_t>(msg),
-                              ::deserialize<uint64_t>(msg),
-                              ::deserialize<uint64_t>(msg) });
+    return message_header_t({ deserializer_t<uint64_t>::run(msg),
+                              deserializer_t<uint64_t>::run(msg),
+                              deserializer_t<uint64_t>::run(msg),
+                              deserializer_t<uint64_t>::run(msg) });
 }
 
 read_message_t read_message_t::parse(stream_t *stream) {
@@ -69,6 +69,6 @@ write_message_t::write_message_t(handler_id_t handler_id,
                                  request_id_t request_id,
                                  size_t payload_size) {
     message_header_t header({ message_header_t::HEADER_MAGIC, handler_id.value(), request_id.value(), payload_size });
-    buffer.reserve(serialized_size(header) + payload_size);
-    serialize(this, std::move(header));
+    buffer.reserve(sizer_t<message_header_t>::run(header) + payload_size);
+    serializer_t<message_header_t>::run(this, std::move(header));
 }

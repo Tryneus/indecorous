@@ -3,20 +3,19 @@
 #include "debug.hpp"
 #include "message.hpp"
 
-template <> size_t serialized_size(const std::string &item) {
-    return serialized_size(size_t()) + item.size();
+size_t sizer_t<std::string>::run(const std::string &item) {
+    return sizer_t<uint64_t>::run(item.size()) + item.size();
 }
-template <> int serialize(write_message_t *msg, std::string &&item) {
-    // TODO: efficient moving of buffers (linked list of variants?)
-    serialize(msg, size_t(item.size()));
+int serializer_t<std::string>::run(write_message_t *msg, std::string &&item) {
+    serializer_t<uint64_t>::run(msg, item.size());
     for (size_t i = 0; i < item.size(); ++i) {
         msg->buffer.push_back(item[i]);
     }
     return 0;
 }
-template <> std::string deserialize(read_message_t *msg) {
+std::string deserializer_t<std::string>::run(read_message_t *msg) {
     std::string res;
-    size_t length = deserialize<size_t>(msg);
+    size_t length = deserializer_t<uint64_t>::run(msg);
     for (size_t i = 0; i < length; ++i) {
         res.push_back(msg->pop());
     }

@@ -16,15 +16,17 @@ class write_message_t;
 
 template <typename T>
 struct sizer_t {
-    static T run(read_message_t *msg) {
-        return T::deserialize(msg);
+    static size_t run(const T &item) {
+        return item.serialized_size();
     }
 };
 
 template <typename T>
-size_t serialized_size(const T &item) {
-    return item.serialized_size();
-}
+struct serializer_t {
+    static int run(write_message_t *msg, T &&item) {
+        return std::move(item).serialize(msg);
+    }
+};
 
 template <typename T>
 struct deserializer_t {
@@ -33,21 +35,23 @@ struct deserializer_t {
     }
 };
 
-template <typename T>
-int serialize(write_message_t *msg, T &&item) {
-    item.serialize(msg);
-    return 0;
-}
-
 // Specializations for integral and unchangable types
-template <> size_t serialized_size(const bool &item);
-template <> int serialize(write_message_t *msg, bool &&item);
+template <> struct sizer_t<bool> {
+    static size_t run(const bool &item);
+};
+template <> struct serializer_t<bool> {
+    static int run(write_message_t *msg, bool &&item);
+};
 template <> struct deserializer_t<bool> {
     static bool run(read_message_t *msg);
 };
 
-template <> size_t serialized_size(const uint64_t &item);
-template <> int serialize(write_message_t *msg, uint64_t &&item);
+template <> struct sizer_t<uint64_t> {
+    static size_t run(const uint64_t &item);
+};
+template <> struct serializer_t<uint64_t> {
+    static int run(write_message_t *msg, uint64_t &&item);
+};
 template <> struct deserializer_t<uint64_t> {
     static uint64_t run(read_message_t *msg);
 };
@@ -78,14 +82,14 @@ size_t full_serialized_size(const Args &...args) {
     } acc;
 
     __attribute__((unused)) auto dummy =
-        { acc.add(serialized_size<Args>(args))... };
+        { acc.add(sizer_t<Args>::run(args))... };
     return acc.value;
 }
 
 template <typename... Args>
 int full_serialize(write_message_t *msg, Args &&...args) {
     __attribute__((unused)) auto dummy =
-        { serialize<Args>(msg, std::forward<Args>(args))... };
+        { serializer_t<Args>::run(msg, std::forward<Args>(args))... };
     return 0;
 }
 

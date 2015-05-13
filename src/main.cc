@@ -20,8 +20,8 @@ public:
         return full_serialized_size(y);
     }
 
-    int serialize(write_message_t *msg) const {
-        return full_serialize(msg, y);
+    int serialize(write_message_t *msg) &&{
+        return full_serialize(msg, std::move(y));
     }
 
     data_t(decltype(y) &&_y) :
@@ -39,7 +39,7 @@ public:
 //        return full_serialized_size(x, y, z);
 //    }
 //
-//    int serialize(write_message_t *msg) const {
+//    int serialize(write_message_t *msg) && {
 //        return full_serialize(msg, x, y, z);
 //    }
 //
@@ -65,8 +65,6 @@ public:
     }
 };
 
-class read_handler_t : public handler_t<read_handler_t>
-
 template<>
 const handler_id_t unique_handler_t<read_callback_t>::unique_id = handler_id_t::assign();
 
@@ -75,7 +73,8 @@ int main() {
     local_target_t target(&hub);
     handler_t<read_callback_t> read_handler(&hub);
 
-    target.noreply_call<read_callback_t>(std::string("stuff"), true, data_t());
+    data_t d;
+    target.noreply_call<read_callback_t>(std::string("stuff"), true, std::move(d));
 
     read_message_t message = read_message_t::parse(&target.stream);
     read_handler.internal_handler.handle(&message);

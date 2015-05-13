@@ -5,18 +5,48 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 // std::string
-template <> size_t serialized_size(const std::string &item);
-template <> int serialize(write_message_t *msg, std::string &&item);
+template <> struct sizer_t<std::string> {
+    static size_t run(const std::string &item);
+};
+template <> struct serializer_t<std::string> {
+    static int run(write_message_t *msg, std::string &&item);
+};
 template <> struct deserializer_t<std::string> {
     static std::string run(read_message_t *msg);
 };
 
 // std::vector
-template <typename T>
-struct deserializer_t<std::vector<T> > {   
-    static std::vector<T> run(read_message_t *msg);
+template <typename T> struct sizer_t<std::vector<T> > {
+    static size_t run(const std::vector<T> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<T>::run(i);
+        }
+        return res;
+    }
+};
+template <typename T> struct serializer_t<std::vector<T> > {
+    static int run(write_message_t *msg, std::vector<T> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        for (auto &&i : item) {
+            serializer_t<T>::run(msg, std::move(i));
+        }
+        return 0;
+    }
+};
+template <typename T> struct deserializer_t<std::vector<T> > {   
+    static std::vector<T> run(read_message_t *msg) {
+        std::vector<T> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        res.reserve(size);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace_back(deserializer_t<T>::run(msg));
+        }
+        return res;
+    }
 };
 
 // std::map
