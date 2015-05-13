@@ -1,6 +1,11 @@
 #ifndef SERIALIZE_MACROS_HPP_
 #define SERIALIZE_MACROS_HPP_
 
+#define MAKE_MOVE(x) std::move(x)
+#define MAKE_DECLTYPE_PARAM(x) decltype(x) arg_##x
+#define MAKE_CONSTRUCT(x) x(std::move(arg_##x))
+#define MAKE_DECLTYPE(x) decltype(x)
+
 #define FRIEND_SERIALIZERS() \
     template <typename T> friend struct sizer_t; \
     template <typename T> friend struct serializer_t; \
@@ -11,22 +16,19 @@
 #define SERIALIZED_SIZE(...) \
     size_t serialized_size() const { \
         return full_serialized_size(__VA_ARGS__); \
-    } \
+    }
 
-#define MAKE_MOVE(x) std::move(x)
-#define MAKE_DECLTYPE_PARAM(x) decltype(x) arg_##x
-#define MAKE_CONSTRUCT(x) x(std::move(arg_##x))
-#define MAKE_DECLTYPE(x) decltype(x)
+#define CONCAT(a,b) a##b
 
-// This is special-cased
-// TODO: no default constructor here as it may conflict with an existing one
-#define SERIALIZABLE_0(Type) \
+#define SERIALIZABLE(Type, ...) SERIALIZABLE_INTERNAL(ZERO_OR_N(__VA_ARGS__), Type, NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
+#define SERIALIZABLE_INTERNAL(X, ...) CONCAT(SERIALIZABLE_,X)(__VA_ARGS__)
+
+// We don't provide a default constructor here as it may conflict with an existing one
+#define SERIALIZABLE_0(Type, ...) \
     size_t serialized_size() const { return 0; } \
-    int serialize(write_message_t *msg) && { return 0; } \
-    static Type deserialize(read_message_t *msg) { return Type(); } \
+    int serialize(write_message_t *) && { return 0; } \
+    static Type deserialize(read_message_t *) { return Type(); } \
     FRIEND_SERIALIZERS()
-
-#define SERIALIZABLE(Type, ...) SERIALIZABLE_N(Type, NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
 
 #define SERIALIZABLE_N(Type, N, ...) \
     int serialize(write_message_t *msg) && { \
@@ -41,13 +43,21 @@
     FRIEND_SERIALIZERS()
 
 // These macros allow SERIALIZABLE to be called with up to 32 member variables,
-// this can be extended by continuing the sequences in these two macros.
-#define NUM_ARGS(...) NUM_ARGS_N(__VA_ARGS__,32,31,30,29,28,27,26,25,24,23,22,21,20 \
-                                 19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
-#define NUM_ARGS_N( _1, _2, _3, _4, _5, _6, _7, _8, \
+// this can be extended by continuing the sequences in these macros.
+#define NUM_ARGS(...) NUM_ARGS_(__VA_ARGS__,32,31,30,29,28,27,26,25,24,23,22,21,20 \
+                                19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
+#define NUM_ARGS_( _1, _2, _3, _4, _5, _6, _7, _8, \
+                   _9,_10,_11,_12,_13,_14,_15,_16, \
+                  _17,_18,_19,_20,_21,_22,_23,_24, \
+                  _25,_26,_27,_28,_29,_30,_31,X,...) X
+
+// These macros choose between SERIALIZABLE_0 and SERIALIZABLE_N
+#define ZERO_OR_N(...) ZERO_OR_N_(__VA_ARGS__,N,N,N,N,N,N,N,N,N,N,N,N \
+                                  N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,0)
+#define ZERO_OR_N_( _1, _2, _3, _4, _5, _6, _7, _8, \
                     _9,_10,_11,_12,_13,_14,_15,_16, \
                    _17,_18,_19,_20,_21,_22,_23,_24, \
-                   _25,_26,_27,_28,_29,_30,_31,N,...) N
+                   _25,_26,_27,_28,_29,_30,_31,X,...) X
 
 #define CALL_MACRO(N, name, ...) CALL_MACRO_##N(name, __VA_ARGS__)
 #define CALL_MACRO_32(name, x, ...) CALL_MACRO_1(name, x), CALL_MACRO_31(name, __VA_ARGS__)

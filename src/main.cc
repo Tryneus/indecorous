@@ -9,6 +9,10 @@
 #include "serialize.hpp"
 #include "serialize_stl.hpp"
 
+class dummy_t {
+    SERIALIZABLE(dummy_t);
+};
+
 class data_t {
 public:
     data_t() { }
