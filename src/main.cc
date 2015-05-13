@@ -18,24 +18,10 @@ public:
     std::vector<uint64_t> y;
     std::map<std::set<uint64_t>, std::string> z;
 
-    size_t serialized_size() const {
-        return full_serialized_size(x, y, z);
-    }
-
-    int serialize(write_message_t *msg) && {
-        return full_serialize(msg, std::move(x), std::move(y), std::move(z));
-    }
-
-    data_t(decltype(x) &&_x, decltype(y) &&_y, decltype(z) &&_z) :
-         x(std::move(_x)), y(std::move(_y)), z(std::move(_z)) { }
-
-    static data_t deserialize(read_message_t *msg) {
-        return full_deserialize<data_t, decltype(x), decltype(y), decltype(z)>(msg);
-    }
-
 private:
     data_t(const data_t &) = delete;
     data_t &operator = (const data_t &) = delete;
+    SERIALIZABLE_3(data_t, x, y, z);
 };
 
 class read_callback_t {

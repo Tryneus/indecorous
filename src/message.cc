@@ -10,27 +10,8 @@ struct message_header_t {
     uint64_t handler_id;
     uint64_t request_id;
     uint64_t payload_size;
-    DECLARE_SERIALIZABLE(message_header_t);
+    SERIALIZABLE_4(message_header_t, header_magic, handler_id, request_id, payload_size);
 };
-
-size_t message_header_t::serialized_size() const {
-    return full_serialized_size(header_magic, handler_id, request_id, payload_size);
-}
-
-int message_header_t::serialize(write_message_t *msg) {
-    return full_serialize(msg,
-                          std::move(header_magic),
-                          std::move(handler_id),
-                          std::move(request_id),
-                          std::move(payload_size));
-}
-
-message_header_t message_header_t::deserialize(read_message_t *msg) {
-    return message_header_t({ deserializer_t<uint64_t>::run(msg),
-                              deserializer_t<uint64_t>::run(msg),
-                              deserializer_t<uint64_t>::run(msg),
-                              deserializer_t<uint64_t>::run(msg) });
-}
 
 read_message_t read_message_t::parse(stream_t *stream) {
     static_assert(sizeof(message_header_t) == sizeof(uint64_t) * 4, "error");
@@ -68,7 +49,7 @@ char read_message_t::pop() {
 write_message_t::write_message_t(handler_id_t handler_id,
                                  request_id_t request_id,
                                  size_t payload_size) {
-    message_header_t header({ message_header_t::HEADER_MAGIC, handler_id.value(), request_id.value(), payload_size });
+    message_header_t header(message_header_t::HEADER_MAGIC, handler_id.value(), request_id.value(), payload_size);
     buffer.reserve(sizer_t<message_header_t>::run(header) + payload_size);
     serializer_t<message_header_t>::run(this, std::move(header));
 }

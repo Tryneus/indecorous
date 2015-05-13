@@ -4,15 +4,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <utility>
+#include "serialize_macros.hpp"
 
 class read_message_t;
 class write_message_t;
-
-// These functions must be implemented on any serializable class
-#define DECLARE_SERIALIZABLE(Type) \
-    size_t serialized_size() const; \
-    int serialize(write_message_t *msg); \
-    static Type deserialize(read_message_t *msg)
 
 template <typename T>
 struct sizer_t {
