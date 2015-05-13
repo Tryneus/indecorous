@@ -14,26 +14,26 @@ public:
     data_t() { }
     data_t(data_t &&other) = default;
 
-    std::vector<uint64_t> y;
+    uint64_t x;
+    //std::vector<uint64_t> y;
+    //std::map<std::set<uint64_t>, std::string> z;
+    uint64_t y;
+    std::set<uint64_t> z;
 
     size_t serialized_size() const {
-        return full_serialized_size(y);
+        return full_serialized_size(x, y, z);
     }
 
-    int serialize(write_message_t *msg) &&{
-        return full_serialize(msg, std::move(y));
+    int serialize(write_message_t *msg) && {
+        return full_serialize(msg, std::move(x), std::move(y), std::move(z));
     }
 
-    data_t(decltype(y) &&_y) :
-         y(std::move(_y)) { }
+    data_t(decltype(x) &&_x, decltype(y) &&_y, decltype(z) &&_z) :
+         x(std::move(_x)), y(std::move(_y)), z(std::move(_z)) { }
 
     static data_t deserialize(read_message_t *msg) {
-        return data_t(deserializer_t<decltype(y)>::run(msg));
+        return full_deserialize<data_t, decltype(x), decltype(y), decltype(z)>(msg);
     }
-
-//    uint64_t x;
-//    std::vector<uint64_t> y;
-//    std::map<std::set<uint64_t>, std::string> z;
 
 //    size_t serialized_size() const {
 //        return full_serialized_size(x, y, z);
@@ -59,8 +59,8 @@ private:
 class read_callback_t {
 public:
     static int call(std::string s, bool flag, data_t d) {
-        printf("called with %s, %s, %zu\n",
-               s.c_str(), flag ? "true" : "false", d.y.size());
+        printf("called with %s, %s, %ld\n",
+               s.c_str(), flag ? "true" : "false", d.y);
         return -1;
     }
 };

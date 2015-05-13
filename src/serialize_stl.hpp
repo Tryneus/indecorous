@@ -92,7 +92,6 @@ template <typename K, typename V, typename C> struct deserializer_t<std::map<K,V
     static std::map<K,V,C> run(read_message_t *msg) {
         std::map<K,V,C> res;
         size_t size = deserializer_t<uint64_t>::run(msg);
-        res.reserve(size);
         for (size_t i = 0; i < size; ++i) {
             res.emplace_hint(res.end(), deserializer_t<std::pair<K,V> >::run(msg));
         }
@@ -123,7 +122,6 @@ template <typename T, typename C> struct deserializer_t<std::set<T,C> > {
     static std::set<T,C> run(read_message_t *msg) {
         std::set<T,C> res;
         size_t size = deserializer_t<uint64_t>::run(msg);
-        res.reserve(size);
         for (size_t i = 0; i < size; ++i) {
             res.emplace_hint(res.end(), deserializer_t<T>::run(msg));
         }
