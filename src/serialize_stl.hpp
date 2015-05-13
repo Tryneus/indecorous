@@ -6,9 +6,26 @@
 #include <cstddef>
 #include <string>
 
+// std::string
 template <> size_t serialized_size(const std::string &item);
 template <> int serialize(write_message_t *msg, std::string &&item);
-template <> std::string deserialize(read_message_t *msg);
+template <> struct deserializer_t<std::string> {
+    static std::string run(read_message_t *msg);
+};
+
+// std::vector
+template <typename T>
+struct deserializer_t<std::vector<T> > {   
+    static std::vector<T> run(read_message_t *msg);
+};
+
+// std::map
+//template <typename K, typename V, typename C>
+//    std::map<K,V,C> deserialize(read_message_t *msg);
+
+// std::set
+//template <typename T, typename C>
+//    std::set<T,C> deserialize(read_message_t *msg);
 
 /*
 template <>
@@ -22,21 +39,15 @@ template <> template <typename T>
 template <> template <typename T>
     std::deque<T> deserialize(read_message_t *msg);
 template <> template <typename T>
-    std::vector<T> deserialize(read_message_t *msg);
-template <> template <typename T>
     std::forward_list<T> deserialize(read_message_t *msg);
 template <> template <typename T>
     std::priority_queue<T> deserialize(read_message_t *msg);
 template <> template <typename T, size_t N>
     std::array<T,N> deserialize(read_message_t *msg);
-template <> template <typename T, typename C>
-    std::set<T,C> deserialize(read_message_t *msg);
 template <> template <typename T, typename U>
     std::pair<T,U> deserialize(read_message_t *msg);
 template <> template <typename T, typename C>
     std::multiset<T,C> deserialize(read_message_t *msg);
-template <> template <typename K, typename V, typename C>
-    std::map<K,V,C> deserialize(read_message_t *msg);
 template <> template <typename K, typename V, typename C>
     std::multimap<K,V,C> deserialize(read_message_t *msg);
 template <> template <typename T, typename H, typename E>

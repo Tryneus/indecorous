@@ -1,6 +1,7 @@
 #ifndef TARGET_HPP_
 #define TARGET_HPP_
 
+#include "handler.hpp"
 #include "hub.hpp"
 #include "id.hpp"
 #include "message.hpp"
@@ -22,10 +23,10 @@ class local_target_t : public target_t {
 public:
     local_target_t(message_hub_t *hub);
 
-    template <class Handler, typename... Args>
+    template <class Callback, typename... Args>
     void noreply_call(Args &&...args) {
-        Handler::handler_impl_t::check_args(std::forward<Args>(args)...);
-        write_message_t msg = write_message_t::create(Handler::handler_id(),
+        handler_t<Callback>::handler_impl_t::check_args(std::forward<Args>(args)...);
+        write_message_t msg = write_message_t::create(handler_t<Callback>::handler_id(),
                                                       request_id_t::noreply(),
                                                       std::forward<Args>(args)...);
         stream.write(std::move(msg));
@@ -39,10 +40,10 @@ public:
     remote_target_t(message_hub_t *hub);
 
     /*
-    template <class Handler, typename result_t = Handler::result_t, typename... Args>
+    template <class Callback, typename result_t = handler_t<Callback>::result_t, typename... Args>
     result_t call(Args &&...args) {
         request_id_t request_id = new_request_id();
-        message_t msg = message_t::create(Handler::id,
+        message_t msg = message_t::create(handler_t<Callback>::id,
                                           request_id,
                                           std::forward<Args>(args)...);
         sync_request_t request(this, request_id);
@@ -50,9 +51,9 @@ public:
     }
     */
 
-    template <class Handler, typename... Args>
+    template <class Callback, typename... Args>
     void noreply_call(Args &&...args) {
-        write_message_t msg = write_message_t::create(Handler::handler_id(),
+        write_message_t msg = write_message_t::create(handler_t<Callback>::handler_id(),
                                                       request_id_t::noreply(),
                                                       std::forward<Args>(args)...);
         stream.write(std::move(msg));
