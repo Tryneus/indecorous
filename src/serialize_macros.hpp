@@ -2,9 +2,9 @@
 #define SERIALIZE_MACROS_HPP_
 
 #define FRIEND_SERIALIZERS() \
-    template <typename T> friend class sizer_t; \
-    template <typename T> friend class serializer_t; \
-    template <typename T> friend class deserializer_t; \
+    template <typename T> friend struct sizer_t; \
+    template <typename T> friend struct serializer_t; \
+    template <typename T> friend struct deserializer_t; \
     template <typename T, size_t... N, typename... Args> \
     friend T full_deserialize_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&)
 
@@ -40,7 +40,8 @@
     SERIALIZED_SIZE(__VA_ARGS__) \
     FRIEND_SERIALIZERS()
 
-
+// These macros allow SERIALIZABLE to be called with up to 32 member variables,
+// this can be extended by continuing the sequences in these two macros.
 #define NUM_ARGS(...) NUM_ARGS_N(__VA_ARGS__,32,31,30,29,28,27,26,25,24,23,22,21,20 \
                                  19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
 #define NUM_ARGS_N( _1, _2, _3, _4, _5, _6, _7, _8, \
