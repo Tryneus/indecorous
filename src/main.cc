@@ -15,10 +15,10 @@ public:
     data_t(data_t &&other) = default;
 
     uint64_t x;
-    //std::vector<uint64_t> y;
-    //std::map<std::set<uint64_t>, std::string> z;
-    uint64_t y;
-    std::set<uint64_t> z;
+    std::vector<uint64_t> y;
+    std::map<std::set<uint64_t>, std::string> z;
+    //uint64_t y;
+    //std::set<uint64_t> z;
 
     size_t serialized_size() const {
         return full_serialized_size(x, y, z);
@@ -35,22 +35,6 @@ public:
         return full_deserialize<data_t, decltype(x), decltype(y), decltype(z)>(msg);
     }
 
-//    size_t serialized_size() const {
-//        return full_serialized_size(x, y, z);
-//    }
-//
-//    int serialize(write_message_t *msg) && {
-//        return full_serialize(msg, x, y, z);
-//    }
-//
-//    data_t(decltype(x) &&_x, decltype(y) &&_y, decltype(z) &&_z) :
-//        x(std::move(_x)), y(std::move(_y)), z(std::move(_z)) { }
-//
-//    static data_t deserialize(read_message_t *msg) {
-//        return data_t(deserialize<decltype(x)>(msg),
-//                      deserialize<decltype(y)>(msg),
-//                      deserialize<decltype(z)>(msg));
-//    }
 private:
     data_t(const data_t &) = delete;
     data_t &operator = (const data_t &) = delete;
@@ -59,8 +43,8 @@ private:
 class read_callback_t {
 public:
     static int call(std::string s, bool flag, data_t d) {
-        printf("called with %s, %s, %ld\n",
-               s.c_str(), flag ? "true" : "false", d.y);
+        printf("called with %s, %s, %zu\n",
+               s.c_str(), flag ? "true" : "false", d.y.size());
         return -1;
     }
 };
