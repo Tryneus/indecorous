@@ -58,16 +58,6 @@ public:
         static void check_args(Args &&...) { }
 
     private:
-        template <typename T>
-        static std::tuple<T> parse(read_message_t *msg) {
-            return std::tuple<T>(deserializer_t<T>::run(msg));
-        }
-
-        template <typename T, typename... Subargs>
-        static std::tuple<T, Subargs...> parse(read_message_t *msg) {
-            return std::tuple_cat(std::tuple<T>(deserializer_t<T>::run(msg)), parse<Subargs...>(msg));
-        }
-
         template <size_t... N>
         static Res handle(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&args) {
             return Impl::call(std::move(std::get<N>(args))...);

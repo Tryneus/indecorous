@@ -93,4 +93,17 @@ int full_serialize(write_message_t *msg, Args &&...args) {
     return 0;
 }
 
+template <typename T, size_t... N, typename... Args>
+T full_deserialize(std::integer_sequence<size_t, N...>,
+                   std::tuple<Args...> &&args) {
+    return T(std::move(std::get<N>(args))...);
+}
+
+template <typename T, typename... Args>
+T full_deserialize(read_message_t *msg) {
+    return full_deserialize(std::index_sequence_for<Args...>{},
+                            std::tuple<Args...>{deserializer_t<Args>::run(msg)...});
+}
+
+
 #endif // SERIALIZE_HPP_

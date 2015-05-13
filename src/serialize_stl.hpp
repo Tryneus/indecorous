@@ -4,6 +4,8 @@
 #include "serialize.hpp"
 
 #include <cstddef>
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -49,11 +51,85 @@ template <typename T> struct deserializer_t<std::vector<T> > {
     }
 };
 
+// std::pair
+template <typename A, typename B> struct sizer_t<std::pair<A,B> > {
+    static size_t run(const std::pair<A,B> &item) {
+        return sizer_t<A>::run(item.first) + sizer_t<B>::run(item.second);
+    }
+};
+template <typename A, typename B> struct serializer_t<std::pair<A,B> > {
+    static int run(write_message_t *msg, std::pair<A,B> &&item) {
+        return full_serialize(msg, std::move(item.first), std::move(item.second));
+    }
+};
+template <typename A, typename B> struct deserializer_t<std::pair<A,B> > {   
+    static std::pair<A,B> run(read_message_t *msg) {
+        return full_deserialize<std::pair<A,B>,A,B>(msg);
+    }
+};
+
+
 // std::map
-//template <typename K, typename V, typename C>
-//    std::map<K,V,C> deserialize(read_message_t *msg);
+template <typename K, typename V, typename C> struct sizer_t<std::map<K,V,C> > {
+    static size_t run(const std::map<K,V,C> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<std::pair<K,V> >::run(i);
+        }
+        return res;
+    }
+};
+template <typename K, typename V, typename C> struct serializer_t<std::map<K,V,C> > {
+    static int run(write_message_t *msg, std::map<K,V,C> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        for (auto &&i : item) {
+            serializer_t<std::pair<K,V> >::run(msg, std::move(i));
+        }
+        return 0;
+    }
+};
+template <typename K, typename V, typename C> struct deserializer_t<std::map<K,V,C> > {   
+    static std::map<K,V,C> run(read_message_t *msg) {
+        std::map<K,V,C> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        res.reserve(size);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace_hint(res.end(), deserializer_t<std::pair<K,V> >::run(msg));
+        }
+        return res;
+    }
+};
 
 // std::set
+template <typename T, typename C> struct sizer_t<std::set<T,C> > {
+    static size_t run(const std::set<T,C> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<T>::run(i);
+        }
+        return res;
+    }
+};
+template <typename T, typename C> struct serializer_t<std::set<T,C> > {
+    static int run(write_message_t *msg, std::set<T,C> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        for (auto &&i : item) {
+            serializer_t<T>::run(msg, std::move(i));
+        }
+        return 0;
+    }
+};
+template <typename T, typename C> struct deserializer_t<std::set<T,C> > {   
+    static std::set<T,C> run(read_message_t *msg) {
+        std::set<T,C> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        res.reserve(size);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace_hint(res.end(), deserializer_t<T>::run(msg));
+        }
+        return res;
+    }
+};
 //template <typename T, typename C>
 //    std::set<T,C> deserialize(read_message_t *msg);
 
