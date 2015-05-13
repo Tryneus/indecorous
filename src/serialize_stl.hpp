@@ -84,6 +84,7 @@ template <typename K, typename V, typename C> struct serializer_t<std::map<K,V,C
     static int run(write_message_t *msg, std::map<K,V,C> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
         for (auto &&i : item) {
+            // TODO: do this without copying
             serializer_t<std::pair<K,V> >::run(msg,
                                                std::pair<K,V>(std::move(i.first),
                                                               std::move(i.second)));
@@ -117,6 +118,7 @@ template <typename T, typename C> struct serializer_t<std::set<T,C> > {
     static int run(write_message_t *msg, std::set<T,C> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
         for (auto &&i : item) {
+            // TODO: do this without copying
             serializer_t<T>::run(msg, T(std::move(i)));
         }
         item.clear();

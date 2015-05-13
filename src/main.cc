@@ -17,8 +17,6 @@ public:
     uint64_t x;
     std::vector<uint64_t> y;
     std::map<std::set<uint64_t>, std::string> z;
-    //uint64_t y;
-    //std::set<uint64_t> z;
 
     size_t serialized_size() const {
         return full_serialized_size(x, y, z);
