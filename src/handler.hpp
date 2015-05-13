@@ -34,9 +34,9 @@ class handler_t : public unique_handler_t<Impl> {
 public:
     handler_t(message_hub_t *hub) : membership(hub, &internal_handler) { }
 
-private:
     template <typename Res, typename... Args>
     class internal_handler_t : public handler_callback_t {
+    public:
         write_message_t handle(read_message_t *msg) {
             Res res = handle(std::index_sequence_for<Args...>{},
                              std::tuple<Args...>{deserialize<Args>(msg)...});
@@ -51,7 +51,7 @@ private:
         }
 
         handler_id_t id() const {
-            return this->handler_id();
+            return handler_t<Impl>::handler_id();
         }
 
         // The client calls this to error at compilation if the args don't line up
@@ -76,13 +76,11 @@ private:
 
     // Used to convert a function to a parameter pack of result and arg types
     template <typename Res, typename... Args>
-    internal_handler_t<Res, Args...> dummy_translator(Res(*fn)(Args...));
+    static internal_handler_t<Res, Args...> dummy_translator(Res(*fn)(Args...));
 
-public:
     typedef decltype(dummy_translator(Impl::call)) handler_impl_t;
     handler_impl_t internal_handler;
 
-private:
     message_hub_t::membership_t<handler_callback_t> membership;
 };
 
