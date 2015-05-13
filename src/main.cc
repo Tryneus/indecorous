@@ -48,7 +48,9 @@ movable_object_t<T> movable_object_t<T>::deserialize(read_message_t *msg) {
     return movable_object_t<T>(static_cast<T>(::deserialize<uint64_t>(msg)));
 }
 
-class read_handler_t : public handler_t<read_handler_t, int, std::string, bool, movable_object_t<uint64_t>, movable_object_t<char> > {
+
+
+class read_handler_t : public handler_t<read_handler_t> {
 public:
     read_handler_t(message_hub_t *hub) : handler_t(hub) { }
 
@@ -58,7 +60,6 @@ public:
         return -1;
     }
 };
-
 
 template<>
 const handler_id_t unique_handler_t<read_handler_t>::unique_id = handler_id_t::assign();
@@ -71,7 +72,7 @@ int main() {
     target.noreply_call<read_handler_t>(std::string("stuff"), true, movable_object_t<uint64_t>(5), movable_object_t<char>('a'));
 
     read_message_t message = read_message_t::parse(&target.stream);
-    read_handler.handle(&message);
+    read_handler.internal_handler.handle(&message);
 
     printf("Total moves of movable_object_t<uint64_t>: %zu\n", movable_object_t<uint64_t>::total_moves);
     printf("Total moves of movable_object_t<char>: %zu\n", movable_object_t<char>::total_moves);
