@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <deque>
 #include <forward_list>
 #include <list>
 #include <map>
@@ -12,6 +13,8 @@
 #include <set>
 #include <stack>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -46,7 +49,7 @@ template <typename T> struct serializer_t<std::vector<T> > {
         return 0;
     }
 };
-template <typename T> struct deserializer_t<std::vector<T> > {   
+template <typename T> struct deserializer_t<std::vector<T> > {
     static std::vector<T> run(read_message_t *msg) {
         std::vector<T> res;
         size_t size = deserializer_t<uint64_t>::run(msg);
@@ -69,7 +72,7 @@ template <typename A, typename B> struct serializer_t<std::pair<A,B> > {
         return full_serialize(msg, std::move(item.first), std::move(item.second));
     }
 };
-template <typename A, typename B> struct deserializer_t<std::pair<A,B> > {   
+template <typename A, typename B> struct deserializer_t<std::pair<A,B> > {
     static std::pair<A,B> run(read_message_t *msg) {
         return full_deserialize<std::pair<A,B>,A,B>(msg);
     }
@@ -77,7 +80,8 @@ template <typename A, typename B> struct deserializer_t<std::pair<A,B> > {
 
 
 // std::map
-template <typename K, typename V, typename C> struct sizer_t<std::map<K,V,C> > {
+template <typename K, typename V, typename C>
+struct sizer_t<std::map<K,V,C> > {
     static size_t run(const std::map<K,V,C> &item) {
         size_t res = sizer_t<uint64_t>::run(item.size());
         for (auto const &i : item) {
@@ -86,7 +90,8 @@ template <typename K, typename V, typename C> struct sizer_t<std::map<K,V,C> > {
         return res;
     }
 };
-template <typename K, typename V, typename C> struct serializer_t<std::map<K,V,C> > {
+template <typename K, typename V, typename C>
+struct serializer_t<std::map<K,V,C> > {
     static int run(write_message_t *msg, std::map<K,V,C> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
         for (auto &&i : item) {
@@ -99,12 +104,126 @@ template <typename K, typename V, typename C> struct serializer_t<std::map<K,V,C
         return 0;
     }
 };
-template <typename K, typename V, typename C> struct deserializer_t<std::map<K,V,C> > {   
+template <typename K, typename V, typename C>
+struct deserializer_t<std::map<K,V,C> > {
     static std::map<K,V,C> run(read_message_t *msg) {
         std::map<K,V,C> res;
         size_t size = deserializer_t<uint64_t>::run(msg);
         for (size_t i = 0; i < size; ++i) {
             res.emplace_hint(res.end(), deserializer_t<std::pair<K,V> >::run(msg));
+        }
+        return res;
+    }
+};
+
+// std::multimap
+template <typename K, typename V, typename C>
+struct sizer_t<std::multimap<K,V,C> > {
+    static size_t run(const std::multimap<K,V,C> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<std::pair<K,V> >::run(i);
+        }
+        return res;
+    }
+};
+template <typename K, typename V, typename C>
+struct serializer_t<std::multimap<K,V,C> > {
+    static int run(write_message_t *msg, std::multimap<K,V,C> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        for (auto &&i : item) {
+            // TODO: do this without copying
+            serializer_t<std::pair<K,V> >::run(msg,
+                                               std::pair<K,V>(std::move(i.first),
+                                                              std::move(i.second)));
+        }
+        item.clear();
+        return 0;
+    }
+};
+template <typename K, typename V, typename C>
+struct deserializer_t<std::multimap<K,V,C> > {
+    static std::multimap<K,V,C> run(read_message_t *msg) {
+        std::multimap<K,V,C> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace_hint(res.end(), deserializer_t<std::pair<K,V> >::run(msg));
+        }
+        return res;
+    }
+};
+
+// std::unordered_map
+template <typename K, typename V, typename H, typename E>
+struct sizer_t<std::unordered_map<K,V,H,E> > {
+    static size_t run(const std::unordered_map<K,V,H,E> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<std::pair<K,V> >::run(i);
+        }
+        return res;
+    }
+};
+template <typename K, typename V, typename H, typename E>
+struct serializer_t<std::unordered_map<K,V,H,E> > {
+    static int run(write_message_t *msg, std::unordered_map<K,V,H,E> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        for (auto &&i : item) {
+            // TODO: do this without copying
+            serializer_t<std::pair<K,V> >::run(msg,
+                                               std::pair<K,V>(std::move(i.first),
+                                                              std::move(i.second)));
+        }
+        item.clear();
+        return 0;
+    }
+};
+template <typename K, typename V, typename H, typename E>
+struct deserializer_t<std::unordered_map<K,V,H,E> > {
+    static std::unordered_map<K,V,H,E> run(read_message_t *msg) {
+        std::unordered_map<K,V,H,E> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        res.reserve(size);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace(deserializer_t<std::pair<K,V> >::run(msg));
+        }
+        return res;
+    }
+};
+
+// std::unordered_multimap
+template <typename K, typename V, typename H, typename E>
+struct sizer_t<std::unordered_multimap<K,V,H,E> > {
+    static size_t run(const std::unordered_multimap<K,V,H,E> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<std::pair<K,V> >::run(i);
+        }
+        return res;
+    }
+};
+template <typename K, typename V, typename H, typename E>
+struct serializer_t<std::unordered_multimap<K,V,H,E> > {
+    static int run(write_message_t *msg, std::unordered_multimap<K,V,H,E> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        for (auto &&i : item) {
+            // TODO: do this without copying
+            serializer_t<std::pair<K,V> >::run(msg,
+                                               std::pair<K,V>(std::move(i.first),
+                                                              std::move(i.second)));
+        }
+        item.clear();
+        return 0;
+    }
+};
+template <typename K, typename V, typename H, typename E>
+struct deserializer_t<std::unordered_multimap<K,V,H,E> > {
+    static std::unordered_multimap<K,V,H,E> run(read_message_t *msg) {
+        std::unordered_multimap<K,V,H,E> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        res.reserve(size);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace(deserializer_t<std::pair<K,V> >::run(msg));
         }
         return res;
     }
@@ -131,12 +250,116 @@ template <typename T, typename C> struct serializer_t<std::set<T,C> > {
         return 0;
     }
 };
-template <typename T, typename C> struct deserializer_t<std::set<T,C> > {   
+template <typename T, typename C> struct deserializer_t<std::set<T,C> > {
     static std::set<T,C> run(read_message_t *msg) {
         std::set<T,C> res;
         size_t size = deserializer_t<uint64_t>::run(msg);
         for (size_t i = 0; i < size; ++i) {
             res.emplace_hint(res.end(), deserializer_t<T>::run(msg));
+        }
+        return res;
+    }
+};
+
+// std::multiset
+template <typename T, typename C> struct sizer_t<std::multiset<T,C> > {
+    static size_t run(const std::multiset<T,C> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<T>::run(i);
+        }
+        return res;
+    }
+};
+template <typename T, typename C> struct serializer_t<std::multiset<T,C> > {
+    static int run(write_message_t *msg, std::multiset<T,C> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        for (auto &&i : item) {
+            // TODO: do this without copying
+            serializer_t<T>::run(msg, T(std::move(i)));
+        }
+        item.clear();
+        return 0;
+    }
+};
+template <typename T, typename C> struct deserializer_t<std::multiset<T,C> > {
+    static std::multiset<T,C> run(read_message_t *msg) {
+        std::multiset<T,C> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace_hint(res.end(), deserializer_t<T>::run(msg));
+        }
+        return res;
+    }
+};
+
+// std::unordered_set
+template <typename T, typename H, typename E>
+struct sizer_t<std::unordered_set<T,H,E> > {
+    static size_t run(const std::unordered_set<T,H,E> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<T>::run(i);
+        }
+        return res;
+    }
+};
+template <typename T, typename H, typename E>
+struct serializer_t<std::unordered_set<T,H,E> > {
+    static int run(write_message_t *msg, std::unordered_set<T,H,E> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        for (auto &&i : item) {
+            // TODO: do this without copying
+            serializer_t<T>::run(msg, T(std::move(i)));
+        }
+        item.clear();
+        return 0;
+    }
+};
+template <typename T, typename H, typename E>
+struct deserializer_t<std::unordered_set<T,H,E> > {
+    static std::unordered_set<T,H,E> run(read_message_t *msg) {
+        std::unordered_set<T,H,E> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        res.reserve(size);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace(deserializer_t<T>::run(msg));
+        }
+        return res;
+    }
+};
+
+// std::unordered_multiset
+template <typename T, typename H, typename E>
+struct sizer_t<std::unordered_multiset<T,H,E> > {
+    static size_t run(const std::unordered_multiset<T,H,E> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<T>::run(i);
+        }
+        return res;
+    }
+};
+template <typename T, typename H, typename E>
+struct serializer_t<std::unordered_multiset<T,H,E> > {
+    static int run(write_message_t *msg, std::unordered_multiset<T,H,E> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        for (auto &&i : item) {
+            // TODO: do this without copying
+            serializer_t<T>::run(msg, T(std::move(i)));
+        }
+        item.clear();
+        return 0;
+    }
+};
+template <typename T, typename H, typename E>
+struct deserializer_t<std::unordered_multiset<T,H,E> > {
+    static std::unordered_multiset<T,H,E> run(read_message_t *msg) {
+        std::unordered_multiset<T,H,E> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        res.reserve(size);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace(deserializer_t<T>::run(msg));
         }
         return res;
     }
@@ -162,7 +385,7 @@ template <typename T> struct serializer_t<std::list<T> > {
         return 0;
     }
 };
-template <typename T> struct deserializer_t<std::list<T> > {   
+template <typename T> struct deserializer_t<std::list<T> > {
     static std::list<T> run(read_message_t *msg) {
         std::list<T> res;
         size_t size = deserializer_t<uint64_t>::run(msg);
@@ -208,7 +431,7 @@ template <typename T> struct serializer_t<std::stack<T> > {
         return serializer_t<decltype(container)>::run(msg, container);
     }
 };
-template <typename T> struct deserializer_t<std::stack<T> > {   
+template <typename T> struct deserializer_t<std::stack<T> > {
     typedef typename std::stack<T>::container_type internal_t;
     static std::stack<T> run(read_message_t *msg) {
         return std::stack<T>(deserializer_t<internal_t>::run(msg));
@@ -228,7 +451,7 @@ template <typename T> struct serializer_t<std::queue<T> > {
         return serializer_t<decltype(container)>::run(msg, container);
     }
 };
-template <typename T> struct deserializer_t<std::queue<T> > {   
+template <typename T> struct deserializer_t<std::queue<T> > {
     typedef typename std::queue<T>::container_type internal_t;
     static std::queue<T> run(read_message_t *msg) {
         return std::queue<T>(deserializer_t<internal_t>::run(msg));
@@ -255,7 +478,7 @@ template <typename T> struct serializer_t<std::deque<T> > {
         return 0;
     }
 };
-template <typename T> struct deserializer_t<std::deque<T> > {   
+template <typename T> struct deserializer_t<std::deque<T> > {
     static std::deque<T> run(read_message_t *msg) {
         std::deque<T> res;
         size_t size = deserializer_t<uint64_t>::run(msg);
@@ -286,7 +509,7 @@ template <typename T> struct serializer_t<std::forward_list<T> > {
         return 0;
     }
 };
-template <typename T> struct deserializer_t<std::forward_list<T> > {   
+template <typename T> struct deserializer_t<std::forward_list<T> > {
     static std::forward_list<T> run(read_message_t *msg) {
         std::forward_list<T> res;
         size_t size = deserializer_t<uint64_t>::run(msg);
@@ -315,7 +538,7 @@ template <typename T> struct serializer_t<std::priority_queue<T> > {
         return serializer_t<decltype(container)>::run(msg, container);
     }
 };
-template <typename T> struct deserializer_t<std::priority_queue<T> > {   
+template <typename T> struct deserializer_t<std::priority_queue<T> > {
     typedef typename std::priority_queue<T>::container_type internal_t;
     static std::priority_queue<T> run(read_message_t *msg) {
         return std::priority_queue<T>(deserializer_t<internal_t>::run(msg));
@@ -345,14 +568,14 @@ template <typename T, size_t N> struct serializer_t<std::array<T,N> > {
     static int run_internal(std::integer_sequence<size_t, X...>,
                             write_message_t *msg, std::array<T,N> &&item) {
         __attribute__((unused)) int dummy[] =
-            { serializer_t<T>::run(std::get<X>(item))... };
+            { serializer_t<T>::run(msg, std::get<X>(item))... };
         return 0;
     }
     static size_t run(write_message_t *msg, std::array<T,N> &&item) {
         return run_internal(std::make_index_sequence<N>(), msg, item);
     }
 };
-template <typename T, size_t N> struct deserializer_t<std::array<T,N> > {   
+template <typename T, size_t N> struct deserializer_t<std::array<T,N> > {
     template <size_t... X>
     static std::array<T,N> run_internal(std::integer_sequence<size_t, X...>,
                                         read_message_t *msg) {
@@ -364,23 +587,5 @@ template <typename T, size_t N> struct deserializer_t<std::array<T,N> > {
         return run_internal(std::make_index_sequence<N>(), msg);
     }
 };
-
-
-/*
-template <> template <typename T, size_t N>
-    std::array<T,N> deserialize(read_message_t *msg);
-template <> template <typename T, typename C>
-    std::multiset<T,C> deserialize(read_message_t *msg);
-template <> template <typename K, typename V, typename C>
-    std::multimap<K,V,C> deserialize(read_message_t *msg);
-template <> template <typename T, typename H, typename E>
-    std::unordered_set<T,H,E> deserialize(read_message_t *msg);
-template <> template <typename T, typename H, typename E>
-    std::unordered_multiset<T,H,E> deserialize(read_message_t *msg);
-template <> template <typename K, typename V, typename H, typename E>
-    std::unordered_map<K,V,H,E> deserialize(read_message_t *msg);
-template <> template <typename K, typename V, typename H, typename E>
-    std::unordered_multimap<K,V,H,E> deserialize(read_message_t *msg);
-*/
 
 #endif // SERIALIZE_STL_HPP_
