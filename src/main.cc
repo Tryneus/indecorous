@@ -20,16 +20,18 @@ public:
 
     uint64_t x;
     std::vector<uint64_t> y;
-    std::map<std::set<uint64_t>, std::string> z;
+    std::multimap<uint64_t, uint64_t> z;
+    std::multiset<uint64_t> zz;
+    std::forward_list<int64_t> zzz;
 
 private:
     data_t(const data_t &) = delete;
     data_t &operator = (const data_t &) = delete;
-    MAKE_SERIALIZABLE(data_t, x, y, z);
+    MAKE_SERIALIZABLE(data_t, x, y, z, zz, zzz);
 };
 
 class wrapped_data_t {
-    data_t d;
+    std::map<std::set<uint64_t>, std::string> d;
     MAKE_SERIALIZABLE(wrapped_data_t, d);
 };
 

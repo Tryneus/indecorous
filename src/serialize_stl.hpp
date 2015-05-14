@@ -29,6 +29,13 @@ template <> struct deserializer_t<std::string> {
     static std::string run(read_message_t *msg);
 };
 
+template <typename T>
+int serialize_move_iterator(write_message_t *msg,
+                            std::move_iterator<T> &&begin,
+                            std::move_iterator<T> &&end) {
+
+}
+
 // std::vector
 template <typename T> struct sizer_t<std::vector<T> > {
     static size_t run(const std::vector<T> &item) {
@@ -492,18 +499,26 @@ template <typename T> struct deserializer_t<std::deque<T> > {
 // std::forward_list
 template <typename T> struct sizer_t<std::forward_list<T> > {
     static size_t run(const std::forward_list<T> &item) {
-        size_t res = sizer_t<uint64_t>::run(item.size());
+        size_t res = 0;
+        size_t size = 0;
         for (auto const &i : item) {
             res += sizer_t<T>::run(i);
+            size += 1;
         }
+        res += sizer_t<uint64_t>::run(size);
         return res;
     }
 };
 template <typename T> struct serializer_t<std::forward_list<T> > {
     static int run(write_message_t *msg, std::forward_list<T> &&item) {
-        serializer_t<uint64_t>::run(msg, item.size());
+        size_t size = 0;
+        // TODO: size isn't known - have to traverse twice?
+        // Other option - reserve space in the stream and rewrite it later?
+        for (__attribute__((unused)) auto const &i : item) { size += 1; }
+        serializer_t<uint64_t>::run(msg, std::move(size));
         while (!item.empty()) {
-            serializer_t<T>::run(msg, std::move(item.front()));
+            // TODO: do this without copying
+            serializer_t<T>::run(msg, T(item.front()));
             item.pop_front();
         }
         return 0;
@@ -513,11 +528,11 @@ template <typename T> struct deserializer_t<std::forward_list<T> > {
     static std::forward_list<T> run(read_message_t *msg) {
         std::forward_list<T> res;
         size_t size = deserializer_t<uint64_t>::run(msg);
-        typename std::forward_list<T>::iterator it;
         // TODO: see if this can be simplified
         if (size > 0) {
-            it = res.emplace_front(deserializer_t<T>::run(msg));
+            res.emplace_front(deserializer_t<T>::run(msg));
         }
+        typename std::forward_list<T>::iterator it = res.begin();
         for (size_t i = 1; i < size; ++i) {
             it = res.emplace_after(it, deserializer_t<T>::run(msg));
         }
