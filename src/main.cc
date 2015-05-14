@@ -10,12 +10,16 @@
 #include "serialize_stl.hpp"
 
 class non_copyable_t {
-private:
+public:
     non_copyable_t(non_copyable_t &&other) : val(other.val), x(std::move(other.x)) { }
     non_copyable_t(std::string _x, uint64_t _val) : val(_val), x(_x) { }
     non_copyable_t(const non_copyable_t &) = delete;
     non_copyable_t &operator = (const non_copyable_t &) = delete;
 
+    bool operator < (const non_copyable_t &other) const { return val < other.val; }
+    bool operator == (const non_copyable_t &other) const { return val == other.val; }
+
+private:
     uint64_t val;
     std::string x;
 
@@ -29,8 +33,8 @@ public:
 
     uint64_t x;
     //uint64_t y;
-    std::list<non_copyable_t> y;
-    //std::map<non_copyable_t, non_copyable_t> y;
+    //std::vector<non_copyable_t> y;
+    std::map<non_copyable_t, non_copyable_t> y;
     uint64_t z;
 
 private:
