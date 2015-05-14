@@ -32,58 +32,61 @@
 #define IMPL_SERIALIZABLE_INTERNAL(X, ...) \
     CONCAT(IMPL_SERIALIZABLE_,X)(__VA_ARGS__)
 
+#define DECLARE_SERIALIZED_SIZE_FN(Prefix) size_t Prefix serialized_size() const
+#define DECLARE_SERIALIZE_FN(Prefix, Param) size_t Prefix serialize(write_message_t *Param) &&
+#define DECLARE_DESERIALIZE_FN(Type, Prefix, Param) Type Prefix deserialize(read_message_t *Param)
+
 // We don't provide a default constructor here as it may conflict with an existing one
 #define DECLARE_SERIALIZABLE_0(Type, ...) \
-    size_t serialized_size() const; \
-    int serialize(write_message_t *) &&; \
-    static Type deserialize(read_message_t *); \
+    DECLARE_SERIALIZED_SIZE_FN(); \
+    DECLARE_SERIALIZE_FN(,); \
+    static DECLARE_DESERIALIZE_FN(Type,,); \
     FRIEND_SERIALIZERS()
 
 #define DECLARE_SERIALIZABLE_N(Type, ...) \
-    size_t serialized_size() const; \
-    int serialize(write_message_t *) &&; \
-    static Type deserialize(read_message_t *); \
+    DECLARE_SERIALIZED_SIZE_FN(); \
+    DECLARE_SERIALIZE_FN(,msg); \
+    static DECLARE_DESERIALIZE_FN(Type,,msg); \
     Type(CALL_MACRO(N, MAKE_DECLTYPE_PARAM, __VA_ARGS__)); \
     FRIEND_SERIALIZERS()
 
 #define MAKE_SERIALIZABLE_0(Type, ...) \
-    size_t serialized_size() const { return 0; } \
-    int serialize(write_message_t *) && { return 0; } \
-    static Type deserialize(read_message_t *) { return Type(); } \
+    DECLARE_SERIALIZED_SIZE_FN() { return 0; } \
+    DECLARE_SERIALIZE_FN(,) { return 0; } \
+    static DECLARE_DESERIALIZE_FN(Type,,) { return Type(); } \
     FRIEND_SERIALIZERS()
 
 #define MAKE_SERIALIZABLE_N(Type, N, ...) \
-    size_t serialized_size() const { \
+    DECLARE_SERIALIZED_SIZE_FN() { \
         return full_serialized_size(__VA_ARGS__); \
     } \
-    int serialize(write_message_t *msg) && { \
+    DECLARE_SERIALIZE_FN(,msg) { \
         return full_serialize(msg, CALL_MACRO(N, MAKE_MOVE, __VA_ARGS__)); \
+    } \
+    static DECLARE_DESERIALIZE_FN(Type,,msg) { \
+        return full_deserialize<Type, CALL_MACRO(N, MAKE_DECLTYPE, __VA_ARGS__)>(msg); \
     } \
     Type(CALL_MACRO(N, MAKE_DECLTYPE_PARAM, __VA_ARGS__)) : \
         CALL_MACRO(N, MAKE_CONSTRUCT, __VA_ARGS__) { } \
-    static Type deserialize(read_message_t *msg) { \
-        return full_deserialize<Type, CALL_MACRO(N, MAKE_DECLTYPE, __VA_ARGS__)>(msg); \
-    } \
     FRIEND_SERIALIZERS()
 
 #define IMPL_SERIALIZABLE_0(Type, ...) \
-    size_t Type::serialized_size() const { return 0; } \
-    int Type::serialize(write_message_t *) && { return 0; } \
-    Type Type::deserialize(read_message_t *) { return Type(); } \
+    DECLARE_SERIALIZED_SIZE_FN(Type::) { return 0; } \
+    DECLARE_SERIALIZE_FN(Type::) { return 0; } \
+    DECLARE_DESERIALIZE_FN(Type, Type::,) { return Type(); }
 
 #define IMPL_SERIALIZABLE_N(Type, ...) \
-    size_t Type::serialized_size() const { \
+    DECLARE_SERIALIZED_SIZE_FN(Type::) { \
         return full_serialized_size(__VA_ARGS__); \
     } \
-    int Type::serialize(write_message_t *) && { \
+    DECLARE_SERIALIZE_FN(Type::,msg) { \
         return full_serialize(msg, CALL_MACRO(N, MAKE_MOVE, __VA_ARGS__)); \
     } \
-    static Type Type::deserialize(read_message_t *) { \
+    DECLARE_DESERIALIZE_FN(Type, Type::,msg) { \
         return full_deserialize<Type, CALL_MACRO(N, MAKE_DECLTYPE, __VA_ARGS__)>(msg); \
     } \
     Type::Type(CALL_MACRO(N, MAKE_DECLTYPE_PARAM, __VA_ARGS__)) : \
-        CALL_MACRO(N, MAKE_CONSTRUCT, __VA_ARGS__) { } \
-    FRIEND_SERIALIZERS()
+        CALL_MACRO(N, MAKE_CONSTRUCT, __VA_ARGS__) { }
 
 
 // These macros allow SERIALIZABLE to be called with up to 32 member variables,
