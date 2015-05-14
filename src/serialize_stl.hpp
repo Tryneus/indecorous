@@ -4,6 +4,7 @@
 #include "serialize.hpp"
 
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <deque>
 #include <forward_list>
@@ -29,24 +30,24 @@ template <> struct deserializer_t<std::string> {
     static std::string run(read_message_t *msg);
 };
 
-template <typename it_t>
-int serialize_container_move(write_message_t *msg,
-                             std::move_iterator<it_t> &&it,
-                             std::move_iterator<it_t> &&end) {
+template <typename Value, typename Container>
+int serialize_container_move_and_clear(write_message_t *msg, Container &&c) {
+    auto it = std::make_move_iterator(c.begin());
+    auto end = std::make_move_iterator(c.end());
     while (it != end) {
-        serializer_t<typename it_t::value_type>::run(msg, *(it++));
+        serializer_t<Value>::run(msg, *(it++));
     }
+    c.clear();
     return 0;
 }
 
-template <typename container_t, typename T>
-int serialize_container_move_and_erase(write_message_t *msg,
-                                       container_t &&c,
-                                       std::move_iterator<T> &&it,
-                                       std::move_iterator<T> &&end) {
+template <typename Value, typename Container>
+int serialize_container_move_and_erase(write_message_t *msg, Container &&c) {
+    auto it = std::make_move_iterator(c.begin());
+    auto end = std::make_move_iterator(c.end());
     while (it != end) {
-        serializer_t<T>::run(msg, *it);
-        c->erase(it++);
+        serializer_t<Value>::run(msg, *it);
+        c.erase((it++).base());
     }
     assert(c.empty());
     return 0;
@@ -65,11 +66,7 @@ template <typename T> struct sizer_t<std::vector<T> > {
 template <typename T> struct serializer_t<std::vector<T> > {
     static int run(write_message_t *msg, std::vector<T> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        serialize_container_move(msg,
-            std::make_move_iterator(item.begin()),
-            std::make_move_iterator(item.end()));
-        item.clear();
-        return 0;
+        return serialize_container_move_and_clear<T>(msg, std::move(item));
     }
 };
 template <typename T> struct deserializer_t<std::vector<T> > {
@@ -117,9 +114,7 @@ template <typename K, typename V, typename C>
 struct serializer_t<std::map<K,V,C> > {
     static int run(write_message_t *msg, std::map<K,V,C> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        return serialize_container_move_and_erase(msg, std::move(item),
-            std::make_move_iterator(item.begin()),
-            std::make_move_iterator(item.end())); // TODO: need const cases
+        return serialize_container_move_and_erase<std::pair<K,V> >(msg, std::move(item));
     }
 };
 template <typename K, typename V, typename C>
@@ -149,14 +144,7 @@ template <typename K, typename V, typename C>
 struct serializer_t<std::multimap<K,V,C> > {
     static int run(write_message_t *msg, std::multimap<K,V,C> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        for (auto &&i : item) {
-            // TODO: do this without copying
-            serializer_t<std::pair<K,V> >::run(msg,
-                                               std::pair<K,V>(std::move(i.first),
-                                                              std::move(i.second)));
-        }
-        item.clear();
-        return 0;
+        return serialize_container_move_and_erase<std::pair<K,V> >(msg, std::move(item));
     }
 };
 template <typename K, typename V, typename C>
@@ -186,14 +174,7 @@ template <typename K, typename V, typename H, typename E>
 struct serializer_t<std::unordered_map<K,V,H,E> > {
     static int run(write_message_t *msg, std::unordered_map<K,V,H,E> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        for (auto &&i : item) {
-            // TODO: do this without copying
-            serializer_t<std::pair<K,V> >::run(msg,
-                                               std::pair<K,V>(std::move(i.first),
-                                                              std::move(i.second)));
-        }
-        item.clear();
-        return 0;
+        return serialize_container_move_and_erase<std::pair<K,V> >(msg, std::move(item));
     }
 };
 template <typename K, typename V, typename H, typename E>
@@ -224,14 +205,7 @@ template <typename K, typename V, typename H, typename E>
 struct serializer_t<std::unordered_multimap<K,V,H,E> > {
     static int run(write_message_t *msg, std::unordered_multimap<K,V,H,E> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        for (auto &&i : item) {
-            // TODO: do this without copying
-            serializer_t<std::pair<K,V> >::run(msg,
-                                               std::pair<K,V>(std::move(i.first),
-                                                              std::move(i.second)));
-        }
-        item.clear();
-        return 0;
+        return serialize_container_move_and_erase<std::pair<K,V> >(msg, std::move(item));
     }
 };
 template <typename K, typename V, typename H, typename E>
@@ -260,9 +234,7 @@ template <typename T, typename C> struct sizer_t<std::set<T,C> > {
 template <typename T, typename C> struct serializer_t<std::set<T,C> > {
     static int run(write_message_t *msg, std::set<T,C> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        return serialize_container_move_and_erase(msg, std::move(item),
-            std::make_move_iterator(item.begin()),
-            std::make_move_iterator(item.end())); // TODO: need const casts
+        return serialize_container_move_and_erase<T>(msg, std::move(item));
     }
 };
 template <typename T, typename C> struct deserializer_t<std::set<T,C> > {
@@ -289,12 +261,7 @@ template <typename T, typename C> struct sizer_t<std::multiset<T,C> > {
 template <typename T, typename C> struct serializer_t<std::multiset<T,C> > {
     static int run(write_message_t *msg, std::multiset<T,C> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        for (auto &&i : item) {
-            // TODO: do this without copying
-            serializer_t<T>::run(msg, T(std::move(i)));
-        }
-        item.clear();
-        return 0;
+        return serialize_container_move_and_erase<T>(msg, std::move(item));
     }
 };
 template <typename T, typename C> struct deserializer_t<std::multiset<T,C> > {
@@ -323,12 +290,7 @@ template <typename T, typename H, typename E>
 struct serializer_t<std::unordered_set<T,H,E> > {
     static int run(write_message_t *msg, std::unordered_set<T,H,E> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        for (auto &&i : item) {
-            // TODO: do this without copying
-            serializer_t<T>::run(msg, T(std::move(i)));
-        }
-        item.clear();
-        return 0;
+        return serialize_container_move_and_erase<T>(msg, std::move(item));
     }
 };
 template <typename T, typename H, typename E>
@@ -359,12 +321,7 @@ template <typename T, typename H, typename E>
 struct serializer_t<std::unordered_multiset<T,H,E> > {
     static int run(write_message_t *msg, std::unordered_multiset<T,H,E> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        for (auto &&i : item) {
-            // TODO: do this without copying
-            serializer_t<T>::run(msg, T(std::move(i)));
-        }
-        item.clear();
-        return 0;
+        return serialize_container_move_and_erase<T>(msg, std::move(item));
     }
 };
 template <typename T, typename H, typename E>
@@ -393,9 +350,7 @@ template <typename T> struct sizer_t<std::list<T> > {
 template <typename T> struct serializer_t<std::list<T> > {
     static int run(write_message_t *msg, std::list<T> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        return serialize_container_move_and_erase(msg, std::move(item),
-            std::make_move_iterator(item.begin()),
-            std::make_move_iterator(item.end()));
+        return serialize_container_move_and_erase<T>(msg, std::move(item));
     }
 };
 template <typename T> struct deserializer_t<std::list<T> > {
@@ -484,9 +439,7 @@ template <typename T> struct sizer_t<std::deque<T> > {
 template <typename T> struct serializer_t<std::deque<T> > {
     static int run(write_message_t *msg, std::deque<T> &&item) {
         serializer_t<uint64_t>::run(msg, item.size());
-        return serialize_container_move_and_erase(msg, std::move(item),
-            std::make_move_iterator(item.begin()),
-            std::make_move_iterator(item.end()));
+        return serialize_container_move_and_erase<T>(msg, std::move(item));
     }
 };
 template <typename T> struct deserializer_t<std::deque<T> > {

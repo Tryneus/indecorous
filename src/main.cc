@@ -19,8 +19,8 @@ public:
     data_t(data_t &&other) = default;
 
     uint64_t x;
-    std::vector<uint64_t> y;
-    std::multimap<uint64_t, uint64_t> z;
+    std::list<uint64_t> y;
+    std::map<uint64_t, uint64_t> z;
 
 private:
     data_t(const data_t &) = delete;
