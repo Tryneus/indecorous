@@ -10,7 +10,7 @@
 #include "serialize_stl.hpp"
 
 class dummy_t {
-    SERIALIZABLE(dummy_t);
+    MAKE_SERIALIZABLE(dummy_t);
 };
 
 class data_t {
@@ -25,7 +25,12 @@ public:
 private:
     data_t(const data_t &) = delete;
     data_t &operator = (const data_t &) = delete;
-    SERIALIZABLE(data_t, x, y, z);
+    MAKE_SERIALIZABLE(data_t, x, y, z);
+};
+
+class wrapped_data_t {
+    data_t d;
+    MAKE_SERIALIZABLE(wrapped_data_t, d);
 };
 
 class read_callback_t {

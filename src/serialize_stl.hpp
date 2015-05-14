@@ -3,10 +3,16 @@
 
 #include "serialize.hpp"
 
+#include <array>
 #include <cstddef>
+#include <forward_list>
+#include <list>
 #include <map>
+#include <queue>
 #include <set>
+#include <stack>
 #include <string>
+#include <utility>
 #include <vector>
 
 // std::string
@@ -135,28 +141,234 @@ template <typename T, typename C> struct deserializer_t<std::set<T,C> > {
         return res;
     }
 };
-//template <typename T, typename C>
-//    std::set<T,C> deserialize(read_message_t *msg);
+
+// std::list
+template <typename T> struct sizer_t<std::list<T> > {
+    static size_t run(const std::list<T> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<T>::run(i);
+        }
+        return res;
+    }
+};
+template <typename T> struct serializer_t<std::list<T> > {
+    static int run(write_message_t *msg, std::list<T> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        while (!item.empty()) {
+            serializer_t<T>::run(msg, std::move(item.front()));
+            item.pop_front();
+        }
+        return 0;
+    }
+};
+template <typename T> struct deserializer_t<std::list<T> > {   
+    static std::list<T> run(read_message_t *msg) {
+        std::list<T> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace_back(deserializer_t<T>::run(msg));
+        }
+        return res;
+    }
+};
+
+// Generic hack to obtain the internal container of an STL type which doesn't have
+// a interface conducive to serialization/deserialization.
+template <class T>
+typename T::container_type &get_container(T &item) {
+    struct hack_t : private T {
+        static typename T::container_type &do_hack(T &x) {
+            return x.*&hack_t::c;
+        }
+    };
+    return hack_t::do_hack(item);
+}
+
+template <class T>
+const typename T::container_type &get_container(const T &item) {
+    struct hack_t : private T {
+        static const typename T::container_type &do_hack(T &x) {
+            return x.*&hack_t::c;
+        }
+    };
+    return hack_t::do_hack(item);
+}
+
+// std::stack
+template <typename T> struct sizer_t<std::stack<T> > {
+    static size_t run(const std::stack<T> &item) {
+        auto container = get_container(item);
+        return sizer_t<decltype(container)>::run(container);
+    }
+};
+template <typename T> struct serializer_t<std::stack<T> > {
+    static int run(write_message_t *msg, std::stack<T> &&item) {
+        auto container = get_container(item);
+        return serializer_t<decltype(container)>::run(msg, container);
+    }
+};
+template <typename T> struct deserializer_t<std::stack<T> > {   
+    typedef typename std::stack<T>::container_type internal_t;
+    static std::stack<T> run(read_message_t *msg) {
+        return std::stack<T>(deserializer_t<internal_t>::run(msg));
+    }
+};
+
+// std::queue
+template <typename T> struct sizer_t<std::queue<T> > {
+    static size_t run(const std::queue<T> &item) {
+        auto container = get_container(item);
+        return sizer_t<decltype(container)>::run(container);
+    }
+};
+template <typename T> struct serializer_t<std::queue<T> > {
+    static int run(write_message_t *msg, std::queue<T> &&item) {
+        auto container = get_container(item);
+        return serializer_t<decltype(container)>::run(msg, container);
+    }
+};
+template <typename T> struct deserializer_t<std::queue<T> > {   
+    typedef typename std::queue<T>::container_type internal_t;
+    static std::queue<T> run(read_message_t *msg) {
+        return std::queue<T>(deserializer_t<internal_t>::run(msg));
+    }
+};
+
+// std::deque
+template <typename T> struct sizer_t<std::deque<T> > {
+    static size_t run(const std::deque<T> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<T>::run(i);
+        }
+        return res;
+    }
+};
+template <typename T> struct serializer_t<std::deque<T> > {
+    static int run(write_message_t *msg, std::deque<T> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        while (!item.empty()) {
+            serializer_t<T>::run(msg, std::move(item.front()));
+            item.pop_front();
+        }
+        return 0;
+    }
+};
+template <typename T> struct deserializer_t<std::deque<T> > {   
+    static std::deque<T> run(read_message_t *msg) {
+        std::deque<T> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        for (size_t i = 0; i < size; ++i) {
+            res.emplace_back(deserializer_t<T>::run(msg));
+        }
+        return res;
+    }
+};
+
+// std::forward_list
+template <typename T> struct sizer_t<std::forward_list<T> > {
+    static size_t run(const std::forward_list<T> &item) {
+        size_t res = sizer_t<uint64_t>::run(item.size());
+        for (auto const &i : item) {
+            res += sizer_t<T>::run(i);
+        }
+        return res;
+    }
+};
+template <typename T> struct serializer_t<std::forward_list<T> > {
+    static int run(write_message_t *msg, std::forward_list<T> &&item) {
+        serializer_t<uint64_t>::run(msg, item.size());
+        while (!item.empty()) {
+            serializer_t<T>::run(msg, std::move(item.front()));
+            item.pop_front();
+        }
+        return 0;
+    }
+};
+template <typename T> struct deserializer_t<std::forward_list<T> > {   
+    static std::forward_list<T> run(read_message_t *msg) {
+        std::forward_list<T> res;
+        size_t size = deserializer_t<uint64_t>::run(msg);
+        typename std::forward_list<T>::iterator it;
+        // TODO: see if this can be simplified
+        if (size > 0) {
+            it = res.emplace_front(deserializer_t<T>::run(msg));
+        }
+        for (size_t i = 1; i < size; ++i) {
+            it = res.emplace_after(it, deserializer_t<T>::run(msg));
+        }
+        return res;
+    }
+};
+
+// std::priority_queue
+template <typename T> struct sizer_t<std::priority_queue<T> > {
+    static size_t run(const std::priority_queue<T> &item) {
+        auto container = get_container(item);
+        return sizer_t<decltype(container)>::run(container);
+    }
+};
+template <typename T> struct serializer_t<std::priority_queue<T> > {
+    static int run(write_message_t *msg, std::priority_queue<T> &&item) {
+        auto container = get_container(item);
+        return serializer_t<decltype(container)>::run(msg, container);
+    }
+};
+template <typename T> struct deserializer_t<std::priority_queue<T> > {   
+    typedef typename std::priority_queue<T>::container_type internal_t;
+    static std::priority_queue<T> run(read_message_t *msg) {
+        return std::priority_queue<T>(deserializer_t<internal_t>::run(msg));
+    }
+};
+
+// std::array - uses templates to push evaluation to compile-time
+template <typename T, size_t N> struct sizer_t<std::array<T,N> > {
+    template <size_t... X>
+    static size_t run_internal(std::integer_sequence<size_t, X...>,
+                               const std::array<T,N> &item) {
+        struct accumulator_t {
+            accumulator_t() : total(0) { }
+            int add(size_t value) { total += value; return 0; }
+            size_t total;
+        } acc;
+        __attribute__((unused)) int dummy[] =
+            { acc.add(sizer_t<T>::run(std::get<X>(item)))... };
+        return acc.total;
+    }
+    static size_t run(const std::array<T,N> &item) {
+        return run_internal(std::make_index_sequence<N>(), item);
+    }
+};
+template <typename T, size_t N> struct serializer_t<std::array<T,N> > {
+    template <size_t... X>
+    static int run_internal(std::integer_sequence<size_t, X...>,
+                            write_message_t *msg, std::array<T,N> &&item) {
+        __attribute__((unused)) int dummy[] =
+            { serializer_t<T>::run(std::get<X>(item))... };
+        return 0;
+    }
+    static size_t run(write_message_t *msg, std::array<T,N> &&item) {
+        return run_internal(std::make_index_sequence<N>(), msg, item);
+    }
+};
+template <typename T, size_t N> struct deserializer_t<std::array<T,N> > {   
+    template <size_t... X>
+    static std::array<T,N> run_internal(std::integer_sequence<size_t, X...>,
+                                        read_message_t *msg) {
+        // The comma operator here is an ugly hack to get the parameter pack running
+        return std::array<T,N>({ (X, deserializer_t<T>::run(msg))... });
+    }
+
+    static std::array<T,N> run(read_message_t *msg) {
+        return run_internal(std::make_index_sequence<N>(), msg);
+    }
+};
+
 
 /*
-template <>
-    std::string deserialize(read_message_t *msg);
-template <> template <typename T>
-    std::list<T> deserialize(read_message_t *msg);
-template <> template <typename T>
-    std::stack<T> deserialize(read_message_t *msg);
-template <> template <typename T>
-    std::queue<T> deserialize(read_message_t *msg);
-template <> template <typename T>
-    std::deque<T> deserialize(read_message_t *msg);
-template <> template <typename T>
-    std::forward_list<T> deserialize(read_message_t *msg);
-template <> template <typename T>
-    std::priority_queue<T> deserialize(read_message_t *msg);
 template <> template <typename T, size_t N>
     std::array<T,N> deserialize(read_message_t *msg);
-template <> template <typename T, typename U>
-    std::pair<T,U> deserialize(read_message_t *msg);
 template <> template <typename T, typename C>
     std::multiset<T,C> deserialize(read_message_t *msg);
 template <> template <typename K, typename V, typename C>

@@ -10,7 +10,11 @@ struct message_header_t {
     uint64_t handler_id;
     uint64_t request_id;
     uint64_t payload_size;
-    SERIALIZABLE(message_header_t, header_magic, handler_id, request_id, payload_size);
+    MAKE_SERIALIZABLE(message_header_t,
+                      header_magic,
+                      handler_id,
+                      request_id,
+                      payload_size);
 };
 
 read_message_t read_message_t::parse(stream_t *stream) {
