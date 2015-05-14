@@ -6,12 +6,15 @@
 #define MAKE_CONSTRUCT(x) x(std::move(arg_##x))
 #define MAKE_DECLTYPE(x) decltype(x)
 
+// TODO: consider wrapping these instide a static class to reduce verbosity and code generation
 #define FRIEND_SERIALIZERS() \
     template <typename T> friend struct sizer_t; \
     template <typename T> friend struct serializer_t; \
     template <typename T> friend struct deserializer_t; \
     template <typename T, size_t... N, typename... Args> \
-    friend T full_deserialize_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&)
+    friend T full_deserialize_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&); \
+    template <typename T, typename... Args> \
+    friend T full_deserialize(read_message_t *) \
 
 #define CONCAT(a,b) a##b
 

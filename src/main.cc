@@ -9,8 +9,17 @@
 #include "serialize.hpp"
 #include "serialize_stl.hpp"
 
-class dummy_t {
-    MAKE_SERIALIZABLE(dummy_t);
+class non_copyable_t {
+private:
+    non_copyable_t(non_copyable_t &&other) : val(other.val), x(std::move(other.x)) { }
+    non_copyable_t(std::string _x, uint64_t _val) : val(_val), x(_x) { }
+    non_copyable_t(const non_copyable_t &) = delete;
+    non_copyable_t &operator = (const non_copyable_t &) = delete;
+
+    uint64_t val;
+    std::string x;
+
+    MAKE_SERIALIZABLE(non_copyable_t, val, x);
 };
 
 class data_t {
@@ -19,8 +28,10 @@ public:
     data_t(data_t &&other) = default;
 
     uint64_t x;
-    std::list<uint64_t> y;
-    std::map<uint64_t, uint64_t> z;
+    //uint64_t y;
+    std::list<non_copyable_t> y;
+    //std::map<non_copyable_t, non_copyable_t> y;
+    uint64_t z;
 
 private:
     data_t(const data_t &) = delete;
@@ -35,9 +46,7 @@ class wrapped_data_t {
 
 class read_callback_t {
 public:
-    static int call(std::string s, bool flag, data_t d) {
-        printf("called with %s, %s, %zu\n",
-               s.c_str(), flag ? "true" : "false", d.y.size());
+    static int call(std::string, bool, data_t) {
         return -1;
     }
 };
