@@ -12,7 +12,7 @@
     template <typename T> friend struct serializer_t; \
     template <typename T> friend struct deserializer_t; \
     template <typename T, size_t... N, typename... Args> \
-    friend T full_deserialize_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&); \
+    friend T full_deserialize_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...>); \
     template <typename T, typename... Args> \
     friend T full_deserialize(read_message_t *) \
 
@@ -43,7 +43,7 @@
     { return full_serialized_size(__VA_ARGS__); }
 
 #define DECLARE_SERIALIZE_FN(Prefix, Param) \
-    size_t Prefix serialize(write_message_t *Param) &&
+    size_t Prefix serialize(write_message_t *Param) 
 #define IMPL_SERIALIZE_BODY(Param, N, ...) \
     { return full_serialize(Param, CALL_MACRO(N, MAKE_MOVE, __VA_ARGS__)); }
 
