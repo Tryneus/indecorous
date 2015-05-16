@@ -1,9 +1,8 @@
 #ifndef SERIALIZE_MACROS_HPP_
 #define SERIALIZE_MACROS_HPP_
 
-#define MAKE_MOVE(x) std::move(x)
 #define MAKE_DECLTYPE_PARAM(x) decltype(x) arg_##x
-#define MAKE_CONSTRUCT(x) x(std::move(arg_##x))
+#define MAKE_MOVE_CONSTRUCT(x) x(std::move(arg_##x))
 #define MAKE_DECLTYPE(x) decltype(x)
 
 // TODO: consider wrapping these instide a static class to reduce verbosity and code generation
@@ -43,9 +42,9 @@
     { return full_serialized_size(__VA_ARGS__); }
 
 #define DECLARE_SERIALIZE_FN(Prefix, Param) \
-    size_t Prefix serialize(write_message_t *Param) 
-#define IMPL_SERIALIZE_BODY(Param, N, ...) \
-    { return full_serialize(Param, CALL_MACRO(N, MAKE_MOVE, __VA_ARGS__)); }
+    size_t Prefix serialize(write_message_t *Param) const
+#define IMPL_SERIALIZE_BODY(Param, ...) \
+    { return full_serialize(Param, __VA_ARGS__); }
 
 #define DECLARE_DESERIALIZE_FN(Type, Prefix, Param) \
     Type Prefix deserialize(read_message_t *Param)
@@ -55,7 +54,7 @@
 #define DECLARE_CONSTRUCTOR_FN(Type, Prefix, N, ...) \
     Prefix Type(CALL_MACRO(N, MAKE_DECLTYPE_PARAM, __VA_ARGS__))
 #define IMPL_CONSTRUCTOR_BODY(N, ...) \
-    : CALL_MACRO(N, MAKE_CONSTRUCT, __VA_ARGS__) { }
+    : CALL_MACRO(N, MAKE_MOVE_CONSTRUCT, __VA_ARGS__) { }
 
 #define DECLARE_SERIALIZABLE_0(Type, ...) \
     DECLARE_SERIALIZED_SIZE_FN(); \
@@ -78,19 +77,19 @@
 
 #define MAKE_SERIALIZABLE_N(Type, N, ...) \
     DECLARE_SERIALIZED_SIZE_FN() IMPL_SERIALIZED_SIZE_BODY(__VA_ARGS__) \
-    DECLARE_SERIALIZE_FN(,msg) IMPL_SERIALIZE_BODY(msg, N, __VA_ARGS__) \
+    DECLARE_SERIALIZE_FN(,msg) IMPL_SERIALIZE_BODY(msg, __VA_ARGS__) \
     static DECLARE_DESERIALIZE_FN(Type,,msg) IMPL_DESERIALIZE_BODY(Type, msg, N, __VA_ARGS__) \
     DECLARE_CONSTRUCTOR_FN(Type,,N,__VA_ARGS__) IMPL_CONSTRUCTOR_BODY(N, __VA_ARGS__) \
     FRIEND_SERIALIZERS()
 
 #define IMPL_SERIALIZABLE_0(Type, ...) \
     DECLARE_SERIALIZED_SIZE_FN(Type::) { return 0; } \
-    DECLARE_SERIALIZE_FN(Type::) { return 0; } \
+    DECLARE_SERIALIZE_FN(Type::,) { return 0; } \
     DECLARE_DESERIALIZE_FN(Type, Type::,) { return Type(); }
 
 #define IMPL_SERIALIZABLE_N(Type, ...) \
     DECLARE_SERIALIZED_SIZE_FN(Type::) IMPL_SERIALIZED_SIZE_BODY(__VA_ARGS__) \
-    DECLARE_SERIALIZE_FN(Type::,msg) IMPL_SERIALIZE_BODY(msg, N, __VA_ARGS__) \
+    DECLARE_SERIALIZE_FN(Type::,msg) IMPL_SERIALIZE_BODY(msg, __VA_ARGS__) \
     static DECLARE_DESERIALIZE_FN(Type,Type::,msg) IMPL_DESERIALIZE_BODY(Type, msg, N, __VA_ARGS__) \
     DECLARE_CONSTRUCTOR_FN(Type,Type::,N,__VA_ARGS__) IMPL_CONSTRUCTOR_BODY(N, __VA_ARGS__)
 

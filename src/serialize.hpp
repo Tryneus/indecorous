@@ -18,8 +18,8 @@ struct sizer_t {
 
 template <typename T>
 struct serializer_t {
-    static int run(write_message_t *msg, T item) {
-        return std::move(item).serialize(msg);
+    static int run(write_message_t *msg, const T &item) {
+        return item.serialize(msg);
     }
 };
 
@@ -35,7 +35,7 @@ template <> struct sizer_t<bool> {
     static size_t run(const bool &item);
 };
 template <> struct serializer_t<bool> {
-    static int run(write_message_t *msg, bool item);
+    static int run(write_message_t *msg, const bool &item);
 };
 template <> struct deserializer_t<bool> {
     static bool run(read_message_t *msg);
@@ -45,7 +45,7 @@ template <> struct sizer_t<uint64_t> {
     static size_t run(const uint64_t &item);
 };
 template <> struct serializer_t<uint64_t> {
-    static int run(write_message_t *msg, uint64_t item);
+    static int run(write_message_t *msg, const uint64_t &item);
 };
 template <> struct deserializer_t<uint64_t> {
     static uint64_t run(read_message_t *msg);
@@ -82,9 +82,9 @@ size_t full_serialized_size(const Args &...args) {
 }
 
 template <typename... Args>
-int full_serialize(write_message_t *msg, Args &&...args) {
+int full_serialize(write_message_t *msg, const Args &...args) {
     __attribute__((unused)) auto dummy =
-        { serializer_t<Args>::run(msg, std::forward<Args>(args))... };
+        { serializer_t<Args>::run(msg, args)... };
     return 0;
 }
 
