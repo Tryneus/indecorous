@@ -3,19 +3,19 @@
 #include "debug.hpp"
 #include "message.hpp"
 
-size_t sizer_t<std::string>::run(const std::string &item) {
-    return sizer_t<uint64_t>::run(item.size()) + item.size();
+size_t serializer_t<std::string>::size(const std::string &item) {
+    return serializer_t<uint64_t>::size(item.size()) + item.size();
 }
-int serializer_t<std::string>::run(write_message_t *msg, const std::string &item) {
-    serializer_t<uint64_t>::run(msg, item.size());
+int serializer_t<std::string>::write(write_message_t *msg, const std::string &item) {
+    serializer_t<uint64_t>::write(msg, item.size());
     for (size_t i = 0; i < item.size(); ++i) {
         msg->buffer.push_back(item[i]);
     }
     return 0;
 }
-std::string deserializer_t<std::string>::run(read_message_t *msg) {
+std::string serializer_t<std::string>::read(read_message_t *msg) {
     std::string res;
-    size_t length = deserializer_t<uint64_t>::run(msg);
+    size_t length = serializer_t<uint64_t>::read(msg);
     for (size_t i = 0; i < length; ++i) {
         res.push_back(msg->pop());
     }

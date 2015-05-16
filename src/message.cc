@@ -25,7 +25,7 @@ read_message_t read_message_t::parse(stream_t *stream) {
     stream->read(header_buffer.data(), header_buffer.size());
 
     read_message_t header_message(std::move(header_buffer), handler_id_t(-1), request_id_t(-1));
-    message_header_t header = message_header_t::deserialize(&header_message);
+    message_header_t header = serializer_t<message_header_t>::read(&header_message);
     assert(header.header_magic == message_header_t::HEADER_MAGIC);
 
     std::vector<char> body_buffer;
@@ -54,6 +54,6 @@ write_message_t::write_message_t(handler_id_t handler_id,
                                  request_id_t request_id,
                                  size_t payload_size) {
     message_header_t header(message_header_t::HEADER_MAGIC, handler_id.value(), request_id.value(), payload_size);
-    buffer.reserve(sizer_t<message_header_t>::run(header) + payload_size);
-    serializer_t<message_header_t>::run(this, std::move(header));
+    buffer.reserve(serializer_t<message_header_t>::size(header) + payload_size);
+    serializer_t<message_header_t>::write(this, std::move(header));
 }

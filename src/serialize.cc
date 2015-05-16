@@ -2,57 +2,49 @@
 
 #include <endian.h>
 
-#include "debug.hpp"
 #include "message.hpp"
 
+/*
+SERIALIZABLE_INTEGRAL(char16_t);
+SERIALIZABLE_INTEGRAL(char32_t);
+SERIALIZABLE_INTEGRAL(int8_t);
+SERIALIZABLE_INTEGRAL(int16_t);
+SERIALIZABLE_INTEGRAL(int32_t);
+SERIALIZABLE_INTEGRAL(int64_t);
+SERIALIZABLE_INTEGRAL(uint8_t);
+SERIALIZABLE_INTEGRAL(uint16_t);
+SERIALIZABLE_INTEGRAL(uint32_t);
+SERIALIZABLE_INTEGRAL(float);
+SERIALIZABLE_INTEGRAL(double);
+SERIALIZABLE_INTEGRAL(long double);
+*/
+
 // Specializations for integral and unchangable types
-size_t sizer_t<bool>::run(const bool &) {
+size_t serializer_t<bool>::size(const bool &) {
     return 1;
 }
-int serializer_t<bool>::run(write_message_t *msg, const bool &item) {
+int serializer_t<bool>::write(write_message_t *msg, const bool &item) {
     msg->buffer.push_back(static_cast<char>(item));
     return 0;
 }
-bool deserializer_t<bool>::run(read_message_t *msg) {
+bool serializer_t<bool>::read(read_message_t *msg) {
     return static_cast<bool>(msg->pop());
 }
 
-size_t sizer_t<uint64_t>::run(const uint64_t &item) {
+size_t serializer_t<uint64_t>::size(const uint64_t &item) {
     return sizeof(item);
 }
-int serializer_t<uint64_t>::run(write_message_t *msg, const uint64_t &item) {
+int serializer_t<uint64_t>::write(write_message_t *msg, const uint64_t &item) {
     uint64_t buffer = htobe64(item);
     for (size_t i = 0; i < sizeof(buffer); ++i) {
         msg->buffer.push_back(reinterpret_cast<char *>(&buffer)[i]);
     }
     return 0;
 }
-uint64_t deserializer_t<uint64_t>::run(read_message_t *msg) {
+uint64_t serializer_t<uint64_t>::read(read_message_t *msg) {
     uint64_t buffer;
     for (size_t i = 0; i < sizeof(buffer); ++i) {
         reinterpret_cast<char *>(&buffer)[i] = msg->pop();
     }
     return be64toh(buffer);
 }
-
-// template <> size_t serialized_size(const size_t &item) {
-//     return serialized_size(uint64_t(item));
-// }
-// template <> int serialize(write_message_t *msg, size_t &&item) {
-//     return serialize(msg, uint64_t(item));
-// }
-// template <> size_t deserialize(read_message_t *msg) {
-//     return deserialize<uint64_t>(msg);
-// }
-
-/*
-template<> size_t deserialize(read_message_t *msg);
-template<> int8_t deserialize(read_message_t *msg);
-template<> uint8_t deserialize(read_message_t *msg);
-template<> int16_t deserialize(read_message_t *msg);
-template<> uint16_t deserialize(read_message_t *msg);
-template<> int32_t deserialize(read_message_t *msg);
-template<> uint32_t deserialize(read_message_t *msg);
-template<> int64_t deserialize(read_message_t *msg);
-template<> uint64_t deserialize(read_message_t *msg);
-*/

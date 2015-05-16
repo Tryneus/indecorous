@@ -39,7 +39,7 @@ public:
     public:
         write_message_t handle(read_message_t *msg) {
             Res res = handle(std::index_sequence_for<Args...>{},
-                             std::tuple<Args...>{deserializer_t<Args>::run(msg)...});
+                             std::tuple<Args...>{serializer_t<Args>::read(msg)...});
             return write_message_t(handler_id_t::reply(),
                                    msg->request_id,
                                    std::move(res));
@@ -47,7 +47,7 @@ public:
 
         void handle_noreply(read_message_t *msg) {
             handle(std::index_sequence_for<Args...>{},
-                   std::tuple<Args...>{deserializer_t<Args>::run(msg)...});
+                   std::tuple<Args...>{serializer_t<Args>::read(msg)...});
         }
 
         handler_id_t id() const {

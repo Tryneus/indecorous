@@ -10,62 +10,49 @@ class read_message_t;
 class write_message_t;
 
 template <typename T>
-struct sizer_t {
-    static size_t run(const T &item) {
+struct serializer_t {
+    static size_t size(const T &item) {
         return item.serialized_size();
     }
-};
-
-template <typename T>
-struct serializer_t {
-    static int run(write_message_t *msg, const T &item) {
+    static int write(write_message_t *msg, const T &item) {
         return item.serialize(msg);
     }
-};
-
-template <typename T>
-struct deserializer_t {
-    static T run(read_message_t *msg) {
+    static T read(read_message_t *msg) {
         return T::deserialize(msg);
     }
 };
 
 // Specializations for integral and unchangable types
-template <> struct sizer_t<bool> {
-    static size_t run(const bool &item);
-};
-template <> struct serializer_t<bool> {
-    static int run(write_message_t *msg, const bool &item);
-};
-template <> struct deserializer_t<bool> {
-    static bool run(read_message_t *msg);
-};
+#define SERIALIZABLE_INTEGRAL(Type) \
+    template <> struct serializer_t<Type> { \
+        static size_t size(const Type &); \
+        static int write(write_message_t *, const Type &); \
+        static Type read(read_message_t *); \
+    };
 
-template <> struct sizer_t<uint64_t> {
-    static size_t run(const uint64_t &item);
-};
-template <> struct serializer_t<uint64_t> {
-    static int run(write_message_t *msg, const uint64_t &item);
-};
-template <> struct deserializer_t<uint64_t> {
-    static uint64_t run(read_message_t *msg);
-};
+#define SERIALIZABLE_ENUM(Type, MIN, MAX) \
+    // TODO: implement
 
-// template <> size_t serialized_size(const size_t &item);
-// template <> int serialize(write_message_t *msg, size_t &&item);
-// template <> size_t deserialize(read_message_t *msg);
+// TODO: declare pointers unserializable (or recurse into them and use temporary storage on the other side)
+// allowing pointers will mean we need to avoid loops in objects (we may have to avoid those anyway what with
+// references...).
 
-/*
-template<> size_t deserialize(read_message_t *msg);
-template<> int8_t deserialize(read_message_t *msg);
-template<> uint8_t deserialize(read_message_t *msg);
-template<> int16_t deserialize(read_message_t *msg);
-template<> uint16_t deserialize(read_message_t *msg);
-template<> int32_t deserialize(read_message_t *msg);
-template<> uint32_t deserialize(read_message_t *msg);
-template<> int64_t deserialize(read_message_t *msg);
-template<> uint64_t deserialize(read_message_t *msg);
-*/
+// TODO: would be nice to error if someone tries to send a size_t
+// probably impossible - just refuse to connect to different bit-size archs
+SERIALIZABLE_INTEGRAL(bool);
+SERIALIZABLE_INTEGRAL(char16_t);
+SERIALIZABLE_INTEGRAL(char32_t);
+SERIALIZABLE_INTEGRAL(int8_t);
+SERIALIZABLE_INTEGRAL(int16_t);
+SERIALIZABLE_INTEGRAL(int32_t);
+SERIALIZABLE_INTEGRAL(int64_t);
+SERIALIZABLE_INTEGRAL(uint8_t);
+SERIALIZABLE_INTEGRAL(uint16_t);
+SERIALIZABLE_INTEGRAL(uint32_t);
+SERIALIZABLE_INTEGRAL(uint64_t);
+SERIALIZABLE_INTEGRAL(float);
+SERIALIZABLE_INTEGRAL(double);
+SERIALIZABLE_INTEGRAL(long double);
 
 template <typename... Args>
 size_t full_serialized_size(const Args &...args) {
@@ -77,14 +64,14 @@ size_t full_serialized_size(const Args &...args) {
     } acc;
 
     __attribute__((unused)) auto dummy =
-        { acc.add(sizer_t<Args>::run(args))... };
+        { acc.add(serializer_t<Args>::size(args))... };
     return acc.value;
 }
 
 template <typename... Args>
 int full_serialize(write_message_t *msg, const Args &...args) {
     __attribute__((unused)) auto dummy =
-        { serializer_t<Args>::run(msg, args)... };
+        { serializer_t<Args>::write(msg, args)... };
     return 0;
 }
 
@@ -97,7 +84,7 @@ T full_deserialize_internal(std::integer_sequence<size_t, N...>,
 template <typename T, typename... Args>
 T full_deserialize(read_message_t *msg) {
     return full_deserialize_internal<T>(std::index_sequence_for<Args...>{},
-                                        std::tuple<Args...>{deserializer_t<Args>::run(msg)...});
+                                        std::tuple<Args...>{serializer_t<Args>::read(msg)...});
 }
 
 

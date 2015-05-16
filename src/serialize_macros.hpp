@@ -7,9 +7,7 @@
 
 // TODO: consider wrapping these instide a static class to reduce verbosity and code generation
 #define FRIEND_SERIALIZERS() \
-    template <typename T> friend struct sizer_t; \
     template <typename T> friend struct serializer_t; \
-    template <typename T> friend struct deserializer_t; \
     template <typename T, size_t... N, typename... Args> \
     friend T full_deserialize_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...>); \
     template <typename T, typename... Args> \
