@@ -88,10 +88,11 @@ template <typename A, typename B> struct deserializer_t<std::pair<A,B> > {
 // std::map
 template <typename K, typename V, typename C>
 struct sizer_t<std::map<K,V,C> > {
+    typedef typename std::map<K,V,C>::value_type Value;
     static size_t run(const std::map<K,V,C> &item) {
         size_t res = sizer_t<uint64_t>::run(item.size());
         for (auto const &i : item) {
-            res += sizer_t<typename std::map<K,V,C>::value_type>::run(i);
+            res += sizer_t<Value>::run(i);
         }
         return res;
     }
@@ -118,10 +119,11 @@ struct deserializer_t<std::map<K,V,C> > {
 // std::multimap
 template <typename K, typename V, typename C>
 struct sizer_t<std::multimap<K,V,C> > {
+    typedef typename std::multimap<K,V,C>::value_type Value;
     static size_t run(const std::multimap<K,V,C> &item) {
         size_t res = sizer_t<uint64_t>::run(item.size());
         for (auto const &i : item) {
-            res += sizer_t<std::pair<K,V> >::run(i);
+            res += sizer_t<Value>::run(i);
         }
         return res;
     }
@@ -148,10 +150,11 @@ struct deserializer_t<std::multimap<K,V,C> > {
 // std::unordered_map
 template <typename K, typename V, typename H, typename E>
 struct sizer_t<std::unordered_map<K,V,H,E> > {
+    typedef typename std::unordered_map<K,V,H,E>::value_type Value;
     static size_t run(const std::unordered_map<K,V,H,E> &item) {
         size_t res = sizer_t<uint64_t>::run(item.size());
         for (auto const &i : item) {
-            res += sizer_t<std::pair<K,V> >::run(i);
+            res += sizer_t<Value>::run(i);
         }
         return res;
     }
@@ -179,10 +182,11 @@ struct deserializer_t<std::unordered_map<K,V,H,E> > {
 // std::unordered_multimap
 template <typename K, typename V, typename H, typename E>
 struct sizer_t<std::unordered_multimap<K,V,H,E> > {
+    typedef typename std::unordered_multimap<K,V,H,E>::value_type Value;
     static size_t run(const std::unordered_multimap<K,V,H,E> &item) {
         size_t res = sizer_t<uint64_t>::run(item.size());
         for (auto const &i : item) {
-            res += sizer_t<std::pair<K,V> >::run(i);
+            res += sizer_t<Value>::run(i);
         }
         return res;
     }
@@ -355,7 +359,7 @@ template <typename T> struct deserializer_t<std::list<T> > {
 template <class T>
 const typename T::container_type &get_container(const T &item) {
     struct hack_t : private T {
-        static const typename T::container_type &do_hack(T &x) {
+        static const typename T::container_type &do_hack(const T &x) {
             return x.*&hack_t::c;
         }
     };
@@ -364,41 +368,45 @@ const typename T::container_type &get_container(const T &item) {
 
 // std::stack
 template <typename T> struct sizer_t<std::stack<T> > {
+    typedef typename std::stack<T>::container_type Container;
     static size_t run(const std::stack<T> &item) {
-        auto container = get_container(item);
-        return sizer_t<decltype(container)>::run(container);
+        const Container &container = get_container(item);
+        return sizer_t<Container>::run(container);
     }
 };
 template <typename T> struct serializer_t<std::stack<T> > {
+    typedef typename std::stack<T>::container_type Container;
     static int run(write_message_t *msg, const std::stack<T> &item) {
-        auto container = get_container(item);
-        return serializer_t<decltype(container)>::run(msg, container);
+        const Container &container = get_container(item);
+        return serializer_t<Container>::run(msg, container);
     }
 };
 template <typename T> struct deserializer_t<std::stack<T> > {
-    typedef typename std::stack<T>::container_type internal_t;
+    typedef typename std::stack<T>::container_type Container;
     static std::stack<T> run(read_message_t *msg) {
-        return std::stack<T>(deserializer_t<internal_t>::run(msg));
+        return std::stack<T>(deserializer_t<Container>::run(msg));
     }
 };
 
 // std::queue
 template <typename T> struct sizer_t<std::queue<T> > {
+    typedef typename std::queue<T>::container_type Container;
     static size_t run(const std::queue<T> &item) {
-        auto container = get_container(item);
-        return sizer_t<decltype(container)>::run(container);
+        const Container &container = get_container(item);
+        return sizer_t<Container>::run(container);
     }
 };
 template <typename T> struct serializer_t<std::queue<T> > {
+    typedef typename std::queue<T>::container_type Container;
     static int run(write_message_t *msg, const std::queue<T> &item) {
-        auto container = get_container(item);
-        return serializer_t<decltype(container)>::run(msg, container);
+        const Container &container = get_container(item);
+        return serializer_t<Container>::run(msg, container);
     }
 };
 template <typename T> struct deserializer_t<std::queue<T> > {
-    typedef typename std::queue<T>::container_type internal_t;
+    typedef typename std::queue<T>::container_type Container;
     static std::queue<T> run(read_message_t *msg) {
-        return std::queue<T>(deserializer_t<internal_t>::run(msg));
+        return std::queue<T>(deserializer_t<Container>::run(msg));
     }
 };
 
@@ -469,22 +477,24 @@ template <typename T> struct deserializer_t<std::forward_list<T> > {
 };
 
 // std::priority_queue
-template <typename T> struct sizer_t<std::priority_queue<T> > {
-    static size_t run(const std::priority_queue<T> &item) {
-        auto container = get_container(item);
-        return sizer_t<decltype(container)>::run(container);
+template <typename T, typename U, typename C>
+struct sizer_t<std::priority_queue<T,U,C> > {
+    static size_t run(const std::priority_queue<T,U,C> &item) {
+        const U &container = get_container(item);
+        return sizer_t<U>::run(container);
     }
 };
-template <typename T> struct serializer_t<std::priority_queue<T> > {
-    static int run(write_message_t *msg, const std::priority_queue<T> &item) {
-        auto const &container = get_container(item);
-        return serializer_t<decltype(container)>::run(msg, container);
+template <typename T, typename U, typename C>
+struct serializer_t<std::priority_queue<T,U,C> > {
+    static int run(write_message_t *msg, const std::priority_queue<T,U,C> &item) {
+        const U &container = get_container(item);
+        return serializer_t<U>::run(msg, container);
     }
 };
-template <typename T> struct deserializer_t<std::priority_queue<T> > {
-    typedef typename std::priority_queue<T>::container_type internal_t;
-    static std::priority_queue<T> run(read_message_t *msg) {
-        return std::priority_queue<T>(deserializer_t<internal_t>::run(msg));
+template <typename T, typename U, typename C>
+struct deserializer_t<std::priority_queue<T,U,C> > {
+    static std::priority_queue<T,U,C> run(read_message_t *msg) {
+        return std::priority_queue<T,U,C>(C(), deserializer_t<U>::run(msg));
     }
 };
 
@@ -515,7 +525,7 @@ template <typename T, size_t N> struct serializer_t<std::array<T,N> > {
             { serializer_t<T>::run(msg, std::get<X>(item))... };
         return 0;
     }
-    static size_t run(write_message_t *msg, std::array<T,N> item) {
+    static int run(write_message_t *msg, const std::array<T,N> &item) {
         return run_internal(std::make_index_sequence<N>(), msg, item);
     }
 };
@@ -524,7 +534,7 @@ template <typename T, size_t N> struct deserializer_t<std::array<T,N> > {
     static std::array<T,N> run_internal(std::integer_sequence<size_t, X...>,
                                         read_message_t *msg) {
         // The comma operator here is an ugly hack to get the parameter pack running
-        return std::array<T,N>({ (X, deserializer_t<T>::run(msg))... });
+        return std::array<T,N>({ ((void)X, deserializer_t<T>::run(msg))... });
     }
 
     static std::array<T,N> run(read_message_t *msg) {

@@ -19,6 +19,8 @@ public:
     bool operator < (const non_copyable_t &other) const { return val < other.val; }
     bool operator == (const non_copyable_t &other) const { return val == other.val; }
 
+    uint64_t value() const { return val; }
+
 private:
     uint64_t val;
     std::string x;
@@ -26,15 +28,39 @@ private:
     MAKE_SERIALIZABLE(non_copyable_t, val, x);
 };
 
+namespace std {
+template <>
+struct hash<non_copyable_t> {
+    size_t operator()(const non_copyable_t &item) const {
+        return internal_hash(item.value());
+    }
+    hash<uint64_t> internal_hash;
+};
+} // namespace std
+
 class data_t {
 public:
-    data_t() { }
+    data_t() : x(non_copyable_t("",3), non_copyable_t("",4)), y({non_copyable_t("",1),non_copyable_t("",2),non_copyable_t("",3)}) { }
     data_t(data_t &&other) = default;
 
-    uint64_t x;
-    //uint64_t y;
+    std::pair<non_copyable_t, non_copyable_t> x;
+    //std::string y;
     //std::vector<non_copyable_t> y;
-    std::map<non_copyable_t, non_copyable_t> y;
+    //std::map<non_copyable_t, non_copyable_t> y;
+    //std::multimap<non_copyable_t, non_copyable_t> y;
+    //std::unordered_map<non_copyable_t, non_copyable_t> y;
+    //std::unordered_multimap<non_copyable_t, non_copyable_t> y;
+    //std::set<non_copyable_t> y;
+    //std::multiset<non_copyable_t> y;
+    //std::unordered_set<non_copyable_t> y;
+    //std::unordered_multiset<non_copyable_t> y;
+    //std::list<non_copyable_t> y;
+    //std::deque<non_copyable_t> y;
+    //std::queue<non_copyable_t> y;
+    //std::stack<non_copyable_t> y;
+    //std::forward_list<non_copyable_t> y;
+    //std::priority_queue<non_copyable_t> y; // Can't use a non-copyable type in priority_queue?
+    std::array<non_copyable_t, 3> y;
     uint64_t z;
 
 private:
