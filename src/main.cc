@@ -25,8 +25,17 @@ private:
     uint64_t val;
     std::string x;
 
-    MAKE_SERIALIZABLE(non_copyable_t, val, x);
+    enum class flags_t {
+        FLAG1,
+        FLAG2,
+        FLAG3,
+        FLAG4,
+    } flags;
+
+    MAKE_SERIALIZABLE(non_copyable_t, val, x, flags);
 };
+
+SERIALIZABLE_ENUM(non_copyable_t::flags_t);
 
 namespace std {
 template <>

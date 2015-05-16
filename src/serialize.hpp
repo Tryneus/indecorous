@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <utility>
+
 #include "serialize_macros.hpp"
 
 class read_message_t;
@@ -23,15 +24,6 @@ struct serializer_t {
 };
 
 // Specializations for integral and unchangable types
-#define SERIALIZABLE_INTEGRAL(Type) \
-    template <> struct serializer_t<Type> { \
-        static size_t size(const Type &); \
-        static int write(write_message_t *, const Type &); \
-        static Type read(read_message_t *); \
-    };
-
-#define SERIALIZABLE_ENUM(Type, MIN, MAX) \
-    // TODO: implement
 
 // TODO: declare pointers unserializable (or recurse into them and use temporary storage on the other side)
 // allowing pointers will mean we need to avoid loops in objects (we may have to avoid those anyway what with

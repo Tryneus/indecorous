@@ -1,6 +1,28 @@
 #ifndef SERIALIZE_MACROS_HPP_
 #define SERIALIZE_MACROS_HPP_
 
+#include <type_traits>
+
+#include "serialize.hpp"
+
+#define SERIALIZABLE_INTEGRAL(Type) \
+    template <> struct serializer_t<Type> { \
+        static size_t size(const Type &); \
+        static int write(write_message_t *, const Type &); \
+        static Type read(read_message_t *); \
+    };
+
+#define SERIALIZABLE_ENUM(Type) \
+    template <> struct serializer_t<Type> { \
+        typedef std::underlying_type<Type>::type Value; \
+        static size_t size(const Type &t) { \
+            return serializer_t<Value>::size(static_cast<Value>(t)); } \
+        static int write(write_message_t *msg, const Type &t) { \
+            return serializer_t<Value>::write(msg, static_cast<Value>(t)); } \
+        static Type read(read_message_t *msg) { \
+            return static_cast<Type>(serializer_t<Value>::read(msg)); } \
+    };
+
 #define MAKE_DECLTYPE_PARAM(x) decltype(x) arg_##x
 #define MAKE_MOVE_CONSTRUCT(x) x(std::move(arg_##x))
 #define MAKE_DECLTYPE(x) decltype(x)
