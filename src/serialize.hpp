@@ -44,7 +44,6 @@ SERIALIZABLE_INTEGRAL(uint32_t);
 SERIALIZABLE_INTEGRAL(uint64_t);
 SERIALIZABLE_INTEGRAL(float);
 SERIALIZABLE_INTEGRAL(double);
-SERIALIZABLE_INTEGRAL(long double);
 
 template <typename... Args>
 size_t full_serialized_size(const Args &...args) {
