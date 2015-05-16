@@ -17,8 +17,8 @@ void dummy_stream_t::read(char *buffer, size_t length) {
     data.erase(data.begin(), data.begin() + length);
 }
 
-void dummy_stream_t::write(write_message_t &&msg) {
-    std::copy(msg.buffer.begin(), msg.buffer.end(), std::back_inserter(data));
+void dummy_stream_t::write(char *buffer, size_t length) {
+    std::copy(buffer, buffer + length, std::back_inserter(data));
 }
 
 tcp_stream_t::tcp_stream_t(int _fd) : fd(_fd) { }
@@ -28,7 +28,7 @@ void tcp_stream_t::read(char *, size_t) {
     printf("Unimplemented tcp_stream_t::read with fd: %d\n", fd);
 }
 
-void tcp_stream_t::write(write_message_t &&) {
+void tcp_stream_t::write(char *, size_t) {
     // TODO: implement
     printf("Unimplemented tcp_stream_t::write with fd: %d\n", fd);
 }

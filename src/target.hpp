@@ -29,7 +29,7 @@ public:
         write_message_t msg = write_message_t::create(handler_t<Callback>::handler_id(),
                                                       request_id_t::noreply(),
                                                       std::forward<Args>(args)...);
-        stream.write(std::move(msg));
+        stream.write(msg.buffer.data(), msg.buffer.size());
     }
 
     dummy_stream_t stream; // TODO: shortcut
@@ -56,7 +56,7 @@ public:
         write_message_t msg = write_message_t::create(handler_t<Callback>::handler_id(),
                                                       request_id_t::noreply(),
                                                       std::forward<Args>(args)...);
-        stream.write(std::move(msg));
+        stream.write(msg.buffer.data(), msg.buffer.size());
     }
 
     /*

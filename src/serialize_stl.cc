@@ -9,7 +9,7 @@ size_t serializer_t<std::string>::size(const std::string &item) {
 int serializer_t<std::string>::write(write_message_t *msg, const std::string &item) {
     serializer_t<uint64_t>::write(msg, item.size());
     for (size_t i = 0; i < item.size(); ++i) {
-        msg->buffer.push_back(item[i]);
+        msg->push_back(item[i]);
     }
     return 0;
 }

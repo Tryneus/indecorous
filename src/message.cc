@@ -57,3 +57,8 @@ write_message_t::write_message_t(handler_id_t handler_id,
     buffer.reserve(serializer_t<message_header_t>::size(header) + payload_size);
     serializer_t<message_header_t>::write(this, std::move(header));
 }
+
+void write_message_t::push_back(char c) {
+    assert(buffer.capacity() >= buffer.size() + 1);
+    buffer.push_back(c);
+}

@@ -7,7 +7,7 @@
 #define IMPL_SERIALIZABLE_BYTE(Type) \
     size_t serializer_t<Type>::size(const Type &) { return 1; } \
     int serializer_t<Type>::write(write_message_t *msg, const Type &item) { \
-        msg->buffer.push_back(static_cast<char>(item)); \
+        msg->push_back(static_cast<char>(item)); \
         return 0; \
     } \
     Type serializer_t<Type>::read(read_message_t *msg) { \
@@ -23,7 +23,7 @@
         Type##_wrapper_t u; \
         u.t = htobe##Bits(item); \
         for (size_t i = 0; i < sizeof(Type); ++i) { \
-            msg->buffer.push_back(u.c[i]); \
+            msg->push_back(u.c[i]); \
         } \
         return 0; \
     } \

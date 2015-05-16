@@ -20,6 +20,11 @@ public:
                     request_id_t request_id,
                     size_t payload_size);
 
+    void push_back(char c);
+
+private:
+    friend class local_target_t;
+    friend class remote_target_t;
     std::vector<char> buffer;
 };
 
@@ -35,6 +40,8 @@ public:
     static read_message_t parse(stream_t *stream);
 
 private:
+    friend class local_target_t;
+    friend class remote_target_t;
     read_message_t(std::vector<char> &&_buffer,
                    handler_id_t &&_handler_id,
                    request_id_t &&_request_id);
