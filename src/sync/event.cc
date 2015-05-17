@@ -1,9 +1,11 @@
-#include "coro/coro_event.hpp"
+#include "sync/event.hpp"
 
 #include "common.hpp"
 #include "coro/errors.hpp"
 
-coro_event_t::coro_event_t(bool autoReset, bool wakeAll) :
+namespace indecorous {
+
+event_t::event_t(bool autoReset, bool wakeAll) :
   m_autoReset(autoReset),
   m_wakeAll(wakeAll),
   m_triggered(false)
@@ -13,18 +15,18 @@ coro_event_t::coro_event_t(bool autoReset, bool wakeAll) :
   }
 }
 
-coro_event_t::~coro_event_t() {
+event_t::~event_t() {
   // Fail any remaining waits
   while (!m_waiters.empty()) {
     m_waiters.pop()->wait_callback(wait_result_t::ObjectLost);
   }
 }
 
-bool coro_event_t::triggered() const {
+bool event_t::triggered() const {
   return m_triggered;
 }
 
-bool coro_event_t::set() {
+bool event_t::set() {
   if (m_triggered)
     return false;
 
@@ -44,14 +46,14 @@ bool coro_event_t::set() {
   return true;
 }
 
-bool coro_event_t::reset() {
+bool event_t::reset() {
   if (!m_triggered)
     return false;
   m_triggered = false;
   return true;
 }
 
-void coro_event_t::wait() {
+void event_t::wait() {
   if (m_triggered) {
     assert(m_waiters.empty());
     if (m_autoReset)
@@ -64,7 +66,7 @@ void coro_event_t::wait() {
   }
 }
 
-void coro_event_t::addWait(wait_callback_t* cb) {
+void event_t::addWait(wait_callback_t* cb) {
   if (m_triggered) {
     assert(m_waiters.empty());
     if (m_autoReset)
@@ -75,7 +77,8 @@ void coro_event_t::addWait(wait_callback_t* cb) {
   }
 }
 
-void coro_event_t::removeWait(wait_callback_t* cb) {
+void event_t::removeWait(wait_callback_t* cb) {
   m_waiters.remove(cb);
 }
 
+} // namespace indecorous

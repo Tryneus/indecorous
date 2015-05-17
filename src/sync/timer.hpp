@@ -1,14 +1,16 @@
-#ifndef CORO_CORO_TIMER_HPP_
-#define CORO_CORO_TIMER_HPP_
+#ifndef SYNC_TIMER_HPP_
+#define SYNC_TIMER_HPP_
 
 #include "coro/wait_object.hpp"
-#include "coro/queue.hpp"
+#include "containers/queue.hpp"
 #include "coro/coro.hpp"
 
-class coro_timer_t : public wait_object_t, public wait_callback_t {
+namespace indecorous {
+
+class timer_t : public wait_object_t, public wait_callback_t {
 public:
-  coro_timer_t();
-  ~coro_timer_t();
+  timer_t();
+  ~timer_t();
 
   void set(uint32_t timeoutMs, bool autoReset, bool wakeAll);
   void reset();
@@ -29,5 +31,7 @@ private:
 
   IntrusiveQueue<wait_callback_t> m_waiters;
 };
+
+}; // namespace indecorous
 
 #endif

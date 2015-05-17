@@ -1,7 +1,9 @@
-#ifndef CORO_PROMISE_HPP_
-#define CORO_PROMISE_HPP_
+#ifndef SYNC_PROMISE_HPP_
+#define SYNC_PROMISE_HPP_
 
 #include <memory>
+
+namespace indecorous {
 
 template <typename T>
 class promise_t : public wait_object_t {
@@ -82,5 +84,7 @@ private:
     };
     std::shared_ptr<data_t> m_data;
 };
+
+} // namespace indecorous
 
 #endif // CORO_CORO_PROMISE_HPP_

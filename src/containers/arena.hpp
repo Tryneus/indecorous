@@ -1,15 +1,13 @@
-#ifndef CORO_ARENA_HPP_
-#define CORO_ARENA_HPP_
-#include <assert.h>
-#include <stddef.h>
-#include <stdexcept>
-#include <stdint.h>
-#include <atomic>
-#include <iostream>
+#ifndef CONTAINERS_ARENA_HPP_
+#define CONTAINERS_ARENA_HPP_
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 
-#include "common.hpp"
-#include "coro/sched.hpp"
-#include "coro/queue.hpp"
+#include "containers/queue.hpp"
+
+namespace indecorous {
 
 template <typename T>
 class Arena {
@@ -67,8 +65,7 @@ public:
     size_t offset = reinterpret_cast<char*>(&dummy->buffer) - reinterpret_cast<char*>(dummy);
     node_t *node = reinterpret_cast<node_t*>(reinterpret_cast<char*>(item) - offset);
 
-    if (node->magic != s_node_magic)
-      throw std::runtime_error("item released to arena either invalid or buffer overflowed");
+    assert(node->magic == s_node_magic);
     item->~T();
 
     if (m_free_node_count >= m_max_free_nodes) {
@@ -80,4 +77,6 @@ public:
   }
 };
 
-#endif
+} // namespace indecorous
+
+#endif // CONTAINERS_ARENA_HPP_

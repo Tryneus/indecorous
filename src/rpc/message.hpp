@@ -7,6 +7,8 @@
 #include "rpc/id.hpp"
 #include "rpc/serialize.hpp"
 
+namespace indecorous {
+
 class stream_t;
 
 class write_message_t {
@@ -56,5 +58,7 @@ write_message_t write_message_t::create(handler_id_t handler_id,
     full_serialize(&res, std::forward<Args>(args)...);
     return res;
 }
+
+} // namespace indecorous
 
 #endif // MESSAGE_HPP_

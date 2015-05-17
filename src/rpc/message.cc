@@ -4,6 +4,8 @@
 
 #include "rpc/stream.hpp"
 
+namespace indecorous {
+
 struct message_header_t {
     static const uint64_t HEADER_MAGIC = 0x302ca58d7f47e0be;
     uint64_t header_magic;
@@ -62,3 +64,5 @@ void write_message_t::push_back(char c) {
     assert(buffer.capacity() >= buffer.size() + 1);
     buffer.push_back(c);
 }
+
+} // namespace indecorous

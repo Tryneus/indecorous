@@ -1,6 +1,9 @@
-#include "coro/file_wait.hpp"
+#include "sync/file_wait.hpp"
 
 #include "common.hpp"
+#include "coro/coro.hpp"
+
+namespace indecorous {
 
 // TODO: only allow one coroutine to wait on a file at once?
 //  maybe get rid of wakeall, so we only allow one wakeup per scheduler loop
@@ -33,3 +36,20 @@ void file_wait_base_t::removeWait(wait_callback_t* cb) {
   m_waiters.remove(cb);
 }
 
+template <int EventFlag>
+void file_wait_template_t<EventFlag>::wait() {
+    DEBUG_ONLY(coro_t* self = coro_t::self());
+    addWait(coro_t::self());
+    CoroScheduler::Thread::addFileWait(m_fd, EventFlag, this);
+    coro_t::wait();
+    assert(self == coro_t::self());
+}
+
+template class file_wait_template_t<POLLIN>;
+template class file_wait_template_t<POLLOUT>;
+template class file_wait_template_t<POLLERR>;
+template class file_wait_template_t<POLLHUP>;
+template class file_wait_template_t<POLLPRI>;
+template class file_wait_template_t<POLLRDHUP>;
+
+} // namespace indecorous

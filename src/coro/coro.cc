@@ -6,9 +6,11 @@
 #include <iostream>
 #include <unistd.h>
 
-#include "coro/coro_event.hpp"
+#include "sync/event.hpp"
 #include "coro/sched.hpp"
 #include "coro/errors.hpp"
+
+namespace indecorous {
 
 uint32_t CoroDispatcher::s_max_swaps_per_loop = 100;
 
@@ -186,3 +188,5 @@ void coro_t::wait_callback(wait_result_t result) {
     m_wait_result = result;
     notify(this);
 }
+
+} // namespace indecorous

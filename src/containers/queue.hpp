@@ -1,9 +1,11 @@
-#ifndef CORO_CORO_QUEUE_HPP_
-#define CORO_CORO_QUEUE_HPP_
+#ifndef CONTAINERS_QUEUE_HPP_
+#define CONTAINERS_QUEUE_HPP_
 
 #include <cassert>
 #include <stddef.h>
 #include <type_traits>
+
+namespace indecorous {
 
 template <typename T>
 class QueueNode {
@@ -204,4 +206,6 @@ private:
   T* m_back;
 };
 
-#endif
+} // namespace indecorous
+
+#endif // CONTAINERS_QUEUE_HPP_

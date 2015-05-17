@@ -4,10 +4,12 @@
 #include <ucontext.h>
 #include <cassert>
 
-#include "coro/arena.hpp"
-#include "coro/queue.hpp"
+#include "containers/arena.hpp"
+#include "containers/queue.hpp"
 #include "coro/wait_object.hpp"
-#include "coro/promise.hpp"
+#include "sync/promise.hpp"
+
+namespace indecorous {
 
 class coro_t;
 
@@ -136,5 +138,7 @@ private:
     int m_valgrindStackId;
     wait_result_t m_wait_result;
 };
+
+} // namespace indecorous
 
 #endif

@@ -7,6 +7,8 @@
 
 #include "rpc/serialize_macros.hpp"
 
+namespace indecorous {
+
 class read_message_t;
 class write_message_t;
 
@@ -78,5 +80,6 @@ T full_deserialize(read_message_t *msg) {
                                         std::tuple<Args...>{serializer_t<Args>::read(msg)...});
 }
 
+} // namespace indecorous
 
 #endif // SERIALIZE_HPP_

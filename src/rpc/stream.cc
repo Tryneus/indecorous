@@ -4,6 +4,8 @@
 
 #include "rpc/message.hpp"
 
+namespace indecorous {
+
 stream_t::~stream_t() { }
 
 dummy_stream_t::dummy_stream_t() { }
@@ -31,3 +33,5 @@ void tcp_stream_t::write(char *, size_t) {
     // TODO: implement
     printf("Unimplemented tcp_stream_t::write with fd: %d\n", fd);
 }
+
+} // namespace indecorous

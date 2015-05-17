@@ -8,6 +8,8 @@
 #include "rpc/message.hpp"
 #include "rpc/serialize.hpp"
 
+namespace indecorous {
+
 class read_message_t;
 class message_hub_t;
 
@@ -73,5 +75,7 @@ public:
 
     message_hub_t::membership_t<handler_callback_t> membership;
 };
+
+} // namespace indecorous
 
 #endif // HANDLER_HPP_

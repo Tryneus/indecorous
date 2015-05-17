@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <vector>
 
+namespace indecorous {
+
 class write_message_t;
 
 class stream_t {
@@ -31,5 +33,7 @@ public:
 private:
     int fd;
 };
+
+} // namespace indecorous
 
 #endif // STREAM_HPP_

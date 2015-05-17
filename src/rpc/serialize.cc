@@ -4,6 +4,8 @@
 
 #include "rpc/message.hpp"
 
+namespace indecorous {
+
 #define IMPL_SERIALIZABLE_BYTE(Type) \
     size_t serializer_t<Type>::size(const Type &) { return 1; } \
     int serializer_t<Type>::write(write_message_t *msg, const Type &item) { \
@@ -73,4 +75,5 @@ class unused_sizer_t {
     static_assert(sizeof(double) == 8, "double type has unexpected length");
 };
 
+} // namespace indecorous
 

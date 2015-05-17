@@ -5,6 +5,8 @@
 #include "rpc/handler.hpp"
 #include "rpc/target.hpp"
 
+namespace indecorous {
+
 template <typename T>
 message_hub_t::membership_t<T>::membership_t(message_hub_t *_hub, T *_member) :
         hub(_hub), member(_member) {
@@ -46,3 +48,5 @@ void message_hub_t::remove(target_t *target) {
     size_t res = targets.erase(target->id());
     assert(res == 1);
 }
+
+} // namespace indecorous

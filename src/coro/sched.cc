@@ -6,6 +6,8 @@
 #include "coro/coro.hpp"
 #include "coro/errors.hpp"
 
+namespace indecorous {
+
 CoroScheduler* CoroScheduler::s_instance = nullptr;
 __thread CoroScheduler::Thread* CoroScheduler::Thread::s_instance = nullptr;
 __thread size_t CoroScheduler::Thread::s_threadId = -1;
@@ -349,4 +351,6 @@ bool CoroScheduler::Thread::removeFileWait(int fd, int eventMask, wait_callback_
 
   return false;
 }
+
+} // namespace indecorous
 

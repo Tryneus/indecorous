@@ -2,6 +2,8 @@
 
 #include "rpc/hub.hpp"
 
+namespace indecorous {
+
 target_t::target_t(message_hub_t *hub) :
         target_id(target_id_t::assign()),
         membership(hub, this) { }
@@ -31,4 +33,7 @@ message_t remote_target_t::sync_request_t::run(message_t &&msg) {
     parent->stream.write(std::move(msg));
     done_cond.wait();
 }
+
 */
+
+} // namespace indecorous

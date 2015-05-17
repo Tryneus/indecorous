@@ -1,7 +1,9 @@
-#include "coro/multiple_wait.hpp"
+#include "sync/multiple_wait.hpp"
 
 #include "common.hpp"
 #include "coro/coro.hpp"
+
+namespace indecorous {
 
 multiple_wait_t::multiple_wait_t() :
   m_waitAll(false),
@@ -126,3 +128,5 @@ void multiple_wait_t::multiple_wait_callback(wait_object_t* obj,
     }
   }
 }
+
+} // namespace indecorous

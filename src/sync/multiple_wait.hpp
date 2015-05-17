@@ -1,10 +1,12 @@
-#ifndef CORO_SYNC_HPP_
-#define CORO_SYNC_HPP_
+#ifndef SYNC_MULTIPLE_WAIT_HPP_
+#define SYNC_MULTIPLE_WAIT_HPP_
 #include <set>
 
 #include "coro/wait_object.hpp"
-#include "coro/queue.hpp"
-#include "coro/arena.hpp"
+#include "containers/arena.hpp"
+#include "containers/queue.hpp"
+
+namespace indecorous {
 
 class multiple_wait_t {
 public:
@@ -49,4 +51,6 @@ private:
   Arena<multiple_wait_callback_t> m_cb_arena;
 };
 
-#endif
+} // namespace indecorous
+
+#endif // SYNC_MULTIPLE_WAIT_HPP_

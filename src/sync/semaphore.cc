@@ -1,15 +1,17 @@
-#include "coro/coro_semaphore.hpp"
+#include "sync/semaphore.hpp"
 
 #include "common.hpp"
 
-coro_semaphore_t::coro_semaphore_t(size_t initial, size_t max) :
+namespace indecorous {
+
+semaphore_t::semaphore_t(size_t initial, size_t max) :
   m_max(max),
   m_count(initial)
 {
   assert(m_count <= m_max);
 }
 
-coro_semaphore_t::~coro_semaphore_t()
+semaphore_t::~semaphore_t()
 {
   // Fail any remaining waiters
   while (!m_waiters.empty()) {
@@ -18,7 +20,7 @@ coro_semaphore_t::~coro_semaphore_t()
 }
 
 // TODO: can only lock one point at a time - allow larger waits without looping (tons of context switching overhead)
-void coro_semaphore_t::wait() {
+void semaphore_t::wait() {
   if (m_count > 0) {
     assert(m_waiters.empty());
     --m_count;
@@ -30,7 +32,7 @@ void coro_semaphore_t::wait() {
   }
 }
 
-void coro_semaphore_t::unlock(size_t count) {
+void semaphore_t::unlock(size_t count) {
   m_count += count;
   assert(m_max >= m_count);
 
@@ -41,7 +43,7 @@ void coro_semaphore_t::unlock(size_t count) {
   }
 }
 
-void coro_semaphore_t::addWait(wait_callback_t* cb) {
+void semaphore_t::addWait(wait_callback_t* cb) {
   if (m_count > 0) {
     assert(m_waiters.empty());
     --m_count;
@@ -51,7 +53,9 @@ void coro_semaphore_t::addWait(wait_callback_t* cb) {
   }
 }
 
-void coro_semaphore_t::removeWait(wait_callback_t* cb) {
+void semaphore_t::removeWait(wait_callback_t* cb) {
   m_waiters.remove(cb);
 }
+
+} // namespace indecorous
 

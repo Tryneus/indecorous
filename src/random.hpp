@@ -5,6 +5,8 @@
 #include <random>
 #include <type_traits>
 
+namespace indecorous {
+
 class random_t {
 public:
     virtual ~random_t();
@@ -60,5 +62,7 @@ private:
     uuid_t();
     char buffer[16];
 };
+
+} // namespace indecorous
 
 #endif

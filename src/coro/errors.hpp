@@ -4,6 +4,8 @@
 #include <exception>
 #include <string>
 
+namespace indecorous {
+
 class coro_exc_t : public std::exception {
 public:
   coro_exc_t(const std::string& info) :
@@ -45,5 +47,7 @@ public:
     wait_error_exc_t("wait object destroyed during wait") { }
   virtual ~wait_object_lost_exc_t() throw() { }
 };
+
+} // namespace indecorous
 
 #endif

@@ -8,6 +8,8 @@
 
 #include "coro/wait_object.hpp"
 
+namespace indecorous {
+
 class CoroDispatcher;
 
 class CoroScheduler {
@@ -95,5 +97,7 @@ private:
   size_t m_numThreads;
   static CoroScheduler* s_instance;
 };
+
+} // namespace indecorous
 
 #endif

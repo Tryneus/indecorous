@@ -7,4 +7,4 @@
   #define DEBUG_ONLY(...) __VA_ARGS__
 #endif
 
-#endif
+#endif // COMMON_HPP_

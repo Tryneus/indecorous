@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+namespace indecorous {
+
 random_t::~random_t() { }
 
 template <typename gen_t>
@@ -65,3 +67,5 @@ bool uuid_t::operator ==(const uuid_t &other) const {
     }
     return res;
 }
+
+} // namespace indecorous

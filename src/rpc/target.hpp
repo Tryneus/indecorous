@@ -7,6 +7,8 @@
 #include "rpc/message.hpp"
 #include "rpc/stream.hpp"
 
+namespace indecorous {
+
 class target_t {
 public:
     target_t(message_hub_t *hub);
@@ -76,5 +78,7 @@ public:
 
     tcp_stream_t stream;
 };
+
+} // namespace indecorous
 
 #endif // TARGET_HPP_

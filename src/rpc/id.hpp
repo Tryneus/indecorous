@@ -6,6 +6,8 @@
 
 #include <functional>
 
+namespace indecorous {
+
 template <typename T>
 class id_equal_t {
 public:
@@ -66,5 +68,7 @@ public:
 private:
     uint64_t value_;
 };
+
+} // namespace indecorous
 
 #endif // ID_HPP_

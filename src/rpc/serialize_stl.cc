@@ -2,6 +2,8 @@
 
 #include "rpc/message.hpp"
 
+namespace indecorous {
+
 size_t serializer_t<std::string>::size(const std::string &item) {
     return serializer_t<uint64_t>::size(item.size()) + item.size();
 }
@@ -20,4 +22,6 @@ std::string serializer_t<std::string>::read(read_message_t *msg) {
     }
     return res;
 }
+
+} // namespace indecorous
 

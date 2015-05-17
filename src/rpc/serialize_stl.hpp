@@ -19,6 +19,8 @@
 #include <utility>
 #include <vector>
 
+namespace indecorous {
+
 template <typename Container>
 int serialize_container(write_message_t *msg, const Container &c) {
     typedef typename Container::value_type Value;
@@ -450,5 +452,7 @@ template <typename T, size_t N> struct serializer_t<std::array<T,N> > {
         return read_internal(std::make_index_sequence<N>(), msg);
     }
 };
+
+} // namespace indecorous
 
 #endif // SERIALIZE_STL_HPP_

@@ -5,6 +5,8 @@
 
 #include "rpc/id.hpp"
 
+namespace indecorous {
+
 class target_t;
 class handler_callback_t;
 
@@ -43,5 +45,7 @@ private:
                        handler_id_t::equal_t>
         callbacks;
 };
+
+} // namespace indecorous
 
 #endif // HUB_HPP_

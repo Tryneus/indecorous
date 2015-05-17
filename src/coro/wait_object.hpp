@@ -1,7 +1,9 @@
 #ifndef CORO_WAIT_OBJECT_HPP_
 #define CORO_WAIT_OBJECT_HPP_
 
-#include "coro/queue.hpp"
+#include "containers/queue.hpp"
+
+namespace indecorous {
 
 class wait_object_t;
 
@@ -27,5 +29,7 @@ protected:
     virtual void addWait(wait_callback_t* waiter) = 0;
     virtual void removeWait(wait_callback_t* waiter) = 0;
 };
+
+} // namespace indecorous
 
 #endif
