@@ -1,9 +1,9 @@
-#include "hub.hpp"
+#include "rpc/hub.hpp"
 
 #include <cassert>
 
-#include "handler.hpp"
-#include "target.hpp"
+#include "rpc/handler.hpp"
+#include "rpc/target.hpp"
 
 template <typename T>
 message_hub_t::membership_t<T>::membership_t(message_hub_t *_hub, T *_member) :

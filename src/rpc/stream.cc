@@ -1,9 +1,8 @@
-#include "stream.hpp"
+#include "rpc/stream.hpp"
 
 #include <cassert>
 
-#include "debug.hpp"
-#include "message.hpp"
+#include "rpc/message.hpp"
 
 stream_t::~stream_t() { }
 

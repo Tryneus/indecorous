@@ -1,5 +1,5 @@
-#ifndef STREAM_HPP_
-#define STREAM_HPP_
+#ifndef RPC_STREAM_HPP_
+#define RPC_STREAM_HPP_
 
 #include <cstddef>
 #include <cstdint>

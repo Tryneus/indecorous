@@ -1,6 +1,6 @@
-#include "target.hpp"
+#include "rpc/target.hpp"
 
-#include "hub.hpp"
+#include "rpc/hub.hpp"
 
 target_t::target_t(message_hub_t *hub) :
         target_id(target_id_t::assign()),

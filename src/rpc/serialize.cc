@@ -1,8 +1,8 @@
-#include "serialize.hpp"
+#include "rpc/serialize.hpp"
 
 #include <endian.h>
 
-#include "message.hpp"
+#include "rpc/message.hpp"
 
 #define IMPL_SERIALIZABLE_BYTE(Type) \
     size_t serializer_t<Type>::size(const Type &) { return 1; } \

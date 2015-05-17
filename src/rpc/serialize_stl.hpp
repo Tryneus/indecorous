@@ -1,7 +1,7 @@
-#ifndef SERIALIZE_STL_HPP_
-#define SERIALIZE_STL_HPP_
+#ifndef RPC_SERIALIZE_STL_HPP_
+#define RPC_SERIALIZE_STL_HPP_
 
-#include "serialize.hpp"
+#include "rpc/serialize.hpp"
 
 #include <array>
 #include <cassert>

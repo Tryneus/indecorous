@@ -1,4 +1,5 @@
 SRC_DIR = ./src
+TEST_DIR = ./test
 OBJ_DIR = ./bin/obj
 BIN_DIR = ./bin
 
@@ -20,7 +21,7 @@ ifeq ($(CXX),clang++)
   CXX = clang++-3.5
 endif
 
-CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -g -Wall -Wextra -Werror
+CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -g -Wall -Wextra -Werror
 CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
 CXX_FLAGS += -Wformat=2 -Wswitch-enum -Wswitch-default
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
@@ -30,11 +31,14 @@ ifneq ($(DEBUG),1)
   #RT_CXXFLAGS += -fno-strict-aliasing
 endif
 
-LD_FLAGS = -lstdc++ -static-libgcc
-BIN_NAME = rpc_test
+LD_FLAGS = -lstdc++ -lpthread
+BIN_NAME = coro_test
 
 ALL_SOURCES := $(shell find $(SRC_DIR) -name '*.cc' -not -name '\.*')
-ALL_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_SOURCES))
+ALL_TESTS := $(shell find $(TEST_DIR) -name '*.cc' -not -name '\.*')
+SRC_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_SOURCES))
+TEST_OBJS := $(patsubst $(TEST_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_TESTS))
+ALL_OBJS := $(SRC_OBJS) $(TEST_OBJS)
 
 all: $(BIN_DIR)/$(BIN_NAME)
 
@@ -43,6 +47,10 @@ $(BIN_DIR)/$(BIN_NAME): $(ALL_OBJS) Makefile
 	$(CXX) $(ALL_OBJS) $(LD_FLAGS) -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cc $(ALL_SOURCES) Makefile
+	mkdir -p $(dir $@)
+	$(CXX) $(CXX_FLAGS) -c -o $@ $<
+
+$(OBJ_DIR)/%.o: $(TEST_DIR)/%.cc $(ALL_TESTS) Makefile
 	mkdir -p $(dir $@)
 	$(CXX) $(CXX_FLAGS) -c -o $@ $<
 

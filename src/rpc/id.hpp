@@ -1,5 +1,5 @@
-#ifndef ID_HPP_
-#define ID_HPP_
+#ifndef RPC_ID_HPP_
+#define RPC_ID_HPP_
 
 #include <cstdint>
 #include <cstddef>

@@ -1,9 +1,9 @@
-#ifndef SERIALIZE_MACROS_HPP_
-#define SERIALIZE_MACROS_HPP_
+#ifndef RPC_SERIALIZE_MACROS_HPP_
+#define RPC_SERIALIZE_MACROS_HPP_
 
 #include <type_traits>
 
-#include "serialize.hpp"
+#include "rpc/serialize.hpp"
 
 #define SERIALIZABLE_INTEGRAL(Type) \
     template <> struct serializer_t<Type> { \

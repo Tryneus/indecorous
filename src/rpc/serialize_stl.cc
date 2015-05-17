@@ -1,7 +1,6 @@
-#include "serialize_stl.hpp"
+#include "rpc/serialize_stl.hpp"
 
-#include "debug.hpp"
-#include "message.hpp"
+#include "rpc/message.hpp"
 
 size_t serializer_t<std::string>::size(const std::string &item) {
     return serializer_t<uint64_t>::size(item.size()) + item.size();

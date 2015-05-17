@@ -1,9 +1,9 @@
-#ifndef HUB_HPP_
-#define HUB_HPP_
+#ifndef RPC_HUB_HPP_
+#define RPC_HUB_HPP_
 
 #include <unordered_map>
 
-#include "id.hpp"
+#include "rpc/id.hpp"
 
 class target_t;
 class handler_callback_t;

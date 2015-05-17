@@ -1,11 +1,11 @@
-#ifndef SERIALIZE_HPP_
-#define SERIALIZE_HPP_
+#ifndef RPC_SERIALIZE_HPP_
+#define RPC_SERIALIZE_HPP_
 
 #include <cstddef>
 #include <cstdint>
 #include <utility>
 
-#include "serialize_macros.hpp"
+#include "rpc/serialize_macros.hpp"
 
 class read_message_t;
 class write_message_t;

@@ -1,12 +1,12 @@
-#ifndef HANDLER_HPP_
-#define HANDLER_HPP_
+#ifndef RPC_HANDLER_HPP_
+#define RPC_HANDLER_HPP_
 
 #include <tuple>
 #include <utility>
 
-#include "hub.hpp"
-#include "message.hpp"
-#include "serialize.hpp"
+#include "rpc/hub.hpp"
+#include "rpc/message.hpp"
+#include "rpc/serialize.hpp"
 
 class read_message_t;
 class message_hub_t;

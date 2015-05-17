@@ -1,8 +1,8 @@
-#include "message.hpp"
+#include "rpc/message.hpp"
 
 #include <cassert>
 
-#include "stream.hpp"
+#include "rpc/stream.hpp"
 
 struct message_header_t {
     static const uint64_t HEADER_MAGIC = 0x302ca58d7f47e0be;

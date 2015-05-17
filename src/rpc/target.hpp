@@ -1,11 +1,11 @@
-#ifndef TARGET_HPP_
-#define TARGET_HPP_
+#ifndef RPC_TARGET_HPP_
+#define RPC_TARGET_HPP_
 
-#include "handler.hpp"
-#include "hub.hpp"
-#include "id.hpp"
-#include "message.hpp"
-#include "stream.hpp"
+#include "rpc/handler.hpp"
+#include "rpc/hub.hpp"
+#include "rpc/id.hpp"
+#include "rpc/message.hpp"
+#include "rpc/stream.hpp"
 
 class target_t {
 public:

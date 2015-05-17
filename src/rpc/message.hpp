@@ -1,11 +1,11 @@
-#ifndef MESSAGE_HPP_
-#define MESSAGE_HPP_
+#ifndef RPC_MESSAGE_HPP_
+#define RPC_MESSAGE_HPP_
 
 #include <cstddef>
 #include <vector>
 
-#include "id.hpp"
-#include "serialize.hpp"
+#include "rpc/id.hpp"
+#include "rpc/serialize.hpp"
 
 class stream_t;
 
