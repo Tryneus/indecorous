@@ -15,8 +15,7 @@ public:
   CoroScheduler(size_t numThreads);
   ~CoroScheduler();
 
-  // Use this function to add coroutines before running
-  void spawn(size_t threadId, void (fn)(void*), void* param);
+  // TODO: add a way to schedule coroutines before `run`
 
   // This function will not return until all coroutines (and children thereof) return
   void run();
@@ -87,7 +86,6 @@ private:
   friend class coro_t;
 
   static CoroDispatcher& getDispatcher(size_t threadId);
-  void redistribute_arena(size_t threadId);
 
   // TODO: don't use atomic here?
   std::atomic<bool> m_running;

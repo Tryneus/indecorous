@@ -3,7 +3,6 @@
 
 #include "coro/queue.hpp"
 
-class coro_t;
 class wait_object_t;
 
 enum class wait_result_t {
@@ -15,19 +14,18 @@ enum class wait_result_t {
 
 class wait_callback_t : public QueueNode<wait_callback_t> {
 public:
-
-  virtual void wait_callback(wait_result_t result) = 0;
+    virtual void wait_callback(wait_result_t result) = 0;
 };
 
 class wait_object_t {
 public:
-  virtual ~wait_object_t() { };
+    virtual ~wait_object_t() { };
 
-  virtual void wait() = 0;
+    virtual void wait() = 0;
 protected:
-  friend class multiple_wait_t; // For waits performed across multiple wait objects:
-  virtual void addWait(wait_callback_t* waiter) = 0;
-  virtual void removeWait(wait_callback_t* waiter) = 0;
+    friend class multiple_wait_t; // For waits performed across multiple wait objects:
+    virtual void addWait(wait_callback_t* waiter) = 0;
+    virtual void removeWait(wait_callback_t* waiter) = 0;
 };
 
 #endif

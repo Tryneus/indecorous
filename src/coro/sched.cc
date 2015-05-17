@@ -71,6 +71,8 @@ CoroDispatcher& CoroScheduler::getDispatcher(size_t threadId) {
   return *s_instance->m_threads[threadId]->m_dispatcher;
 }
 
+// TODO: reimplement this using templates/parameter packs
+/*
 void CoroScheduler::spawn(size_t threadId, void (fn)(void*), void* p) {
   if (m_running)
     throw coro_exc_t("cannot externally spawn a coroutine while already running");
@@ -85,6 +87,7 @@ void CoroScheduler::spawn(size_t threadId, void (fn)(void*), void* p) {
   dispatch->pushForeignContext(context);
   ++m_active_contexts;
 }
+*/
 
 void CoroScheduler::run() {
   if (m_running.exchange(true)) {
@@ -98,24 +101,6 @@ void CoroScheduler::run() {
   pthread_barrier_wait(&m_barrier);
 
   m_running.store(false);
-}
-
-void CoroScheduler::redistribute_arena(size_t threadId) {
-  // Find the most needy thread and split this thread's coro context arena with that thread
-  size_t lowest_size = -1;
-  size_t lowest_thread = -1;
-  for (size_t i = 0; i < m_numThreads; ++i) {
-    size_t arena_size = m_threads[i]->m_dispatcher->m_contextArena.free_count();
-    if (arena_size < lowest_size) {
-      lowest_size = arena_size;
-      lowest_thread = i;
-    }
-  }
-
-  if (lowest_thread != threadId && lowest_thread < m_numThreads) {
-    Arena<coro_t>::rebalance(&m_threads[threadId]->m_dispatcher->m_contextArena,
-                             &m_threads[lowest_thread]->m_dispatcher->m_contextArena);
-  }
 }
 
 struct thread_args_t {
@@ -150,7 +135,7 @@ void* CoroScheduler::Thread::threadHook(void* param) {
   s_instance = args->instance;
   delete args;
 
-  s_instance->m_dispatcher = new CoroDispatcher(&s_instance->m_parent->m_active_contexts);
+  s_instance->m_dispatcher = new CoroDispatcher();
 
   s_instance->threadMain();
 
@@ -177,13 +162,7 @@ void CoroScheduler::Thread::threadMain() {
       break;
 
     while (m_dispatcher->run() > 0) {
-      m_parent->redistribute_arena(s_threadId);
       doWait();
-    }
-
-    // Touch the other threads to make sure they know it's over
-    for (size_t i = 0; i < m_parent->m_numThreads; ++i) {
-      m_parent->m_threads[i]->m_dispatcher->m_foreign_queue_event.notify();
     }
 
     // Wait for other threads to finish

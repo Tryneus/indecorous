@@ -7,9 +7,40 @@
 #include "coro/arena.hpp"
 #include "coro/queue.hpp"
 #include "coro/wait_object.hpp"
+#include "coro/promise.hpp"
 
-class CoroDispatcher;
-class coro_event_t;
+class coro_t;
+
+// Not thread-safe, exactly one CoroDispatcher per thread
+class CoroDispatcher
+{
+public:
+    CoroDispatcher();
+    ~CoroDispatcher();
+
+    // Returns the number of outstanding coroutines
+    uint32_t run();
+
+private:
+    friend class CoroScheduler;
+    friend class coro_t;
+    static CoroDispatcher& getInstance();
+
+    void enqueue_release(coro_t *coro);
+
+    static __thread CoroDispatcher* s_instance;
+
+    coro_t *volatile m_self;
+    coro_t *m_release_coro; // Recently-finished coro_t to be released
+    ucontext_t m_parentContext; // Used to store the parent context, switch to when no coroutines to run
+    uint32_t m_swap_count;
+    int32_t m_active_contexts;
+    static uint32_t s_max_swaps_per_loop;
+
+    Arena<coro_t> m_context_arena; // Arena used to cache context allocations
+
+    IntrusiveQueue<coro_t> m_runQueue; // Queue of contexts to run
+};
 
 // Pointers to contexts can be used by other modules, but they should not be changed at all
 //  The QueueNode part *may* be changed if it is certain that the context is not already enqueued to run
@@ -17,111 +48,93 @@ class coro_event_t;
 class coro_t : public wait_callback_t, public QueueNode<coro_t>
 {
 public:
-  // Get the running coroutine
-  static coro_t* self();
+    // Get the running coroutine
+    static coro_t* self();
 
-  // Give up execution indefinitely (until notified)
-  static void wait();
+    // Give up execution indefinitely (until notified)
+    static void wait();
 
-  // Wait temporarily and be rescheduled
-  static void yield();
+    // Wait temporarily and be rescheduled
+    static void yield();
 
-  // Queue up another coroutine to be run
-  static void notify(coro_t* coro);
+    // Queue up another coroutine to be run
+    static void notify(coro_t* coro);
 
-  // Queue up another coroutine to be run on another thread
-  static void notify_on(size_t threadId, coro_t* coro);
-
-  // Create a coroutine and put it on the queue to run
-  static void spawn(void(*fn)(void*), void* p, coro_event_t* done_event);
-  static void spawn_now(void(*fn)(void*), void* p, coro_event_t* done_event);
-
-  // Create a context on another thread (redundant with move?)
-  static void spawn_on(size_t threadId, void(*fn)(void*), void* p, coro_event_t* done_event);
-
-  // Run a blocking coroutine on a separate thread (to avoid blocking other corouines)
-  static void spawn_blocking(void(*fn)(void*), void* p, coro_event_t* done_event);
-
-   // Move a context onto another thread
-  void move(size_t threadId);
+    // Create a coroutine and put it on the queue to run
+    template <typename Res, typename... Args>
+    static promise_t<Res> spawn(Res(*fn)(Args...), Args &&...args) {
+        return spawn_internal(false, fn, std::forward<Args>(args)...);
+    }
+    template <typename Res, typename... Args>
+    static promise_t<Res> spawn_now(Res(*fn)(Args...), Args &&...args) {
+        return spawn_internal(true, fn, std::forward<Args>(args)...);
+    }
 
 private:
-  friend class CoroScheduler;
-  friend class CoroDispatcher;
-  friend class Arena<coro_t>; // To allow instantiation of this class
+    friend class CoroScheduler;
+    friend class CoroDispatcher;
+    friend class Arena<coro_t>; // To allow instantiation of this class
 
-  coro_t(void(*fn)(void*),
-         void* param,
-         CoroDispatcher *dispatcher,
-         coro_event_t* done_event);
-  ~coro_t();
+    template <typename Res, typename... Args>
+    static promise_t<Res> spawn_internal(bool immediate, Res(*fn)(Args...), Args &&...args) {
+        promise_t<Res> promise;
+        coro_t *self = coro_t::self();
+        coro_t *context = self->m_dispatch->m_context_arena.get(self->m_dispatch, immediate, hook<Res, Args...>);
+        // TODO: this tuple stuff is ugly as hell
+        std::tuple<coro_t *, coro_t *, promise_t<Res>, Res(*)(Args...), Args...> params(
+            { coro_t::self(), context, promise, fn, std::forward<Args>(args)... });
 
-  // TODO: RSI: should this be able to return?
-  [[noreturn]] static void hook(void* instance);
-  void begin();
-  void swap();
+        // Start the other coroutine - it will return once it has copied the parameters
+        context->begin(&params);
+        return promise;
+    }
 
-  void wait_callback(wait_result_t result);
+    template <typename Res, typename... Args>
+    [[noreturn]] static void hook(void *p) {
+        typedef std::tuple<coro_t *, coro_t *, promise_t<Res>, Res(*)(Args...), Args...> params_t;
+        params_t params = std::move(*reinterpret_cast<params_t *>(p));
+        coro_t *parent = std::get<0>(params);
+        coro_t *self = std::get<1>(params);
 
-  static const size_t s_stackSize = 65535; // TODO: This is probably way too small
+        if (self->m_immediate) {
+            // We're running immediately, put our parent on the back of the run queue
+            self->m_dispatch->m_runQueue.push(parent);
+        } else {
+            // We're delaying our execution, put ourselves on the back of the run queue
+            // and swap back in our parent so they can continue
+            self->m_dispatch->m_runQueue.push(self);
+            self->swap(parent);
+        }
 
-  void* m_param;
-  void (*m_fn)(void*);
-  ucontext_t m_context;
-  char m_stack[s_stackSize];
-  CoroDispatcher* m_dispatcher;
-  int m_valgrindStackId;
-  coro_event_t *m_done_event;
-  wait_result_t m_waitResult;
-};
+        promise_t<Res> *promise = &std::get<2>(params);
+        promise->fulfill(hook_internal(std::index_sequence_for<Args...>{}, params));
+        
+        // TODO: would be nice to move this out of the header
+        self->m_dispatch->enqueue_release(self);
+        self->swap();
+    }
 
-// Not thread-safe, exactly one CoroDispatcher per thread
-class CoroDispatcher
-{
-public:
-  CoroDispatcher(std::atomic<int32_t>* active_contexts);
-  ~CoroDispatcher();
+    template <size_t... N, typename Res, typename... Args>
+    static Res hook_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...> &args) {
+        return std::get<3>(args)(std::forward<Args>(std::get<N+4>(args))...);
+    }
 
-  // Returns the number of outstanding coroutines
-  uint32_t run();
+    coro_t(CoroDispatcher *dispatch, bool immediate);
+    ~coro_t();
 
-private:
-  friend class CoroScheduler;
-  friend class coro_t;
-  static CoroDispatcher& getInstance();
+    void begin(void(*fn)(void*), void *params);
+    void swap(coro_t *next = nullptr);
 
-  void moveContext();
-  void releaseContext();
-  void pushForeignContext(coro_t* context);
-  void pullForeignRunQueue();
-
-  static __thread CoroDispatcher* s_instance;
-
-  class foreign_queue_event_t : public wait_callback_t {
-  public:
-    foreign_queue_event_t();
-    virtual ~foreign_queue_event_t();
-    void notify();
     void wait_callback(wait_result_t result);
-  private:
-    int m_event;
-  } m_foreign_queue_event;
 
-  coro_t* volatile m_self;
-  ucontext_t m_parentContext; // Used to store the parent context, switch to when no coroutines to run
-  uint32_t m_swap_count;
-  std::atomic<int32_t>* m_active_contexts;
-  static uint32_t s_max_swaps_per_loop;
+    static const size_t s_stackSize = 65535; // TODO: This is probably way too small
 
-  // Variables used to move a context from this dispatcher to another
-  coro_t* m_moveContext;
-  CoroDispatcher* m_moveTarget;
-  coro_t* m_releaseContext;
-
-  Arena<coro_t> m_contextArena; // Arena used to cache context allocations
-
-  IntrusiveQueue<coro_t> m_runQueue; // Queue of contexts to run
-  MpscQueue<coro_t> m_foreignRunQueue; // Queue of contexts to add to our run queue (from other dispatchers)
+    CoroDispatcher* m_dispatch;
+    bool m_immediate;
+    ucontext_t m_context;
+    char m_stack[s_stackSize];
+    int m_valgrindStackId;
+    wait_result_t m_wait_result;
 };
 
 #endif
