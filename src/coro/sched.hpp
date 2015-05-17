@@ -6,7 +6,7 @@
 #include <map>
 #include <pthread.h>
 
-#include "coro/wait_object.hpp"
+#include "sync/wait_object.hpp"
 
 namespace indecorous {
 

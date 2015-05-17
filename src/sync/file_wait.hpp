@@ -2,7 +2,7 @@
 #define SYNC_FILE_WAIT_HPP_
 #include <poll.h>
 
-#include "coro/wait_object.hpp"
+#include "sync/wait_object.hpp"
 #include "containers/queue.hpp"
 #include "coro/coro.hpp"
 #include "coro/sched.hpp"

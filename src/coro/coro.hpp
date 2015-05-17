@@ -6,7 +6,7 @@
 
 #include "containers/arena.hpp"
 #include "containers/queue.hpp"
-#include "coro/wait_object.hpp"
+#include "sync/wait_object.hpp"
 #include "sync/promise.hpp"
 
 namespace indecorous {

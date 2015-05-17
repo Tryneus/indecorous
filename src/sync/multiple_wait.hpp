@@ -2,7 +2,7 @@
 #define SYNC_MULTIPLE_WAIT_HPP_
 #include <set>
 
-#include "coro/wait_object.hpp"
+#include "sync/wait_object.hpp"
 #include "containers/arena.hpp"
 #include "containers/queue.hpp"
 

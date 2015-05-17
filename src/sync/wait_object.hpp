@@ -1,5 +1,5 @@
-#ifndef CORO_WAIT_OBJECT_HPP_
-#define CORO_WAIT_OBJECT_HPP_
+#ifndef SYNC_WAIT_OBJECT_HPP_
+#define SYNC_WAIT_OBJECT_HPP_
 
 #include "containers/queue.hpp"
 
@@ -32,4 +32,4 @@ protected:
 
 } // namespace indecorous
 
-#endif
+#endif // SYNC_WAIT_OBJECT_HPP_

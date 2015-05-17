@@ -1,7 +1,7 @@
 #ifndef SYNC_EVENT_HPP_
 #define SYNC_EVENT_HPP_
 
-#include "coro/wait_object.hpp"
+#include "sync/wait_object.hpp"
 #include "containers/queue.hpp"
 #include "coro/coro.hpp"
 
