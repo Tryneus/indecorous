@@ -22,7 +22,7 @@ protected:
   void removeWait(wait_callback_t* cb);
 
 private:
-  friend class CoroScheduler;
+  friend class scheduler_t;
   void wait_callback(wait_result_t result);
 
   bool m_wakeAll;

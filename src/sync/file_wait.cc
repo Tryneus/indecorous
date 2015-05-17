@@ -40,7 +40,7 @@ template <int EventFlag>
 void file_wait_template_t<EventFlag>::wait() {
     DEBUG_ONLY(coro_t* self = coro_t::self());
     addWait(coro_t::self());
-    CoroScheduler::Thread::addFileWait(m_fd, EventFlag, this);
+    scheduler_t::thread_t::add_file_wait(m_fd, EventFlag, this);
     coro_t::wait();
     assert(self == coro_t::self());
 }

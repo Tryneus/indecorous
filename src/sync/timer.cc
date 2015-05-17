@@ -28,20 +28,20 @@ void timer_t::set(uint32_t timeoutMs, bool autoReset, bool wakeAll) {
   m_timeout = timeoutMs;
   m_wakeAll = wakeAll;
   m_running = true;
-  CoroScheduler::Thread::addTimer(this, m_timeout);
+  scheduler_t::thread_t::add_timer(this, m_timeout);
 }
 
 void timer_t::reset() {
   assert(m_timeout != (uint32_t)-1);
   m_running = true;
-  CoroScheduler::Thread::updateTimer(this, m_timeout);
+  scheduler_t::thread_t::update_timer(this, m_timeout);
 }
 
 bool timer_t::stop() {
   if (!m_running)
     return false;
 
-  CoroScheduler::Thread::removeTimer(this);
+  scheduler_t::thread_t::remove_timer(this);
   m_running = false;
 
   // Fail any current waits - this may not be the 'right' thing to do...

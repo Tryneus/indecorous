@@ -10,12 +10,12 @@
 
 namespace indecorous {
 
-class CoroDispatcher;
+class dispatcher_t;
 
-class CoroScheduler {
+class scheduler_t {
 public:
-  CoroScheduler(size_t numThreads);
-  ~CoroScheduler();
+  scheduler_t(size_t num_threads);
+  ~scheduler_t();
 
   // TODO: add a way to schedule coroutines before `run`
 
@@ -23,35 +23,35 @@ public:
   void run();
 
   // This function will return the current thread id, or -1 if run from another thread
-  static size_t getThreadId();
+  static size_t thread_id();
 
-  class Thread {
+  class thread_t {
   public:
-    static void addTimer(wait_callback_t* timer, uint32_t timeout);
-    static void updateTimer(wait_callback_t* timer, uint32_t timeout);
-    static void removeTimer(wait_callback_t* timer);
+    static void add_timer(wait_callback_t* timer, uint32_t timeout);
+    static void update_timer(wait_callback_t* timer, uint32_t timeout);
+    static void remove_timer(wait_callback_t* timer);
 
-    static bool addFileWait(int fd, int eventMask, wait_callback_t* waiter);
-    static bool removeFileWait(int fd, int eventMask, wait_callback_t* waiter);
+    static bool add_file_wait(int fd, int eventMask, wait_callback_t* waiter);
+    static bool remove_file_wait(int fd, int eventMask, wait_callback_t* waiter);
 
-    Thread(CoroScheduler* parent, size_t threadId, pthread_barrier_t *barrier);
+    thread_t(scheduler_t* parent, size_t thread_id, pthread_barrier_t *barrier);
 
   private:
-    friend class CoroScheduler;
+    friend class scheduler_t;
 
     void shutdown();
-    static Thread& getInstance();
+    static thread_t& get_instance();
 
-    static void* threadHook(void* param);
-    void threadMain();
+    static void* thread_hook(void* param);
+    void thread_main();
 
-    void doWait();
-    void buildPollSet(struct pollfd* pollArray);
-    void notifyWaiters(size_t size, struct pollfd* pollArray);
-    void notifyWaitersForEvent(struct pollfd* pollEvent, int eventMask);
+    void do_wait();
+    void build_poll_set(struct pollfd* poll_array);
+    void notify_waiters(size_t size, struct pollfd* poll_array);
+    void notify_waiters_for_event(struct pollfd* poll_event, int event_mask);
 
-    int getWaitTimeout();
-    static uint64_t getEndTime(uint32_t timeout);
+    int get_wait_timeout();
+    static uint64_t get_end_time(uint32_t timeout);
 
     friend class coro_timer_t;
 
@@ -69,33 +69,34 @@ public:
       }
     };
 
-    CoroScheduler* m_parent;
+    scheduler_t* m_parent;
     bool m_shutdown;
     pthread_t m_pthread;
     pthread_barrier_t *m_barrier;
-    CoroDispatcher* m_dispatcher;
+    dispatcher_t* m_dispatcher;
 
     // TODO: make these use intrusive queues or something for performance?
-    std::multimap<file_wait_info_t, wait_callback_t*> m_fileWaiters;
-    std::multimap<uint64_t, wait_callback_t*> m_timerWaiters;
+    // TODO: also consider unordered maps
+    std::multimap<file_wait_info_t, wait_callback_t*> m_file_waiters;
+    std::multimap<uint64_t, wait_callback_t*> m_timer_waiters;
 
-    static __thread Thread* s_instance;
-    static __thread size_t s_threadId;
+    static __thread thread_t* s_instance;
+    static __thread size_t s_thread_id;
   };
 
 private:
-  friend class CoroDispatcher;
+  friend class dispatcher_t;
   friend class coro_t;
 
-  static CoroDispatcher& getDispatcher(size_t threadId);
+  static dispatcher_t& getDispatcher(size_t thread_id);
 
   // TODO: don't use atomic here?
   std::atomic<bool> m_running;
   std::atomic<int32_t> m_active_contexts; // semaphore, maybe?
   pthread_barrier_t m_barrier;
-  Thread** m_threads;
-  size_t m_numThreads;
-  static CoroScheduler* s_instance;
+  thread_t** m_threads;
+  size_t m_num_threads;
+  static scheduler_t* s_instance;
 };
 
 } // namespace indecorous

@@ -13,24 +13,24 @@ namespace indecorous {
 
 class coro_t;
 
-// Not thread-safe, exactly one CoroDispatcher per thread
-class CoroDispatcher
+// Not thread-safe, exactly one dispatcher_t per thread
+class dispatcher_t
 {
 public:
-    CoroDispatcher();
-    ~CoroDispatcher();
+    dispatcher_t();
+    ~dispatcher_t();
 
     // Returns the number of outstanding coroutines
     uint32_t run();
 
 private:
-    friend class CoroScheduler;
+    friend class scheduler_t;
     friend class coro_t;
-    static CoroDispatcher& getInstance();
+    static dispatcher_t& getInstance();
 
     void enqueue_release(coro_t *coro);
 
-    static __thread CoroDispatcher* s_instance;
+    static __thread dispatcher_t* s_instance;
 
     coro_t *volatile m_self;
     coro_t *m_release_coro; // Recently-finished coro_t to be released
@@ -73,8 +73,8 @@ public:
     }
 
 private:
-    friend class CoroScheduler;
-    friend class CoroDispatcher;
+    friend class scheduler_t;
+    friend class dispatcher_t;
     friend class Arena<coro_t>; // To allow instantiation of this class
 
     template <typename Res, typename... Args>
@@ -121,7 +121,7 @@ private:
         return std::get<3>(args)(std::forward<Args>(std::get<N+4>(args))...);
     }
 
-    coro_t(CoroDispatcher *dispatch, bool immediate);
+    coro_t(dispatcher_t *dispatch, bool immediate);
     ~coro_t();
 
     void begin(void(*fn)(void*), void *params);
@@ -131,7 +131,7 @@ private:
 
     static const size_t s_stackSize = 65535; // TODO: This is probably way too small
 
-    CoroDispatcher* m_dispatch;
+    dispatcher_t* m_dispatch;
     bool m_immediate;
     ucontext_t m_context;
     char m_stack[s_stackSize];

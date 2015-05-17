@@ -12,9 +12,9 @@
 
 namespace indecorous {
 
-uint32_t CoroDispatcher::s_max_swaps_per_loop = 100;
+uint32_t dispatcher_t::s_max_swaps_per_loop = 100;
 
-__thread CoroDispatcher* CoroDispatcher::s_instance = nullptr;
+__thread dispatcher_t* dispatcher_t::s_instance = nullptr;
 
 // Used to hand over parameters to a new coroutine - since we can't safely pass pointers
 struct handover_params_t {
@@ -23,7 +23,7 @@ struct handover_params_t {
 };
 __thread handover_params_t handover_params = { nullptr, nullptr };
 
-CoroDispatcher::CoroDispatcher() :
+dispatcher_t::dispatcher_t() :
     m_self(nullptr),
     m_active_contexts(), // TODO: init this to the number of queued coros
     m_context_arena(256)
@@ -32,19 +32,19 @@ CoroDispatcher::CoroDispatcher() :
     s_instance = this;
 }
 
-CoroDispatcher::~CoroDispatcher() {
+dispatcher_t::~dispatcher_t() {
     assert(m_self == nullptr);
     assert(s_instance == this);
     s_instance = nullptr;
 }
 
-CoroDispatcher& CoroDispatcher::getInstance() {
+dispatcher_t& dispatcher_t::getInstance() {
     if (s_instance == nullptr)
-        throw coro_exc_t("CoroDispatcher instance not found");
+        throw coro_exc_t("dispatcher_t instance not found");
     return *s_instance;
 }
 
-uint32_t CoroDispatcher::run() {
+uint32_t dispatcher_t::run() {
     assert(s_instance == this);
     assert(m_self == nullptr);
     m_swap_count = 0;
@@ -70,13 +70,13 @@ uint32_t CoroDispatcher::run() {
     return m_active_contexts;
 }
 
-void CoroDispatcher::enqueue_release(coro_t *coro) {
+void dispatcher_t::enqueue_release(coro_t *coro) {
     assert(m_release_coro == nullptr);
     m_release_coro = coro;
     --m_active_contexts;
 }
 
-coro_t::coro_t(CoroDispatcher* dispatch, bool immediate) :
+coro_t::coro_t(dispatcher_t* dispatch, bool immediate) :
     m_dispatch(dispatch),
     m_immediate(immediate),
     m_valgrindStackId(VALGRIND_STACK_REGISTER(m_stack, m_stack + sizeof(m_stack))),
@@ -123,7 +123,7 @@ void coro_t::swap(coro_t *next) {
         m_dispatch->m_self = next;
         swapcontext(&m_context, &next->m_context);
     } else if (m_dispatch->m_runQueue.empty() ||
-        m_dispatch->m_swap_count >= CoroDispatcher::s_max_swaps_per_loop) {
+        m_dispatch->m_swap_count >= dispatcher_t::s_max_swaps_per_loop) {
         m_dispatch->m_self = nullptr;
         swapcontext(&m_context, &m_dispatch->m_parentContext);
     } else {
@@ -157,11 +157,11 @@ void coro_t::swap(coro_t *next) {
 }
 
 coro_t* coro_t::self() {
-    return CoroDispatcher::getInstance().m_self;
+    return dispatcher_t::getInstance().m_self;
 }
 
 void coro_t::wait() {
-    CoroDispatcher& dispatch = CoroDispatcher::getInstance();
+    dispatcher_t& dispatch = dispatcher_t::getInstance();
     coro_t *coro = self();
     assert(coro != nullptr);
     assert(coro->m_dispatch == &dispatch);
@@ -169,7 +169,7 @@ void coro_t::wait() {
 }
 
 void coro_t::yield() {
-    CoroDispatcher& dispatch = CoroDispatcher::getInstance();
+    dispatcher_t& dispatch = dispatcher_t::getInstance();
     coro_t *coro = self();
     assert(coro != nullptr);
     assert(coro->m_dispatch == &dispatch);

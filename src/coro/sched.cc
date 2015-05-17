@@ -8,24 +8,24 @@
 
 namespace indecorous {
 
-CoroScheduler* CoroScheduler::s_instance = nullptr;
-__thread CoroScheduler::Thread* CoroScheduler::Thread::s_instance = nullptr;
-__thread size_t CoroScheduler::Thread::s_threadId = -1;
+scheduler_t* scheduler_t::s_instance = nullptr;
+__thread scheduler_t::thread_t* scheduler_t::thread_t::s_instance = nullptr;
+__thread size_t scheduler_t::thread_t::s_thread_id = -1;
 
-CoroScheduler::CoroScheduler(size_t numThreads) :
+scheduler_t::scheduler_t(size_t num_threads) :
   m_running(false),
   m_active_contexts(0),
-  m_numThreads(numThreads)
+  m_num_threads(num_threads)
 {
   if (s_instance != nullptr)
-    throw coro_exc_t("CoroScheduler instance already exists");
+    throw coro_exc_t("scheduler_t instance already exists");
 
-  pthread_barrier_init(&m_barrier, nullptr, m_numThreads + 1);
+  pthread_barrier_init(&m_barrier, nullptr, m_num_threads + 1);
 
-  // Create Thread objects for each thread
-  m_threads = new Thread*[m_numThreads];
-  for (size_t i = 0; i < m_numThreads; ++i) {
-    m_threads[i] = new Thread(this, i, &m_barrier);
+  // Create thread_t objects for each thread
+  m_threads = new thread_t*[m_num_threads];
+  for (size_t i = 0; i < m_num_threads; ++i) {
+    m_threads[i] = new thread_t(this, i, &m_barrier);
   }
 
   // Wait for all threads to start up
@@ -34,7 +34,7 @@ CoroScheduler::CoroScheduler(size_t numThreads) :
   s_instance = this;
 }
 
-CoroScheduler::~CoroScheduler() {
+scheduler_t::~scheduler_t() {
   assert(s_instance == this);
   assert(!m_running);
 
@@ -42,7 +42,7 @@ CoroScheduler::~CoroScheduler() {
     printf("Warning: %d coroutines have not completed\n", m_active_contexts.load());
 
   // Tell all threads to shutdown once we hit the following barrier
-  for (size_t i = 0; i < m_numThreads; ++i) {
+  for (size_t i = 0; i < m_num_threads; ++i) {
     m_threads[i]->shutdown();
   }
 
@@ -53,7 +53,7 @@ CoroScheduler::~CoroScheduler() {
   pthread_barrier_wait(&m_barrier);
   pthread_barrier_destroy(&m_barrier);
 
-  for (size_t i = 0; i < m_numThreads; ++i) {
+  for (size_t i = 0; i < m_num_threads; ++i) {
     delete m_threads[i];
   }
   delete [] m_threads;
@@ -61,39 +61,39 @@ CoroScheduler::~CoroScheduler() {
   s_instance = nullptr;
 }
 
-size_t CoroScheduler::getThreadId() {
-  return Thread::s_threadId;
+size_t scheduler_t::thread_id() {
+  return thread_t::s_thread_id;
 }
 
-CoroDispatcher& CoroScheduler::getDispatcher(size_t threadId) {
+dispatcher_t& scheduler_t::getDispatcher(size_t thread_id) {
   assert(s_instance != nullptr);
-  if (threadId >= s_instance->m_numThreads)
-    throw coro_exc_t("threadId out of bounds");
+  if (thread_id >= s_instance->m_num_threads)
+    throw coro_exc_t("thread_id out of bounds");
 
-  return *s_instance->m_threads[threadId]->m_dispatcher;
+  return *s_instance->m_threads[thread_id]->m_dispatcher;
 }
 
 // TODO: reimplement this using templates/parameter packs
 /*
-void CoroScheduler::spawn(size_t threadId, void (fn)(void*), void* p) {
+void scheduler_t::spawn(size_t thread_id, void (fn)(void*), void* p) {
   if (m_running)
     throw coro_exc_t("cannot externally spawn a coroutine while already running");
 
-  if (threadId >= m_numThreads)
-    throw coro_exc_t("threadId out of bounds");
+  if (thread_id >= m_num_threads)
+    throw coro_exc_t("thread_id out of bounds");
 
   // Coroutines are not running at the moment, so we can do what we please
   //  Note: this is not thread-safe
-  CoroDispatcher* dispatch = m_threads[threadId]->m_dispatcher;
+  dispatcher_t* dispatch = m_threads[thread_id]->m_dispatcher;
   coro_t* context = dispatch->m_contextArena.get(fn, p, dispatch, nullptr);
   dispatch->pushForeignContext(context);
   ++m_active_contexts;
 }
 */
 
-void CoroScheduler::run() {
+void scheduler_t::run() {
   if (m_running.exchange(true)) {
-    throw coro_exc_t("CoroScheduler already running");
+    throw coro_exc_t("scheduler_t already running");
   }
 
   // Wait for all threads to get to their loop
@@ -106,13 +106,13 @@ void CoroScheduler::run() {
 }
 
 struct thread_args_t {
-  CoroScheduler::Thread* instance;
-  size_t threadId;
+  scheduler_t::thread_t* instance;
+  size_t thread_id;
 };
 
-CoroScheduler::Thread::Thread(CoroScheduler* parent,
-                              size_t threadId,
-                              pthread_barrier_t* barrier) :
+scheduler_t::thread_t::thread_t(scheduler_t* parent,
+                                size_t thread_id,
+                                pthread_barrier_t* barrier) :
   m_parent(parent),
   m_shutdown(false),
   m_barrier(barrier)
@@ -125,46 +125,46 @@ CoroScheduler::Thread::Thread(CoroScheduler* parent,
   thread_args_t* args = new thread_args_t;
 
   args->instance = this;
-  args->threadId = threadId;
+  args->thread_id = thread_id;
 
-  pthread_create(&m_pthread, &attr, &threadHook, args);
+  pthread_create(&m_pthread, &attr, &thread_hook, args);
   pthread_attr_destroy(&attr);
 }
 
-void* CoroScheduler::Thread::threadHook(void* param) {
+void* scheduler_t::thread_t::thread_hook(void* param) {
   thread_args_t *args = reinterpret_cast<thread_args_t*>(param);
-  s_threadId = args->threadId;
+  s_thread_id = args->thread_id;
   s_instance = args->instance;
   delete args;
 
-  s_instance->m_dispatcher = new CoroDispatcher();
+  s_instance->m_dispatcher = new dispatcher_t();
 
-  s_instance->threadMain();
+  s_instance->thread_main();
 
   delete s_instance->m_dispatcher;
   s_instance->m_dispatcher = nullptr;
 
-  // Last barrier is for the CoroScheduler destructor,
-  //  indicates that the Thread objects are safe for destruction
+  // Last barrier is for the scheduler_t destructor,
+  //  indicates that the thread_t objects are safe for destruction
   pthread_barrier_wait(s_instance->m_barrier);
 
   return nullptr;
 }
 
-void CoroScheduler::Thread::threadMain() {
-  // First barrier is for the CoroScheduler constructor,
+void scheduler_t::thread_t::thread_main() {
+  // First barrier is for the scheduler_t constructor,
   //  indicates that the dispatchers are ready
   pthread_barrier_wait(m_barrier);
 
   while (true) {
-    // Wait for CoroScheduler::run or ~CoroScheduler
+    // Wait for scheduler_t::run or ~scheduler_t
     pthread_barrier_wait(m_barrier);
 
     if (m_shutdown)
       break;
 
     while (m_dispatcher->run() > 0) {
-      doWait();
+      do_wait();
     }
 
     // Wait for other threads to finish
@@ -172,97 +172,97 @@ void CoroScheduler::Thread::threadMain() {
   }
 }
 
-void CoroScheduler::Thread::shutdown() {
+void scheduler_t::thread_t::shutdown() {
   m_shutdown = true;
 }
 
-CoroScheduler::Thread& CoroScheduler::Thread::getInstance() {
+scheduler_t::thread_t& scheduler_t::thread_t::get_instance() {
   assert(s_instance != nullptr);
   return *s_instance;
 }
 
-void CoroScheduler::Thread::buildPollSet(struct pollfd* pollArray) {
+void scheduler_t::thread_t::build_poll_set(struct pollfd* poll_array) {
   // TODO don't fully generate this every time
   // Build up poll array for subscribed file events
   size_t index = 0;
 
-  pollArray[index].fd = 0;
-  pollArray[index].events = 0;
-  for (auto i = m_fileWaiters.begin(); i != m_fileWaiters.end(); ++i) {
-    if (pollArray[index].fd == 0) {
-      pollArray[index].fd = i->first.fd;
-      pollArray[index].events = i->first.event;
-    } else if (i->first.fd == pollArray[index].fd) {
-      pollArray[index].events |= i->first.event;
+  poll_array[index].fd = 0;
+  poll_array[index].events = 0;
+  for (auto i = m_file_waiters.begin(); i != m_file_waiters.end(); ++i) {
+    if (poll_array[index].fd == 0) {
+      poll_array[index].fd = i->first.fd;
+      poll_array[index].events = i->first.event;
+    } else if (i->first.fd == poll_array[index].fd) {
+      poll_array[index].events |= i->first.event;
     } else {
       ++index;
-      pollArray[index].fd = 0;
-      pollArray[index].events = 0;
+      poll_array[index].fd = 0;
+      poll_array[index].events = 0;
     }
   }
 }
 
 // TODO: pass error events using WaitError or whatever
-void CoroScheduler::Thread::notifyWaiters(size_t size, struct pollfd* pollArray) {
+void scheduler_t::thread_t::notify_waiters(size_t size, struct pollfd* poll_array) {
   // Call any triggered file waiters
   for (size_t index = 0; index < size; ++index) {
     // Check each flag and call associated file waiters
-    notifyWaitersForEvent(&pollArray[index], POLLIN);
-    notifyWaitersForEvent(&pollArray[index], POLLOUT);
-    notifyWaitersForEvent(&pollArray[index], POLLERR);
-    notifyWaitersForEvent(&pollArray[index], POLLHUP);
-    notifyWaitersForEvent(&pollArray[index], POLLPRI);
-    notifyWaitersForEvent(&pollArray[index], POLLRDHUP);
+    notify_waiters_for_event(&poll_array[index], POLLIN);
+    notify_waiters_for_event(&poll_array[index], POLLOUT);
+    notify_waiters_for_event(&poll_array[index], POLLERR);
+    notify_waiters_for_event(&poll_array[index], POLLHUP);
+    notify_waiters_for_event(&poll_array[index], POLLPRI);
+    notify_waiters_for_event(&poll_array[index], POLLRDHUP);
   }
 }
 
-void CoroScheduler::Thread::notifyWaitersForEvent(struct pollfd* pollEvent, int eventMask) {
-  if (pollEvent->revents & eventMask) {
-    file_wait_info_t info = { pollEvent->fd, eventMask };
+void scheduler_t::thread_t::notify_waiters_for_event(struct pollfd* pollEvent, int event_mask) {
+  if (pollEvent->revents & event_mask) {
+    file_wait_info_t info = { pollEvent->fd, event_mask };
 
-    for (auto i = m_fileWaiters.lower_bound(info);
-         i != m_fileWaiters.end() && i->first == info; ++i)
+    for (auto i = m_file_waiters.lower_bound(info);
+         i != m_file_waiters.end() && i->first == info; ++i)
        i->second->wait_callback(wait_result_t::Success);
   }
 }
 
-void CoroScheduler::Thread::doWait() {
+void scheduler_t::thread_t::do_wait() {
   // Wait on timers and file descriptors
-  size_t pollSize = m_fileWaiters.size(); // Check if this works for multimaps
-  struct pollfd pollArray[1]; // TODO: RSI: fix variable length array
+  size_t pollSize = m_file_waiters.size(); // Check if this works for multimaps
+  struct pollfd poll_array[1]; // TODO: RSI: fix variable length array
 
-  buildPollSet(pollArray);
-  int timeout = getWaitTimeout(); // This will handle any timer callbacks
+  build_poll_set(poll_array);
+  int timeout = get_wait_timeout(); // This will handle any timer callbacks
 
   // Do the wait
   int res;
   do {
-    res = poll(pollArray, pollSize, timeout);
+    res = poll(poll_array, pollSize, timeout);
   } while (res == -1 && errno == EINTR);
 
   if (res == -1)
     throw coro_exc_t("poll failed");
   else if (res != 0)
-    notifyWaiters(pollSize, pollArray);
+    notify_waiters(pollSize, poll_array);
   else
-    getWaitTimeout(); // Time out, a timer has probably expired, so notify the waiter
+    get_wait_timeout(); // Time out, a timer has probably expired, so notify the waiter
 }
 
-int CoroScheduler::Thread::getWaitTimeout() {
+int scheduler_t::thread_t::get_wait_timeout() {
   if (m_dispatcher->m_runQueue.size() > 0)
     return 0;
 
-  if (m_timerWaiters.empty())
+  if (m_timer_waiters.empty())
     return -1;
 
-  uint64_t now = getEndTime(0);
+  uint64_t now = get_end_time(0);
   uint64_t delta = INT_MAX;
 
   // Notify any elapsed timers and find the delta until the following timer
-  for (auto i = m_timerWaiters.begin(); !m_timerWaiters.empty(); i = m_timerWaiters.begin()) {
+  for (auto i = m_timer_waiters.begin(); !m_timer_waiters.empty(); i = m_timer_waiters.begin()) {
     if (i->first <= now) {
       i->second->wait_callback(wait_result_t::Success);
-      m_timerWaiters.erase(i);
+      m_timer_waiters.erase(i);
     } else {
       delta = i->first - now;
       break;
@@ -272,7 +272,7 @@ int CoroScheduler::Thread::getWaitTimeout() {
   return (delta > INT_MAX) ? INT_MAX : (int)delta;
 }
 
-uint64_t CoroScheduler::Thread::getEndTime(uint32_t timeout) {
+uint64_t scheduler_t::thread_t::get_end_time(uint32_t timeout) {
   struct timeval time;
   if (gettimeofday(&time, nullptr) != 0)
     throw coro_exc_t("gettimeofday failed");
@@ -281,70 +281,70 @@ uint64_t CoroScheduler::Thread::getEndTime(uint32_t timeout) {
   return (now + timeout);
 }
 
-void CoroScheduler::Thread::addTimer(wait_callback_t* cb, uint32_t timeout) {
+void scheduler_t::thread_t::add_timer(wait_callback_t* cb, uint32_t timeout) {
   // TODO: do a better than O(n) search - store expiration time in timer?
-  Thread& thread = getInstance();
+  thread_t& thread = get_instance();
 
-  auto i = thread.m_timerWaiters.begin();
-  for (; i != thread.m_timerWaiters.end() && i->second != cb; ++i);
-  assert(i == thread.m_timerWaiters.end());
+  auto i = thread.m_timer_waiters.begin();
+  for (; i != thread.m_timer_waiters.end() && i->second != cb; ++i);
+  assert(i == thread.m_timer_waiters.end());
 
-  uint64_t endTime = getEndTime(timeout);
-  thread.m_timerWaiters.insert(std::make_pair(endTime, cb));
+  uint64_t endTime = get_end_time(timeout);
+  thread.m_timer_waiters.insert(std::make_pair(endTime, cb));
 }
 
-void CoroScheduler::Thread::updateTimer(wait_callback_t* cb, uint32_t timeout) {
+void scheduler_t::thread_t::update_timer(wait_callback_t* cb, uint32_t timeout) {
   // TODO: do a better than O(n) search - store expiration time in timer?
-  Thread& thread = getInstance();
+  thread_t& thread = get_instance();
 
-  auto i = thread.m_timerWaiters.begin();
-  for (; i != thread.m_timerWaiters.end() && i->second != cb; ++i);
-  assert(i != thread.m_timerWaiters.end());
-  thread.m_timerWaiters.erase(i);
+  auto i = thread.m_timer_waiters.begin();
+  for (; i != thread.m_timer_waiters.end() && i->second != cb; ++i);
+  assert(i != thread.m_timer_waiters.end());
+  thread.m_timer_waiters.erase(i);
 
-  uint64_t endTime = getEndTime(timeout);
-  thread.m_timerWaiters.insert(std::make_pair(endTime, cb));
+  uint64_t endTime = get_end_time(timeout);
+  thread.m_timer_waiters.insert(std::make_pair(endTime, cb));
 }
 
-void CoroScheduler::Thread::removeTimer(wait_callback_t* cb) {
+void scheduler_t::thread_t::remove_timer(wait_callback_t* cb) {
   // TODO: do a better than O(n) search - store expiration time in timer?
-  Thread& thread = getInstance();
-  auto i = thread.m_timerWaiters.begin();
-  for (; i != thread.m_timerWaiters.end() && i->second != cb; ++i);
-  assert(i != thread.m_timerWaiters.end());
-  thread.m_timerWaiters.erase(i);
+  thread_t& thread = get_instance();
+  auto i = thread.m_timer_waiters.begin();
+  for (; i != thread.m_timer_waiters.end() && i->second != cb; ++i);
+  assert(i != thread.m_timer_waiters.end());
+  thread.m_timer_waiters.erase(i);
 }
 
-bool CoroScheduler::Thread::addFileWait(int fd, int eventMask, wait_callback_t* cb) {
-  assert(eventMask == POLLRDHUP ||
-         eventMask == POLLERR ||
-         eventMask == POLLHUP ||
-         eventMask == POLLOUT ||
-         eventMask == POLLPRI ||
-         eventMask == POLLIN);
+bool scheduler_t::thread_t::add_file_wait(int fd, int event_mask, wait_callback_t* cb) {
+  assert(event_mask == POLLRDHUP ||
+         event_mask == POLLERR ||
+         event_mask == POLLHUP ||
+         event_mask == POLLOUT ||
+         event_mask == POLLPRI ||
+         event_mask == POLLIN);
 
-  Thread& thread = getInstance();
-  file_wait_info_t info = { fd, eventMask };
+  thread_t& thread = get_instance();
+  file_wait_info_t info = { fd, event_mask };
 
-  for (auto i = thread.m_fileWaiters.lower_bound(info);
-       i != thread.m_fileWaiters.end() && i->first == info; ++i) {
+  for (auto i = thread.m_file_waiters.lower_bound(info);
+       i != thread.m_file_waiters.end() && i->first == info; ++i) {
     if (i->second == cb)
       return false;
   }
 
-  thread.m_fileWaiters.insert(std::make_pair(info, cb));
+  thread.m_file_waiters.insert(std::make_pair(info, cb));
   return true;
 }
 
-bool CoroScheduler::Thread::removeFileWait(int fd, int eventMask, wait_callback_t* cb) {
-  Thread& thread = getInstance();
-  file_wait_info_t info = { fd, eventMask };
+bool scheduler_t::thread_t::remove_file_wait(int fd, int event_mask, wait_callback_t* cb) {
+  thread_t& thread = get_instance();
+  file_wait_info_t info = { fd, event_mask };
 
   // Find the specified item in the map
-  for (auto i = thread.m_fileWaiters.lower_bound(info);
-       i != thread.m_fileWaiters.end() && i->first == info; ++i) {
+  for (auto i = thread.m_file_waiters.lower_bound(info);
+       i != thread.m_file_waiters.end() && i->first == info; ++i) {
     if (i->second == cb) {
-      thread.m_fileWaiters.erase(i);
+      thread.m_file_waiters.erase(i);
       return true;
     }
   }
