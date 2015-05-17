@@ -40,9 +40,7 @@ pseudo_random_t::val_t pseudo_random_t::next() {
     return dev();
 }
 
-uuid_t::uuid_t() {
-
-}
+uuid_t::uuid_t() { }
 
 uuid_t uuid_t::generate(random_t *r) {
     uuid_t new_uuid;
@@ -59,15 +57,11 @@ uuid_t uuid_t::nil() {
 
 // Perform a timing-sensitive comparison so if someone uses an ID as a security
 // measure, it won't be susceptible to timing attacks.
-int uuid_t::cmp(const uuid_t &, const uuid_t &) {
-    // TODO: implement this
-    return 0;
-}
-
+// TODO: make sure the compiler isn't optimizing this
 bool uuid_t::operator ==(const uuid_t &other) const {
-    return cmp(*this, other) == 0;
-}
-
-bool uuid_t::operator <(const uuid_t &other) const {
-    return cmp(*this, other) == 0;
+    bool res = true;
+    for (size_t i = 0; i < sizeof(buffer); ++i) {
+        res = res && (buffer[i] == other.buffer[i]);
+    }
+    return res;
 }

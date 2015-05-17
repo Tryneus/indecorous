@@ -55,7 +55,6 @@ public:
     static uuid_t generate(random_t *r);
     static uuid_t nil();
     bool operator ==(const uuid_t &other) const;
-    bool operator <(const uuid_t &other) const;
 private:
     static int cmp(const uuid_t &a, const uuid_t &b);
     uuid_t();
