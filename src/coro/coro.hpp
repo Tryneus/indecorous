@@ -65,66 +65,62 @@ public:
     // Create a coroutine and put it on the queue to run
     template <typename Res, typename... Args>
     static promise_t<Res> spawn(Res(*fn)(Args...), Args &&...args) {
-        return spawn_internal(false, fn, std::forward<Args>(args)...);
+        return coro_t::self()->spawn_internal(false, fn, std::forward<Args>(args)...);
     }
     template <typename Res, typename... Args>
     static promise_t<Res> spawn_now(Res(*fn)(Args...), Args &&...args) {
-        return spawn_internal(true, fn, std::forward<Args>(args)...);
+        return coro_t::self()->spawn_internal(true, fn, std::forward<Args>(args)...);
     }
 
 private:
     friend class scheduler_t;
     friend class dispatcher_t;
     friend class Arena<coro_t>; // To allow instantiation of this class
+    friend void launch_coro();
 
     template <typename Res, typename... Args>
-    static promise_t<Res> spawn_internal(bool immediate, Res(*fn)(Args...), Args &&...args) {
+    promise_t<Res> spawn_internal(bool immediate, Res(*fn)(Args...), Args &&...args) {
         promise_t<Res> promise;
-        coro_t *self = coro_t::self();
-        coro_t *context = self->m_dispatch->m_context_arena.get(self->m_dispatch, immediate, hook<Res, Args...>);
-        // TODO: this tuple stuff is ugly as hell
-        std::tuple<coro_t *, coro_t *, promise_t<Res>, Res(*)(Args...), Args...> params(
-            { coro_t::self(), context, promise, fn, std::forward<Args>(args)... });
+        coro_t *context = m_dispatch->m_context_arena.get(m_dispatch);
+        std::tuple<promise_t<Res>, Res(*)(Args...), Args...> params(
+            { promise, fn, std::forward<Args>(args)... });
 
-        // Start the other coroutine - it will return once it has copied the parameters
-        context->begin(&params);
+        // Start the other coroutine - it will give us execution back after it has 
+        // copied the parameters
+        context->begin(hook<Res, Args...>, &params, this, immediate);
         return promise;
     }
 
     template <typename Res, typename... Args>
-    [[noreturn]] static void hook(void *p) {
+    [[noreturn]] void hook(void *p, coro_t *parent, bool immediate) {
         typedef std::tuple<coro_t *, coro_t *, promise_t<Res>, Res(*)(Args...), Args...> params_t;
         params_t params = std::move(*reinterpret_cast<params_t *>(p));
-        coro_t *parent = std::get<0>(params);
-        coro_t *self = std::get<1>(params);
 
-        if (self->m_immediate) {
+        if (immediate) {
             // We're running immediately, put our parent on the back of the run queue
-            self->m_dispatch->m_runQueue.push(parent);
+            m_dispatch->m_runQueue.push(parent);
         } else {
             // We're delaying our execution, put ourselves on the back of the run queue
             // and swap back in our parent so they can continue
-            self->m_dispatch->m_runQueue.push(self);
-            self->swap(parent);
+            m_dispatch->m_runQueue.push(this);
+            swap(parent);
         }
 
-        promise_t<Res> *promise = &std::get<2>(params);
+        promise_t<Res> *promise = &std::get<0>(params);
         promise->fulfill(hook_internal(std::index_sequence_for<Args...>{}, params));
-        
-        // TODO: would be nice to move this out of the header
-        self->m_dispatch->enqueue_release(self);
-        self->swap();
+        end();
     }
 
     template <size_t... N, typename Res, typename... Args>
     static Res hook_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...> &args) {
-        return std::get<3>(args)(std::forward<Args>(std::get<N+4>(args))...);
+        return std::get<1>(args)(std::forward<Args>(std::get<N+2>(args))...);
     }
 
-    coro_t(dispatcher_t *dispatch, bool immediate);
+    coro_t(dispatcher_t *dispatch);
     ~coro_t();
 
-    void begin(void(*fn)(void*), void *params);
+    void begin(void(coro_t::*fn)(void*, coro_t*, bool), void *params, coro_t *parent, bool immediate);
+    [[noreturn]] void end();
     void swap(coro_t *next = nullptr);
 
     void wait_callback(wait_result_t result);
@@ -132,7 +128,6 @@ private:
     static const size_t s_stackSize = 65535; // TODO: This is probably way too small
 
     dispatcher_t* m_dispatch;
-    bool m_immediate;
     ucontext_t m_context;
     char m_stack[s_stackSize];
     int m_valgrindStackId;

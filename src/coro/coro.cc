@@ -18,10 +18,40 @@ __thread dispatcher_t* dispatcher_t::s_instance = nullptr;
 
 // Used to hand over parameters to a new coroutine - since we can't safely pass pointers
 struct handover_params_t {
-    void (*fn)(void*);
+    void init(coro_t *_self,
+              void(coro_t::*_fn)(void*, coro_t*, bool),
+              void *_params,
+              coro_t *_parent,
+              bool _immediate) {
+        self = _self;
+        fn = _fn;
+        params = _params;
+        parent = _parent;
+        immediate = _immediate;
+    }
+
+    void clear() {
+        self = nullptr;
+        fn = nullptr;
+        params = nullptr;
+        parent = nullptr;
+        immediate = false;
+    }
+
+    void check_valid() {
+        assert(self != nullptr);
+        assert(fn != nullptr);
+        assert(params != nullptr);
+        assert(parent != nullptr);
+    }
+
+    coro_t *self;
+    void (coro_t::*fn)(void*, coro_t*, bool);
     void *params;
+    coro_t *parent;
+    bool immediate;
 };
-__thread handover_params_t handover_params = { nullptr, nullptr };
+__thread handover_params_t handover_params;
 
 dispatcher_t::dispatcher_t() :
     m_self(nullptr),
@@ -76,9 +106,8 @@ void dispatcher_t::enqueue_release(coro_t *coro) {
     --m_active_contexts;
 }
 
-coro_t::coro_t(dispatcher_t* dispatch, bool immediate) :
+coro_t::coro_t(dispatcher_t* dispatch) :
     m_dispatch(dispatch),
-    m_immediate(immediate),
     m_valgrindStackId(VALGRIND_STACK_REGISTER(m_stack, m_stack + sizeof(m_stack))),
     m_wait_result(wait_result_t::Success) { }
 
@@ -86,18 +115,23 @@ coro_t::~coro_t() {
     VALGRIND_STACK_DEREGISTER(m_valgrindStackId);
 }
 
-[[noreturn]]
-void launch_coro() {
-    void (*fn)(void*) = handover_params.fn;
+[[noreturn]] void launch_coro() {
+    handover_params.check_valid();
+
+    // Copy out the handover parameters so we can clear them
+    void (coro_t::*fn)(void*, coro_t*, bool) = handover_params.fn;
     void *params = handover_params.params;
-    handover_params = { nullptr, nullptr };
-    assert(fn != nullptr);
-    assert(params != nullptr);
-    fn(params); // Should not return
+    coro_t *self = handover_params.self;
+    coro_t *parent = handover_params.parent;
+    bool immediate = handover_params.immediate;
+
+    // Reset the handover parameters for the next coroutine to be spawned
+    handover_params.clear();
+    (self->*fn)(params, parent, immediate);
     assert(false);
 }
 
-void coro_t::begin(void(*fn)(void*), void *params) {
+void coro_t::begin(void(coro_t::*fn)(void*, coro_t*, bool), void *params, coro_t *parent, bool immediate) {
     int res = getcontext(&m_context);
     assert(res == 0);
 
@@ -107,10 +141,15 @@ void coro_t::begin(void(*fn)(void*), void *params) {
 
     // The new coroutine will pick up its parameters from the thread-static variable
     assert(handover_params.fn == nullptr);
-    assert(handover_params.params == nullptr);
-    handover_params = { fn, params };
+    handover_params.init(this, fn, params, parent, immediate);
     makecontext(&m_context, launch_coro, 0);
     swap(this); // Swap in this coroutine immediately
+}
+
+[[noreturn]] void coro_t::end() {
+    m_dispatch->enqueue_release(this);
+    swap();
+    assert(false);
 }
 
 void coro_t::swap(coro_t *next) {
