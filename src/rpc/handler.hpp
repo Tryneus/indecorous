@@ -31,8 +31,8 @@ private:
     static const handler_id_t unique_id;
 };
 
-template <typename Impl>
-class handler_t : public unique_handler_t<Impl> {
+template <typename Callback>
+class handler_t : public unique_handler_t<Callback> {
 public:
     handler_t(message_hub_t *hub) : membership(hub, &internal_handler) { }
 
@@ -53,16 +53,18 @@ public:
         }
 
         handler_id_t id() const {
-            return handler_t<Impl>::handler_id();
+            return handler_t<Callback>::handler_id();
         }
 
-        // The client calls this to error at compilation if the args don't line up
-        static void check_args(Args &&...) { }
+        static write_message_t make_write(request_id_t request_id, Args &&...args) {
+            return write_message_t::create(handler_t<Callback>::handler_id(),
+                                           request_id, std::forward<Args>(args)...);
+        }
 
     private:
         template <size_t... N>
         static Res handle(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&args) {
-            return Impl::call(std::move(std::get<N>(args))...);
+            return Callback::call(std::move(std::get<N>(args))...);
         }
     };
 
@@ -70,7 +72,7 @@ public:
     template <typename Res, typename... Args>
     static internal_handler_t<Res, Args...> dummy_translator(Res(*fn)(Args...));
 
-    typedef decltype(dummy_translator(Impl::call)) handler_impl_t;
+    typedef decltype(dummy_translator(Callback::call)) handler_impl_t;
     handler_impl_t internal_handler;
 
     message_hub_t::membership_t<handler_callback_t> membership;

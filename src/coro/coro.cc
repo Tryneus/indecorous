@@ -146,7 +146,7 @@ void coro_t::begin(void(coro_t::*fn)(void*, coro_t*, bool), void *params, coro_t
     swap(this); // Swap in this coroutine immediately
 }
 
-[[noreturn]] void coro_t::end() {
+void coro_t::end() {
     m_dispatch->enqueue_release(this);
     swap();
     assert(false);

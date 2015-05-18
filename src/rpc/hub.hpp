@@ -15,7 +15,7 @@ public:
     message_hub_t();
     ~message_hub_t();
 
-    target_t *get_target(target_id_t id) const;
+    target_t *target(target_id_t id) const;
 
     template <class T>
     class membership_t {
@@ -28,8 +28,8 @@ public:
     };
 
 private:
-    void add(target_t *target);
-    void remove(target_t *target);
+    void add(target_t *_target);
+    void remove(target_t *_target);
     void add(handler_callback_t *callback);
     void remove(handler_callback_t *callback);
 

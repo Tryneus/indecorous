@@ -34,6 +34,9 @@ public:
         static uint64_t next_value(0);
         return target_id_t(next_value++);
     }
+    bool operator <(const target_id_t &other) const {
+        return value_ < other.value_;
+    }
 private:
     friend class read_message_t;
     target_id_t(uint64_t _value) : value_(_value) { }

@@ -25,7 +25,7 @@ template class message_hub_t::membership_t<target_t>;
 message_hub_t::message_hub_t() { }
 message_hub_t::~message_hub_t() { }
 
-target_t *message_hub_t::get_target(target_id_t id) const {
+target_t *message_hub_t::target(target_id_t id) const {
     auto it = targets.find(id);
     return (it == targets.end()) ? nullptr : it->second;
 }
@@ -39,13 +39,13 @@ void message_hub_t::remove(handler_callback_t *callback) {
     assert(res == 1);
 }
 
-void message_hub_t::add(target_t *target) {
-    auto res = targets.insert(std::make_pair(target->id(), target));
+void message_hub_t::add(target_t *_target) {
+    auto res = targets.insert(std::make_pair(_target->id(), _target));
     assert(res.second);
 }
 
-void message_hub_t::remove(target_t *target) {
-    size_t res = targets.erase(target->id());
+void message_hub_t::remove(target_t *_target) {
+    size_t res = targets.erase(_target->id());
     assert(res == 1);
 }
 
