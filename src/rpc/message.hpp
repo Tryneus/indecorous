@@ -25,7 +25,7 @@ public:
     void push_back(char c);
 
 private:
-    friend class target_t;
+    friend class local_stream_t;
     std::vector<char> buffer;
 };
 
@@ -38,6 +38,7 @@ public:
     handler_id_t handler_id;
     request_id_t request_id;
 
+    static read_message_t parse(std::vector<char> &&buffer);
     static read_message_t parse(stream_t *stream);
 
 private:

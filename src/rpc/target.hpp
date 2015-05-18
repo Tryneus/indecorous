@@ -10,6 +10,8 @@
 
 namespace indecorous {
 
+class thread_t;
+
 class target_t {
 public:
     target_t(message_hub_t *hub);
@@ -22,20 +24,38 @@ public:
         write_message_t msg =
             handler_t<Callback>::handler_impl_t::make_write(request_id_t::noreply(),
                                                             std::forward<Args>(args)...);
-        stream()->write(msg.buffer.data(), msg.buffer.size());
+        stream()->write(std::move(msg));
     }
 
     /*
     template <class Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>
     result_t call(Args &&...args) {
         request_id_t request_id = new_request_id();
-        message_t msg = message_t::create(handler_t<Callback>::id,
-                                          request_id,
-                                          std::forward<Args>(args)...);
-        sync_request_t request(this, request_id);
-        return request.run(std::move(msg)).deserialize<result_t>();
+        write_message_t msg =
+            handler_t<Callback>::handler_impl_t::make_write(request_id,
+                                                            std::forward<Args>(args)...);
+        stream()->write(std::move(msg));
+        promise_t<read_message_t> promise = get_response(request_id);
+        read_message_t response(promise.release());
+        return serializer_t<result_t>::read(&response);
     }
     */
+
+    /*
+    template <class Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>
+    promise_t<result_t> async_call(Args &&...args) {
+        request_id_t request_id = new_request_id();
+        write_message_t msg =
+            handler_t<Callback>::handler_impl_t::make_write(request_id,
+                                                            std::forward<Args>(args)...);
+        stream()->write(std::move(msg));
+        // TODO: chain promises
+        promise_t<read_message_t> promise = get_response(request_id);
+        read_message_t response(promise.release());
+        return serializer_t<result_t>::read(&response);
+    }
+    */
+
 
 protected:
     virtual stream_t *stream() = 0;
@@ -59,10 +79,11 @@ private:
 
 class local_target_t : public target_t {
 public:
-    local_target_t(message_hub_t *hub);
+    local_target_t(message_hub_t *hub,
+                   thread_t *owner);
 private:
     stream_t *stream();
-    dummy_stream_t stream_; // TODO: shortcut
+    local_stream_t stream_;
 };
 
 /*

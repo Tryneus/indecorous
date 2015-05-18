@@ -19,6 +19,21 @@ struct message_header_t {
                       payload_size);
 };
 
+read_message_t read_message_t::parse(std::vector<char> &&buffer) {
+    static_assert(sizeof(message_header_t) == sizeof(uint64_t) * 4, "error");
+
+    read_message_t message(std::move(buffer), handler_id_t(-1), request_id_t(-1));
+    message_header_t header = serializer_t<message_header_t>::read(&message);
+    assert(header.header_magic == message_header_t::HEADER_MAGIC);
+
+    message.handler_id = header.handler_id;
+    message.request_id = header.request_id;
+
+    assert(header.payload_size == message.buffer.size() - message.offset);
+    return message;
+}
+
+/*
 read_message_t read_message_t::parse(stream_t *stream) {
     static_assert(sizeof(message_header_t) == sizeof(uint64_t) * 4, "error");
 
@@ -38,6 +53,7 @@ read_message_t read_message_t::parse(stream_t *stream) {
                           std::move(header.handler_id),
                           std::move(header.request_id));
 }
+*/
 
 read_message_t::read_message_t(std::vector<char> &&_buffer,
                                handler_id_t &&_handler_id,

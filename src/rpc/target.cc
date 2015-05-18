@@ -5,8 +5,8 @@
 namespace indecorous {
 
 target_t::target_t(message_hub_t *hub) :
-        target_id(target_id_t::assign()),
-        membership(hub, this) { }
+    target_id(target_id_t::assign()),
+    membership(hub, this) { }
 
 target_t::~target_t() { }
 
@@ -29,8 +29,8 @@ message_t target_t::sync_request_t::run(message_t &&msg) {
 }
 */
 
-local_target_t::local_target_t(message_hub_t *hub) :
-    target_t(hub) { }
+local_target_t::local_target_t(message_hub_t *hub, thread_t *thread) :
+    target_t(hub), stream_(thread) { }
 
 stream_t *local_target_t::stream() {
     return &stream_;

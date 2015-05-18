@@ -9,7 +9,7 @@
 
 #include "coro/coro.hpp"
 #include "coro/sched.hpp"
-#include "coro/errors.hpp"
+#include "errors.hpp"
 #include "rpc/serialize_stl.hpp"
 
 const size_t num_threads = 4;

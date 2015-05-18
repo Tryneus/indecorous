@@ -25,6 +25,7 @@ public:
 
 private:
     friend class scheduler_t;
+    friend class thread_t;
     friend class coro_t;
     static dispatcher_t& getInstance();
 

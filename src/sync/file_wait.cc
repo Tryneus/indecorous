@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include "coro/coro.hpp"
+#include "coro/thread.hpp"
 
 namespace indecorous {
 
@@ -40,7 +41,7 @@ template <int EventFlag>
 void file_wait_template_t<EventFlag>::wait() {
     DEBUG_ONLY(coro_t* self = coro_t::self());
     addWait(coro_t::self());
-    scheduler_t::thread_t::add_file_wait(m_fd, EventFlag, this);
+    thread_t::add_file_wait(m_fd, EventFlag, this);
     coro_t::wait();
     assert(self == coro_t::self());
 }

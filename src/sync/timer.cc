@@ -1,7 +1,7 @@
 #include "sync/timer.hpp"
 
 #include "common.hpp"
-#include "coro/sched.hpp"
+#include "coro/thread.hpp"
 
 namespace indecorous {
 
@@ -28,20 +28,20 @@ void timer_t::set(uint32_t timeoutMs, bool autoReset, bool wakeAll) {
   m_timeout = timeoutMs;
   m_wakeAll = wakeAll;
   m_running = true;
-  scheduler_t::thread_t::add_timer(this, m_timeout);
+  thread_t::add_timer(this, m_timeout);
 }
 
 void timer_t::reset() {
   assert(m_timeout != (uint32_t)-1);
   m_running = true;
-  scheduler_t::thread_t::update_timer(this, m_timeout);
+  thread_t::update_timer(this, m_timeout);
 }
 
 bool timer_t::stop() {
   if (!m_running)
     return false;
 
-  scheduler_t::thread_t::remove_timer(this);
+  thread_t::remove_timer(this);
   m_running = false;
 
   // Fail any current waits - this may not be the 'right' thing to do...

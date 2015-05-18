@@ -23,9 +23,13 @@ public:
         }
     }
 
-    T get() {
+    T get_copy() {
         wait();
         return m_data->get();
+    }
+
+    T release() {
+        return std::move(m_data->get());
     }
 
     const T &get_ref() {

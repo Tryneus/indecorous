@@ -3,33 +3,38 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <vector>
+#include <mutex>
+#include <queue>
 
 namespace indecorous {
 
+class thread_t;
 class write_message_t;
+class read_message_t;
 
 class stream_t {
 public:
     virtual ~stream_t();
-    virtual void read(char *buffer, size_t length) = 0;
-    virtual void write(char *buffer, size_t length) = 0;
+    virtual void write(write_message_t &&) = 0;
+    virtual read_message_t read() = 0;
 };
 
-class dummy_stream_t : public stream_t {
+class local_stream_t : public stream_t {
 public:
-    dummy_stream_t();
-    void read(char *buffer, size_t length);
-    void write(char *buffer, size_t length);
+    local_stream_t(thread_t *_thread);
+    void write(write_message_t &&msg);
+    read_message_t read();
 private:
-    std::vector<char> data;
+    thread_t *thread;
+    std::queue<write_message_t> message_queue;
+    std::mutex mutex;
 };
 
 class tcp_stream_t : public stream_t {
 public:
     tcp_stream_t(int _fd);
-    void read(char *buffer, size_t length);
-    void write(char *buffer, size_t length);
+    void write(write_message_t &&msg);
+    read_message_t read();
 private:
     int fd;
 };

@@ -8,7 +8,7 @@
 
 #include "sync/event.hpp"
 #include "coro/sched.hpp"
-#include "coro/errors.hpp"
+#include "errors.hpp"
 
 namespace indecorous {
 
