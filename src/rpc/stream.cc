@@ -13,6 +13,7 @@ local_stream_t::local_stream_t(thread_t *_thread) :
 
 void local_stream_t::write(write_message_t &&msg) {
     // TODO: somehow notify the thread that it has messages
+    // TODO: do this without mutexes
     std::lock_guard<std::mutex> lock(mutex);
     message_queue.emplace(std::move(msg));
 }

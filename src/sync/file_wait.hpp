@@ -26,7 +26,7 @@ private:
   void wait_callback(wait_result_t result);
 
   bool m_wakeAll;
-  IntrusiveQueue<wait_callback_t> m_waiters;
+  intrusive_queue_t<wait_callback_t> m_waiters;
 };
 
 template <int EventFlag>

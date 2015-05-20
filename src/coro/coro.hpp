@@ -27,7 +27,7 @@ private:
     friend class scheduler_t;
     friend class thread_t;
     friend class coro_t;
-    static dispatcher_t& getInstance();
+    static dispatcher_t& get_instance();
 
     void enqueue_release(coro_t *coro);
 
@@ -42,13 +42,10 @@ private:
 
     Arena<coro_t> m_context_arena; // Arena used to cache context allocations
 
-    IntrusiveQueue<coro_t> m_runQueue; // Queue of contexts to run
+    intrusive_queue_t<coro_t> m_run_queue; // Queue of contexts to run
 };
 
-// Pointers to contexts can be used by other modules, but they should not be changed at all
-//  The QueueNode part *may* be changed if it is certain that the context is not already enqueued to run
-//  otherwise an assert will fail
-class coro_t : public wait_callback_t, public QueueNode<coro_t>
+class coro_t : public wait_callback_t, public intrusive_node_t<coro_t>
 {
 public:
     // Get the running coroutine
@@ -65,11 +62,11 @@ public:
 
     // Create a coroutine and put it on the queue to run
     template <typename Res, typename... Args>
-    static promise_t<Res> spawn(Res(*fn)(Args...), Args &&...args) {
+    static future_t<Res> spawn(Res(*fn)(Args...), Args &&...args) {
         return coro_t::self()->spawn_internal(false, fn, std::forward<Args>(args)...);
     }
     template <typename Res, typename... Args>
-    static promise_t<Res> spawn_now(Res(*fn)(Args...), Args &&...args) {
+    static future_t<Res> spawn_now(Res(*fn)(Args...), Args &&...args) {
         return coro_t::self()->spawn_internal(true, fn, std::forward<Args>(args)...);
     }
 
@@ -80,16 +77,17 @@ private:
     friend void launch_coro();
 
     template <typename Res, typename... Args>
-    promise_t<Res> spawn_internal(bool immediate, Res(*fn)(Args...), Args &&...args) {
+    future_t<Res> spawn_internal(bool immediate, Res(*fn)(Args...), Args &&...args) {
         promise_t<Res> promise;
+        future_t<Res> res = promise.get_future();
         coro_t *context = m_dispatch->m_context_arena.get(m_dispatch);
         std::tuple<promise_t<Res>, Res(*)(Args...), Args...> params(
-            { promise, fn, std::forward<Args>(args)... });
+            { std::move(promise), fn, std::forward<Args>(args)... });
 
         // Start the other coroutine - it will give us execution back after it has 
         // copied the parameters
         context->begin(hook<Res, Args...>, &params, this, immediate);
-        return promise;
+        return res;
     }
 
     template <typename Res, typename... Args>
@@ -99,11 +97,11 @@ private:
 
         if (immediate) {
             // We're running immediately, put our parent on the back of the run queue
-            m_dispatch->m_runQueue.push(parent);
+            m_dispatch->m_run_queue.push(parent);
         } else {
             // We're delaying our execution, put ourselves on the back of the run queue
             // and swap back in our parent so they can continue
-            m_dispatch->m_runQueue.push(this);
+            m_dispatch->m_run_queue.push(this);
             swap(parent);
         }
 
@@ -114,7 +112,7 @@ private:
 
     template <size_t... N, typename Res, typename... Args>
     static Res hook_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...> &args) {
-        return std::get<1>(args)(std::forward<Args>(std::get<N+2>(args))...);
+        return std::get<1>(args)(std::get<N+2>(std::move(args))...);
     }
 
     coro_t(dispatcher_t *dispatch);

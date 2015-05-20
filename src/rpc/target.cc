@@ -30,18 +30,18 @@ message_t target_t::sync_request_t::run(message_t &&msg) {
 */
 
 local_target_t::local_target_t(message_hub_t *hub, thread_t *thread) :
-    target_t(hub), stream_(thread) { }
+    target_t(hub), m_stream(thread) { }
 
 stream_t *local_target_t::stream() {
-    return &stream_;
+    return &m_stream;
 }
 
 /*
 remote_target_t::remote_target_t(message_hub_t *hub) :
-    target_t(hub), stream(-1) { }
+    target_t(hub), m_stream(-1) { }
 
 stream_t *remote_target_t::stream() {
-    return &stream_;
+    return &m_stream;
 }
 */
 

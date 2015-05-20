@@ -14,7 +14,7 @@ enum class wait_result_t {
     ObjectLost,
 };
 
-class wait_callback_t : public QueueNode<wait_callback_t> {
+class wait_callback_t : public intrusive_node_t<wait_callback_t> {
 public:
     virtual void wait_callback(wait_result_t result) = 0;
 };

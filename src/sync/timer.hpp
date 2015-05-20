@@ -29,7 +29,7 @@ private:
   bool m_running;
   uint32_t m_timeout;
 
-  IntrusiveQueue<wait_callback_t> m_waiters;
+  intrusive_queue_t<wait_callback_t> m_waiters;
 };
 
 }; // namespace indecorous

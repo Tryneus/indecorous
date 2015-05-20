@@ -25,7 +25,7 @@ private:
   bool m_autoReset;
   bool m_wakeAll;
   bool m_triggered;
-  IntrusiveQueue<wait_callback_t> m_waiters;
+  intrusive_queue_t<wait_callback_t> m_waiters;
 };
 
 } // namespace indecorous

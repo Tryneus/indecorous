@@ -68,7 +68,7 @@ dispatcher_t::~dispatcher_t() {
     s_instance = nullptr;
 }
 
-dispatcher_t& dispatcher_t::getInstance() {
+dispatcher_t& dispatcher_t::get_instance() {
     if (s_instance == nullptr)
         throw coro_exc_t("dispatcher_t instance not found");
     return *s_instance;
@@ -79,13 +79,13 @@ uint32_t dispatcher_t::run() {
     assert(m_self == nullptr);
     m_swap_count = 0;
 
-    if (!m_runQueue.empty()) {
+    if (!m_run_queue.empty()) {
         // Save the currently running context
         int res = getcontext(&m_parentContext);
         assert(res == 0);
 
         // Start the queue of coroutines - they will swap in the next until no more are left
-        m_self = m_runQueue.pop();
+        m_self = m_run_queue.pop();
         assert(m_self != nullptr);
         swapcontext(&m_parentContext, &m_self->m_context);
     }
@@ -161,12 +161,12 @@ void coro_t::swap(coro_t *next) {
         // immediately - skip the queue and run it now.
         m_dispatch->m_self = next;
         swapcontext(&m_context, &next->m_context);
-    } else if (m_dispatch->m_runQueue.empty() ||
+    } else if (m_dispatch->m_run_queue.empty() ||
         m_dispatch->m_swap_count >= dispatcher_t::s_max_swaps_per_loop) {
         m_dispatch->m_self = nullptr;
         swapcontext(&m_context, &m_dispatch->m_parentContext);
     } else {
-        m_dispatch->m_self = m_dispatch->m_runQueue.pop();
+        m_dispatch->m_self = m_dispatch->m_run_queue.pop();
         if (m_dispatch->m_self != this)
             swapcontext(&m_context, &m_dispatch->m_self->m_context);
     }
@@ -196,11 +196,11 @@ void coro_t::swap(coro_t *next) {
 }
 
 coro_t* coro_t::self() {
-    return dispatcher_t::getInstance().m_self;
+    return dispatcher_t::get_instance().m_self;
 }
 
 void coro_t::wait() {
-    dispatcher_t& dispatch = dispatcher_t::getInstance();
+    dispatcher_t& dispatch = dispatcher_t::get_instance();
     coro_t *coro = self();
     assert(coro != nullptr);
     assert(coro->m_dispatch == &dispatch);
@@ -208,19 +208,19 @@ void coro_t::wait() {
 }
 
 void coro_t::yield() {
-    dispatcher_t& dispatch = dispatcher_t::getInstance();
+    dispatcher_t& dispatch = dispatcher_t::get_instance();
     coro_t *coro = self();
     assert(coro != nullptr);
     assert(coro->m_dispatch == &dispatch);
 
-    dispatch.m_runQueue.push(coro);
+    dispatch.m_run_queue.push(coro);
     coro->swap();
 }
 
 void coro_t::notify(coro_t* coro) {
     assert(coro != nullptr);
     assert(coro != self());
-    coro->m_dispatch->m_runQueue.push(coro);
+    coro->m_dispatch->m_run_queue.push(coro);
 }
 
 void coro_t::wait_callback(wait_result_t result) {

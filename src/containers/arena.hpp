@@ -14,7 +14,7 @@ class Arena {
 private:
   static const uint32_t s_node_magic = 0x712B4057;
   // linked list of unallocated items
-  struct node_t : public QueueNode<node_t>
+  struct node_t : public intrusive_node_t<node_t>
   {
     uint32_t magic;
     alignas(T) char buffer[sizeof(T)];
@@ -22,7 +22,7 @@ private:
 
   const size_t m_max_free_nodes;
   size_t m_free_node_count;
-  IntrusiveQueue<node_t> m_free_nodes;
+  intrusive_queue_t<node_t> m_free_nodes;
 
 public:
   //  max_free_nodes - maximum number of unused buffers to keep around before releasing

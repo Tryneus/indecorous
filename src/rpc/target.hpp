@@ -1,6 +1,8 @@
 #ifndef RPC_TARGET_HPP_
 #define RPC_TARGET_HPP_
 
+#include <unordered_map>
+
 #include "rpc/handler.hpp"
 #include "rpc/hub.hpp"
 #include "rpc/id.hpp"
@@ -19,60 +21,51 @@ public:
 
     target_id_t id() const;
 
-    template <class Callback, typename... Args>
+    template <typename Callback, typename... Args>
+    request_id_t send_request(Args &&...args) {
+        request_id_t request_id = request_gen.next();
+        write_message_t msg =
+            handler_t<Callback>::handler_impl_t::make_write(request_id,
+                                                            std::forward<Args>(args)...);
+        stream()->write(std::move(msg));
+        return request_id;
+    }
+
+    template <typename result_t>
+    result_t parse_result(future_t<read_message_t> data) {
+        return serializer_t<result_t>::read(data.release());
+    }
+
+    template <typename Callback, typename... Args>
     void noreply_call(Args &&...args) {
-        write_message_t msg =
-            handler_t<Callback>::handler_impl_t::make_write(request_id_t::noreply(),
-                                                            std::forward<Args>(args)...);
-        stream()->write(std::move(msg));
+        send_request(std::forward<Args>(args)...);
     }
 
-    /*
-    template <class Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>
+    template <typename Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>
     result_t call(Args &&...args) {
-        request_id_t request_id = new_request_id();
-        write_message_t msg =
-            handler_t<Callback>::handler_impl_t::make_write(request_id,
-                                                            std::forward<Args>(args)...);
-        stream()->write(std::move(msg));
-        promise_t<read_message_t> promise = get_response(request_id);
-        read_message_t response(promise.release());
-        return serializer_t<result_t>::read(&response);
+        request_id_t request_id = send_request(std::forward<Args>(args)...);
+        return parse_result<result_t>(get_response(request_id));
     }
-    */
 
-    /*
-    template <class Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>
-    promise_t<result_t> async_call(Args &&...args) {
-        request_id_t request_id = new_request_id();
-        write_message_t msg =
-            handler_t<Callback>::handler_impl_t::make_write(request_id,
-                                                            std::forward<Args>(args)...);
-        stream()->write(std::move(msg));
-        // TODO: chain promises
-        promise_t<read_message_t> promise = get_response(request_id);
-        read_message_t response(promise.release());
-        return serializer_t<result_t>::read(&response);
+    template <typename Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>
+    future_t<result_t> async_call(Args &&...args) {
+        request_id_t request_id = send_request(std::forward<Args>(args)...);
+        return coro_t::spawn(parse_result<result_t>, get_response(request_id));
     }
-    */
 
 
 protected:
     virtual stream_t *stream() = 0;
 
 private:
-    /*
-    class sync_request_t {
-    public:
-        sync_request_t(target_t *_parent, request_id_t request_id);
-        ~sync_request_t();
-        message_t run(message_t &&msg);
-    private:
-        target_t *parent;
-        request_id_t request_id;
-        event_t done_event;
-    };
-    */
+    future_t<read_message_t> get_response(request_id_t request_id); // TODO: implement
+    id_generator_t<request_id_t> request_gen;
+
+    std::unordered_map<request_id_t,
+                       promise_t<read_message_t>,
+                       request_id_t::hash_t,
+                       request_id_t::equal_t> request_map;
+
     target_id_t target_id;
     message_hub_t::membership_t<target_t> membership;
 };
@@ -83,16 +76,22 @@ public:
                    thread_t *owner);
 private:
     stream_t *stream();
-    local_stream_t stream_;
+    local_stream_t m_stream;
 };
 
 /*
-class remote_target_t : public target_t {
+class remote_process_t {
 public:
     remote_target_t(message_hub_t *hub);
+
+    class remote_target_t : public target_t {
+        remote_target_t(remote_process_t *parent) :
+            m_parent(parent) { }
+    };
+
 private:
     stream_t *stream();
-    tcp_stream_t stream_;
+    tcp_stream_t m_stream;
 };
 */
 

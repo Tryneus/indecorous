@@ -155,7 +155,7 @@ void thread_t::do_wait() {
 }
 
 int thread_t::get_wait_timeout() {
-    if (m_dispatch->m_runQueue.size() > 0)
+    if (m_dispatch->m_run_queue.size() > 0)
         return 0;
 
     if (m_timer_waiters.empty())
