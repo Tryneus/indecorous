@@ -38,7 +38,7 @@ public:
 
     template <typename Callback, typename... Args>
     void noreply_call(Args &&...args) {
-        send_request(std::forward<Args>(args)...);
+        send_request<Callback>(std::forward<Args>(args)...);
     }
 
     template <typename Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>

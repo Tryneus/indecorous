@@ -23,8 +23,10 @@ public:
     }
 };
 
+id_generator_t<handler_id_t> handler_id_gen;
+
 template<>
-const handler_id_t unique_handler_t<test_callback_t>::unique_id = handler_id_t::assign();
+const handler_id_t unique_handler_t<test_callback_t>::unique_id = handler_id_gen.next();
 
 TEST_CASE("coro/spawn", "Test basic coroutine spawning and running") {
     scheduler_t sched(num_threads);
