@@ -1,136 +1,179 @@
 #ifndef CONTAINERS_QUEUE_HPP_
 #define CONTAINERS_QUEUE_HPP_
 
+#include <atomic>
 #include <cassert>
 #include <stddef.h>
 #include <type_traits>
+#include <utility>
 
 namespace indecorous {
+
+// TODO: add strong asserts to all this stuff
+
+template <typename T>
+class intrusive_list_t;
 
 template <typename T>
 class intrusive_node_t {
 public:
-  intrusive_node_t() : m_intrusive_node_next(nullptr), m_intrusive_node_parent(nullptr) { }
-  intrusive_node_t(intrusive_node_t &&other) :
-      m_intrusive_node_parent(other.m_intrusive_node_parent)
-  {
-      // TODO: get this working
-    other.m_intrusive_node_next = nullptr;
-    other.m_intrusive_node_prev = nullptr;
-    other.m_intrusive_node_parent = nullptr;
-  }
-  virtual ~intrusive_node_t() { }
-  T* m_intrusive_node_next;
-  T* m_intrusive_node_prev;
-  void* m_intrusive_node_parent;
+    intrusive_node_t() : m_next(nullptr), m_prev(nullptr) { }
+    intrusive_node_t(intrusive_node_t &&other) :
+            m_next(other.m_next),
+            m_prev(other.m_prev) {
+        m_next->m_prev = this;
+        m_prev->m_next = this;
+        other.m_next = nullptr;
+        other.m_prev = nullptr;
+    }
+    virtual ~intrusive_node_t() { }
+
+    void clear() { m_next = nullptr; m_prev = nullptr; }
+
+    void set_next_node(intrusive_node_t *next) { m_next = next; }
+    void set_prev_node(intrusive_node_t *prev) { m_prev = prev; }
+    intrusive_node_t *next_node() const { return m_next; }
+    intrusive_node_t *prev_node() const { return m_prev; }
+
+private:
+    intrusive_node_t* m_next;
+    intrusive_node_t* m_prev;
 };
 
 template <typename T>
-class intrusive_queue_t {
+class intrusive_list_t : public intrusive_node_t<T> {
 public:
-  intrusive_queue_t() :
-      m_front(nullptr), m_back(nullptr), m_size(0) { }
-  intrusive_queue_t(intrusive_queue_t<T> &&other) {
+    intrusive_list_t() :
+        m_size(0) { }
 
-  }
-  ~intrusive_queue_t() {
-      assert(m_front == nullptr);
-      assert(m_back == nullptr);
-      assert(m_size == 0);
-  }
-
-  size_t size() const {
-    return m_size;
-  }
-
-  void push(T* item) {
-    assert(item->intrusive_node_t<T>::m_intrusive_node_parent == nullptr);
-    assert((m_front == nullptr) == (m_back == nullptr));
-    item->intrusive_node_t<T>::m_intrusive_node_parent = this;
-    item->intrusive_node_t<T>::m_intrusive_node_next = nullptr;
-    item->intrusive_node_t<T>::m_intrusive_node_prev = m_back;
-
-    if (m_back == nullptr)
-      m_front = m_back = item;
-    else {
-      m_back->intrusive_node_t<T>::m_intrusive_node_next = item;
-      m_back = item;
+    intrusive_list_t(intrusive_list_t<T> &&other) :
+            intrusive_node_t<T>(std::move(other)),
+            m_size(other.m_size) {
+        other.m_size = 0;
     }
-    ++m_size;
-  }
-
-  void push_front(T* item) {
-    assert(item->intrusive_node_t<T>::m_intrusive_node_parent == nullptr);
-    assert((m_front == nullptr) == (m_back == nullptr));
-    item->intrusive_node_t<T>::m_intrusive_node_parent = this;
-    item->intrusive_node_t<T>::m_intrusive_node_next = m_front;
-    item->intrusive_node_t<T>::m_intrusive_node_prev = nullptr;
-
-    if (m_front == nullptr)
-      m_front = m_back = item;
-    else {
-      m_front->intrusive_node_t<T>::m_intrusive_node_prev = item;
-      m_front = item;
-    }
-    ++m_size;
-  }
-
-  T* pop() {
-    assert((m_front == nullptr) == (m_back == nullptr));
-    T* retval = m_front;
-
-    m_front = retval->intrusive_node_t<T>::m_intrusive_node_next;
-
-    if (m_back == retval) {
-      assert(retval->intrusive_node_t<T>::m_intrusive_node_next == nullptr);
-      m_back = nullptr;
+    ~intrusive_list_t() {
+        assert(m_size == 0);
     }
 
-    retval->intrusive_node_t<T>::m_intrusive_node_next = nullptr;
-    retval->intrusive_node_t<T>::m_intrusive_node_prev = nullptr;
-    retval->intrusive_node_t<T>::m_intrusive_node_parent = nullptr;
-    --m_size;
-    return retval;
-  }
+    size_t size() const {
+        return m_size;
+    }
 
-  void remove(T* item) {
-    assert(item->intrusive_node_t<T>::m_intrusive_node_parent == this);
-    assert((m_front == nullptr) == (m_back == nullptr));
-    if (m_front == item)
-      m_front = item->intrusive_node_t<T>::m_intrusive_node_next;
-    if (m_back == item)
-      m_back = item->intrusive_node_t<T>::m_intrusive_node_prev;
-    if (item->intrusive_node_t<T>::m_intrusive_node_next != nullptr)
-      item->intrusive_node_t<T>::m_intrusive_node_next->intrusive_node_t<T>::m_intrusive_node_prev =
-          item->intrusive_node_t<T>::m_intrusive_node_prev;
-    if (item->intrusive_node_t<T>::m_intrusive_node_prev != nullptr)
-      item->intrusive_node_t<T>::m_intrusive_node_prev->intrusive_node_t<T>::m_intrusive_node_next =
-          item->intrusive_node_t<T>::m_intrusive_node_next;
-    item->intrusive_node_t<T>::m_intrusive_node_next = nullptr;
-    item->intrusive_node_t<T>::m_intrusive_node_prev = nullptr;
-    item->intrusive_node_t<T>::m_intrusive_node_parent = nullptr;
-    --m_size;
-  }
+    T* front() {
+        return get_value(this->next_node());
+    }
 
-  T* front() {
-    assert((m_front == nullptr) == (m_back == nullptr));
-    return m_front;
-  }
+    T* back() {
+        return get_value(this->prev_node());
+    }
 
-  T* next(T* node) {
-    assert(node->m_intrusive_node_parent == this);
-    return node->m_intrusive_node_next;
-  }
+    T* next(T* item) {
+        intrusive_node_t<T> *node = item;
+        return get_value(node->next_node());
+    }
 
-  bool empty() const {
-    assert((m_front == nullptr) == (m_back == nullptr));
-    return (m_front == nullptr);
-  }
+    T* prev(T* item) {
+        intrusive_node_t<T> *node = item;
+        return get_value(node->prev_node());
+    }
+
+    void push_back(T *item) {
+        insert_between(item, this->prev_node(), this);
+    }
+
+    void push_front(T *item) {
+        insert_between(item, this, this->next_node());
+    }
+
+    T *pop_front() {
+        T *res = get_value(this->next_node());
+        if (res != nullptr) remove_node(res);
+        return res;
+    }
+
+    T *pop_back() {
+        T *res = get_value(this->prev_node());
+        if (res != nullptr) remove_node(res);
+        return res;
+    }
+
+    void remove(T* item) {
+        remove_node(item);
+    }
+
+    bool empty() const {
+        return this->next_node() == this;
+    }
 
 private:
-  T* m_front;
-  T* m_back;
-  size_t m_size;
+    T *get_value(intrusive_node_t<T> *node) {
+        if (node == this) return nullptr;
+        return static_cast<T *>(node);
+    }
+
+    void insert_between(T *item,
+                        intrusive_node_t<T> *before,
+                        intrusive_node_t<T> *after) {
+        item->intrusive_node_t<T>::set_prev_node(before);
+        item->intrusive_node_t<T>::set_next_node(after);
+        before->intrusive_node_t<T>::set_next_node(item);
+        after->intrusive_node_t<T>::set_prev_node(item);
+        ++m_size;
+    }
+
+    void remove_node(intrusive_node_t<T> *node) {
+        node->prev_node()->set_next_node(node->next_node());
+        node->next_node()->set_prev_node(node->prev_node());
+        node->clear();
+        --m_size;
+    }
+
+    size_t m_size;
+};
+
+// This is a singly-linked list and does not use 'prev'
+// Implementation copied from:
+// http://www.1024cores.net/home/lock-free-algorithms/queues/intrusive-mpsc-node-based-queue
+template <typename T>
+class intrusive_mpsc_queue_t : public intrusive_node_t<T> {
+public:
+    intrusive_mpsc_queue_t() {
+        m_head = this;
+        m_tail.store(this);
+    }
+
+    void push(intrusive_node_t<T> *item) {
+        intrusive_node_t<T> *old_tail = m_tail.exchange(item);
+        old_tail->next = item;
+    }
+
+    T *pop() {
+        intrusive_node_t<T>* head = m_head;
+        intrusive_node_t<T>* next = head->next;
+        if (head == this) {
+            if (next == nullptr) { return nullptr; }
+            m_head = next;
+            head = next;
+            next = next->next;
+        }
+        if (next) {
+            m_head = next;
+            return head;
+        }
+        intrusive_node_t<T>* tail = m_tail;
+        if (head != tail) { return nullptr; }
+        push(this);
+        next = head->next;
+        if (next != nullptr) {
+            m_head = next;
+            return head;
+        }
+        return nullptr;
+    } 
+
+private:
+    intrusive_node_t<T> *m_head;
+    std::atomic<intptr_t> m_tail;
 };
 
 } // namespace indecorous

@@ -100,13 +100,6 @@ void multiple_wait_t::wait_internal() {
     }
   }
   m_waiter = nullptr;
-
-#ifndef NDEBUG
-  // Make sure that all waits were removed from their lists
-  for (auto i = m_waits.begin(); i != m_waits.end(); ++i) {
-    assert((*i)->m_intrusive_node_parent == nullptr);
-  }
-#endif
 }
 
 void multiple_wait_t::multiple_wait_callback(wait_object_t* obj,

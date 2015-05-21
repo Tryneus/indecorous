@@ -37,7 +37,7 @@ public:
         } else if (m_data->has()) {
             return;
         } else {
-            m_data->m_waiters.push(coro_self());
+            m_data->m_waiters.push_back(coro_self());
             coro_wait();
         }
     }
@@ -76,12 +76,12 @@ private:
 
     void notify(wait_result_t result) {
         while (!m_waiters.empty()) {
-            m_waiters.pop()->wait_callback(result);
+            m_waiters.pop_front()->wait_callback(result);
         }
     }
 
     promise_data_t<T> *m_data;
-    intrusive_queue_t<wait_callback_t> m_waiters;
+    intrusive_list_t<wait_callback_t> m_waiters;
 };
 
 // Only to be instantiated by a promise_t
@@ -126,7 +126,7 @@ public:
 
     future_t<T> add_future() {
         future_t<T> res(this);
-        m_futures.push(&res);
+        m_futures.push_back(&res);
         return res;
     }
 
@@ -157,7 +157,7 @@ private:
     } m_state;
 
     bool m_abandoned;
-    intrusive_queue_t<future_t<T> > m_futures;
+    intrusive_list_t<future_t<T> > m_futures;
     alignas(T) char m_buffer[sizeof(T)];
 };
 

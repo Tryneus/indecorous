@@ -21,7 +21,7 @@ private:
 
   const size_t m_max;
   size_t m_count;
-  intrusive_queue_t<wait_callback_t> m_waiters;
+  intrusive_list_t<wait_callback_t> m_waiters;
 };
 
 } // namespace indecorous

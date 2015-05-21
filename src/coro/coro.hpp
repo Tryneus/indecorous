@@ -42,7 +42,7 @@ private:
 
     Arena<coro_t> m_context_arena; // Arena used to cache context allocations
 
-    intrusive_queue_t<coro_t> m_run_queue; // Queue of contexts to run
+    intrusive_list_t<coro_t> m_run_queue; // Queue of contexts to run
 };
 
 class coro_t : public wait_callback_t, public intrusive_node_t<coro_t>
@@ -97,11 +97,11 @@ private:
 
         if (immediate) {
             // We're running immediately, put our parent on the back of the run queue
-            m_dispatch->m_run_queue.push(parent);
+            m_dispatch->m_run_queue.push_back(parent);
         } else {
             // We're delaying our execution, put ourselves on the back of the run queue
             // and swap back in our parent so they can continue
-            m_dispatch->m_run_queue.push(this);
+            m_dispatch->m_run_queue.push_back(this);
             swap(parent);
         }
 

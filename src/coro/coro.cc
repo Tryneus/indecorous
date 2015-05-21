@@ -85,7 +85,7 @@ uint32_t dispatcher_t::run() {
         assert(res == 0);
 
         // Start the queue of coroutines - they will swap in the next until no more are left
-        m_self = m_run_queue.pop();
+        m_self = m_run_queue.pop_front();
         assert(m_self != nullptr);
         swapcontext(&m_parentContext, &m_self->m_context);
     }
@@ -166,7 +166,7 @@ void coro_t::swap(coro_t *next) {
         m_dispatch->m_self = nullptr;
         swapcontext(&m_context, &m_dispatch->m_parentContext);
     } else {
-        m_dispatch->m_self = m_dispatch->m_run_queue.pop();
+        m_dispatch->m_self = m_dispatch->m_run_queue.pop_front();
         if (m_dispatch->m_self != this)
             swapcontext(&m_context, &m_dispatch->m_self->m_context);
     }
@@ -213,14 +213,14 @@ void coro_t::yield() {
     assert(coro != nullptr);
     assert(coro->m_dispatch == &dispatch);
 
-    dispatch.m_run_queue.push(coro);
+    dispatch.m_run_queue.push_back(coro);
     coro->swap();
 }
 
 void coro_t::notify(coro_t* coro) {
     assert(coro != nullptr);
     assert(coro != self());
-    coro->m_dispatch->m_run_queue.push(coro);
+    coro->m_dispatch->m_run_queue.push_back(coro);
 }
 
 void coro_t::wait_callback(wait_result_t result) {

@@ -22,7 +22,7 @@ private:
 
   const size_t m_max_free_nodes;
   size_t m_free_node_count;
-  intrusive_queue_t<node_t> m_free_nodes;
+  intrusive_list_t<node_t> m_free_nodes;
 
 public:
   //  max_free_nodes - maximum number of unused buffers to keep around before releasing
@@ -36,7 +36,7 @@ public:
 
   ~Arena() {
     while (!m_free_nodes.empty()) {
-      delete m_free_nodes.pop();
+      delete m_free_nodes.pop_front();
       --m_free_node_count;
     }
 
@@ -49,7 +49,7 @@ public:
 
   template <typename... Args>
   T *get(Args &&...args) {
-    node_t *selected_node = m_free_nodes.pop();
+    node_t *selected_node = m_free_nodes.pop_front();
     if (selected_node == nullptr) {
         selected_node = new node_t;
         selected_node->magic = s_node_magic;
@@ -71,7 +71,7 @@ public:
     if (m_free_node_count >= m_max_free_nodes) {
       delete node;
     } else {
-      m_free_nodes.push(node);
+      m_free_nodes.push_back(node);
       ++m_free_node_count;
     }
   }

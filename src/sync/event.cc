@@ -15,7 +15,7 @@ event_t::event_t(bool autoReset, bool wakeAll) :
 event_t::~event_t() {
     // Fail any remaining waits
     while (!m_waiters.empty()) {
-        m_waiters.pop()->wait_callback(wait_result_t::ObjectLost);
+        m_waiters.pop_front()->wait_callback(wait_result_t::ObjectLost);
     }
 }
 
@@ -35,9 +35,9 @@ bool event_t::set() {
 
         if (m_wakeAll) {
             while (!m_waiters.empty())
-                m_waiters.pop()->wait_callback(wait_result_t::Success);
+                m_waiters.pop_front()->wait_callback(wait_result_t::Success);
         } else if (!m_waiters.empty())
-            m_waiters.pop()->wait_callback(wait_result_t::Success);
+            m_waiters.pop_front()->wait_callback(wait_result_t::Success);
     }
 
     return true;
@@ -57,7 +57,7 @@ void event_t::wait() {
             m_triggered = false;
     } else {
         DEBUG_ONLY(coro_t* self = coro_t::self());
-        m_waiters.push(coro_t::self());
+        m_waiters.push_back(coro_t::self());
         coro_t::wait();
         assert(coro_t::self() == self);
     }
@@ -70,7 +70,7 @@ void event_t::addWait(wait_callback_t* cb) {
             m_triggered = false;
         cb->wait_callback(wait_result_t::Success);
     } else {
-        m_waiters.push(cb);
+        m_waiters.push_back(cb);
     }
 }
 

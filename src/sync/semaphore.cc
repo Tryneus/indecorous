@@ -15,7 +15,7 @@ semaphore_t::~semaphore_t()
 {
   // Fail any remaining waiters
   while (!m_waiters.empty()) {
-    m_waiters.pop()->wait_callback(wait_result_t::ObjectLost);
+    m_waiters.pop_front()->wait_callback(wait_result_t::ObjectLost);
   }
 }
 
@@ -26,7 +26,7 @@ void semaphore_t::wait() {
     --m_count;
   } else {
     DEBUG_ONLY(coro_t* self = coro_t::self());
-    m_waiters.push(coro_t::self());
+    m_waiters.push_back(coro_t::self());
     coro_t::wait();
     assert(self == coro_t::self());
   }
@@ -39,7 +39,7 @@ void semaphore_t::unlock(size_t count) {
   for (size_t i = 0; i < count && !m_waiters.empty(); ++i) {
     assert(m_count > 0);
     --m_count;
-    m_waiters.pop()->wait_callback(wait_result_t::Success);
+    m_waiters.pop_front()->wait_callback(wait_result_t::Success);
   }
 }
 
@@ -49,7 +49,7 @@ void semaphore_t::addWait(wait_callback_t* cb) {
     --m_count;
     cb->wait_callback(wait_result_t::Success);
   } else {
-    m_waiters.push(cb);
+    m_waiters.push_back(cb);
   }
 }
 

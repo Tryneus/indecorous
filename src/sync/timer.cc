@@ -16,7 +16,7 @@ timer_t::~timer_t()
 {
   // Fail any remaining waits
   while (!m_waiters.empty()) {
-    m_waiters.pop()->wait_callback(wait_result_t::ObjectLost);
+    m_waiters.pop_back()->wait_callback(wait_result_t::ObjectLost);
   }
 
   stop();
@@ -46,20 +46,20 @@ bool timer_t::stop() {
 
   // Fail any current waits - this may not be the 'right' thing to do...
   while (!m_waiters.empty()) {
-    m_waiters.pop()->wait_callback(wait_result_t::Interrupted);
+    m_waiters.pop_back()->wait_callback(wait_result_t::Interrupted);
   }
   return true;
 }
 
 void timer_t::wait() {
   DEBUG_ONLY(coro_t* self = coro_t::self());
-  m_waiters.push(coro_t::self());
+  m_waiters.push_back(coro_t::self());
   coro_t::wait();
   assert(coro_t::self() == self);
 }
 
 void timer_t::addWait(wait_callback_t* cb) {
-  m_waiters.push(cb);
+  m_waiters.push_back(cb);
 }
 
 void timer_t::removeWait(wait_callback_t* cb) {
@@ -71,10 +71,10 @@ void timer_t::wait_callback(wait_result_t result) {
 
   if (m_wakeAll)
     while (!m_waiters.empty()) {
-      m_waiters.pop()->wait_callback(result);
+      m_waiters.pop_back()->wait_callback(result);
     }
   else if (!m_waiters.empty())
-    m_waiters.pop()->wait_callback(result);
+    m_waiters.pop_back()->wait_callback(result);
 
   if (m_autoReset)
     reset();

@@ -16,21 +16,21 @@ file_wait_base_t::file_wait_base_t(int fd, bool wakeAll) :
 
 file_wait_base_t::~file_wait_base_t() {
   while (!m_waiters.empty()) {
-    m_waiters.pop()->wait_callback(wait_result_t::ObjectLost);
+    m_waiters.pop_front()->wait_callback(wait_result_t::ObjectLost);
   }
 }
 
 void file_wait_base_t::wait_callback(wait_result_t result) {
   if (m_wakeAll) {
     while (!m_waiters.empty())
-      m_waiters.pop()->wait_callback(result);
+      m_waiters.pop_front()->wait_callback(result);
   }
   else if (!m_waiters.empty())
-    m_waiters.pop()->wait_callback(result);
+    m_waiters.pop_front()->wait_callback(result);
 }
 
 void file_wait_base_t::addWait(wait_callback_t* cb) {
-  m_waiters.push(cb);
+  m_waiters.push_back(cb);
 }
 
 void file_wait_base_t::removeWait(wait_callback_t* cb) {
