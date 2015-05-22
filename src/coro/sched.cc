@@ -52,7 +52,7 @@ scheduler_t::~scheduler_t() {
     s_instance = nullptr;
 }
 
-const std::set<target_id_t> &scheduler_t::all_threads() const {
+const std::unordered_set<target_id_t> &scheduler_t::all_threads() const {
     return m_thread_ids;
 }
 

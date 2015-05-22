@@ -16,7 +16,7 @@ template <typename T>
 class future_t : public intrusive_node_t<future_t<T> >, public wait_object_t {
 public:
     future_t(future_t<T> &&other) :
-            intrusive_node_t<T>(std::move(other)),
+            intrusive_node_t<future_t<T> >(std::move(other)),
             m_data(other.m_data),
             m_waiters(std::move(other.m_waiters)) {
         other.m_data = nullptr;
@@ -32,7 +32,8 @@ public:
     }
 
     void wait() {
-        if (m_data == nullptr || m_data->released()) {
+        assert(m_data != nullptr);
+        if (m_data->released()) {
             throw wait_object_lost_exc_t(); // TODO: streamline this logic with the stuff in coro_t
         } else if (m_data->has()) {
             return;
@@ -62,7 +63,8 @@ private:
     future_t(promise_data_t<T> *data) : m_data(data) { }
 
     void addWait(wait_callback_t *cb) {
-        if (m_data == nullptr || m_data->released()) {
+        assert(m_data != nullptr);
+        if (m_data->released()) {
             cb->wait_callback(wait_result_t::ObjectLost);
         } else if (m_data->has()) {
             cb->wait_callback(wait_result_t::Success);
@@ -182,6 +184,64 @@ public:
 
 private:
     promise_data_t<T> *m_data;
+};
+
+// Specialization of these classes for void
+template <> class promise_data_t<void>;
+
+template <>
+class future_t<void> : public intrusive_node_t<future_t<void> >, public wait_object_t {
+public:
+    future_t(future_t<void> &&other);
+    ~future_t();
+
+    bool valid();
+
+    void wait();
+
+private:
+    friend class promise_data_t<void>;
+    future_t(promise_data_t<void> *data);
+
+    void addWait(wait_callback_t *cb);
+    void removeWait(wait_callback_t *cb);
+
+    void notify(wait_result_t result);
+
+    promise_data_t<void> *m_data;
+    intrusive_list_t<wait_callback_t> m_waiters;
+};
+
+template <> class promise_data_t<void> {
+public:
+    promise_data_t();
+    ~promise_data_t();
+
+    void has() const;
+    void released() const;
+
+    void assign();
+    future_t<void> add_future();
+
+    bool remove_future(future_t<void> *f);
+    bool abandon();
+
+private:
+    bool m_fulfilled;
+    bool m_abandoned;
+    intrusive_list_t<future_t<void> > m_futures;
+};
+
+template <> class promise_t<void> {
+public:
+    promise_t();
+    ~promise_t();
+
+    void fulfill();
+    future_t<void> get_future();
+
+private:
+    promise_data_t<void> *m_data;
 };
 
 } // namespace indecorous

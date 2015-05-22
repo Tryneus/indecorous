@@ -65,9 +65,17 @@ public:
     static future_t<Res> spawn(Res(*fn)(Args...), Args &&...args) {
         return coro_t::self()->spawn_internal(false, fn, std::forward<Args>(args)...);
     }
+    template <typename Res, typename Class, typename... Args>
+    static future_t<Res> spawn(Res(Class::*fn)(Args...), Class *instance, Args &&...args) {
+        return coro_t::self()->spawn_internal(false, fn, instance, std::forward<Args>(args)...);
+    }
     template <typename Res, typename... Args>
     static future_t<Res> spawn_now(Res(*fn)(Args...), Args &&...args) {
         return coro_t::self()->spawn_internal(true, fn, std::forward<Args>(args)...);
+    }
+    template <typename Res, typename Class, typename... Args>
+    static future_t<Res> spawn_now(Res(Class::*fn)(Args...), Class *instance, Args &&...args) {
+        return coro_t::self()->spawn_internal(true, fn, instance, std::forward<Args>(args)...);
     }
 
 private:
@@ -86,13 +94,47 @@ private:
 
         // Start the other coroutine - it will give us execution back after it has 
         // copied the parameters
-        context->begin(hook<Res, Args...>, &params, this, immediate);
+        context->begin(&hook<Res, Args...>, &params, this, immediate);
+        return res;
+    }
+
+    template <typename Res, typename Class, typename... Args>
+    future_t<Res> spawn_internal(bool immediate, Res(Class::*fn)(Args...), Class *instance, Args &&...args) {
+        promise_t<Res> promise;
+        future_t<Res> res = promise.get_future();
+        coro_t *context = m_dispatch->m_context_arena.get(m_dispatch);
+        std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> params(
+            std::move(promise), fn, instance, std::forward<Args>(args)... );
+
+        // Start the other coroutine - it will give us execution back after it has 
+        // copied the parameters
+        context->begin(hook_member_fn<Res, Class, Args...>, &params, this, immediate);
         return res;
     }
 
     template <typename Res, typename... Args>
     [[noreturn]] void hook(void *p, coro_t *parent, bool immediate) {
-        typedef std::tuple<coro_t *, coro_t *, promise_t<Res>, Res(*)(Args...), Args...> params_t;
+        typedef std::tuple<promise_t<Res>, Res(*)(Args...), Args...> params_t;
+        params_t params = std::move(*reinterpret_cast<params_t *>(p));
+
+        if (immediate) {
+            // We're running immediately, put our parent on the back of the run queue
+            m_dispatch->m_run_queue.push_back(parent);
+        } else {
+            // We're delaying our execution, put ourselves on the back of the run queue
+            // and swap back in our parent so they can continue
+            m_dispatch->m_run_queue.push_back(this);
+            swap(parent);
+        }
+
+        promise_t<Res> *promise = &std::get<0>(params);
+        promise->fulfill(hook_internal(std::index_sequence_for<Args...>{}, params));
+        end();
+    }
+
+    template <typename Res, typename Class, typename... Args>
+    [[noreturn]] void hook_member_fn(void *p, coro_t *parent, bool immediate) {
+        typedef std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> params_t;
         params_t params = std::move(*reinterpret_cast<params_t *>(p));
 
         if (immediate) {
@@ -111,8 +153,13 @@ private:
     }
 
     template <size_t... N, typename Res, typename... Args>
-    static Res hook_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...> &args) {
+    static Res hook_internal(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Res(*)(Args...), Args...> &args) {
         return std::get<1>(args)(std::get<N+2>(std::move(args))...);
+    }
+
+    template <size_t... N, typename Res, typename Class, typename... Args>
+    static Res hook_internal(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> &args) {
+        return std::get<1>(args)(std::get<2>(std::move(args)), std::get<N+3>(std::move(args))...);
     }
 
     coro_t(dispatcher_t *dispatch);

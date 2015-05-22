@@ -9,21 +9,47 @@ namespace indecorous {
 struct message_header_t {
     static const uint64_t HEADER_MAGIC = 0x302ca58d7f47e0be;
     uint64_t header_magic;
+    uint64_t source_id;
     uint64_t handler_id;
     uint64_t request_id;
     uint64_t payload_size;
     MAKE_SERIALIZABLE(message_header_t,
                       header_magic,
+                      source_id,
                       handler_id,
                       request_id,
                       payload_size);
 };
 
-read_message_t::read_message_t(buffer_owner_t &&_buffer,
-                               handler_id_t &&_handler_id,
-                               request_id_t &&_request_id) :
+write_message_t::write_message_t(target_id_t source_id,
+                                 handler_id_t handler_id,
+                                 request_id_t request_id,
+                                 size_t payload_size) :
+        m_buffer(sizeof(message_header_t) + payload_size),
+        m_usage(0) {
+    message_header_t header(message_header_t::HEADER_MAGIC, source_id.value(), handler_id.value(), request_id.value(), payload_size);
+    assert(serializer_t<message_header_t>::size(header) == sizeof(message_header_t));
+    serializer_t<message_header_t>::write(this, std::move(header));
+}
+
+void write_message_t::push_back(char c) {
+    assert(m_buffer.capacity() >= m_usage + 1);
+    m_buffer.data()[m_usage++] = c;
+}
+
+buffer_owner_t write_message_t::release() && {
+    // If this fails, some serialization overestimated how much buffer it needed
+    assert(m_usage == m_buffer.capacity());
+    return std::move(m_buffer);
+}
+
+read_message_t::read_message_t(buffer_owner_t _buffer,
+                               target_id_t _source_id,
+                               handler_id_t _handler_id,
+                               request_id_t _request_id) :
     buffer(std::move(_buffer)),
     offset(0),
+    source_id(std::move(_source_id)),
     handler_id(std::move(_handler_id)),
     request_id(std::move(_request_id)) { }
 
@@ -33,19 +59,21 @@ char read_message_t::pop() {
 }
 
 read_message_t read_message_t::empty() {
-    return read_message_t(buffer_owner_t::empty(), handler_id_t(-1), request_id_t(-1));
+    return read_message_t(buffer_owner_t::empty(),
+                          target_id_t(-1), handler_id_t(-1), request_id_t(-1));
 }
 
 read_message_t read_message_t::parse(buffer_owner_t &&buffer) {
     static_assert(sizeof(message_header_t) == sizeof(uint64_t) * 4, "error");
-    read_message_t message(std::move(buffer), handler_id_t(-1), request_id_t(-1));
+    read_message_t message(std::move(buffer),
+                           target_id_t(-1), handler_id_t(-1), request_id_t(-1));
     message_header_t header = serializer_t<message_header_t>::read(&message);
     assert(header.header_magic == message_header_t::HEADER_MAGIC);
 
-    message.handler_id = header.handler_id;
-    message.request_id = header.request_id;
-
-    return message;
+    return read_message_t(std::move(message.buffer),
+                          target_id_t(header.source_id),
+                          handler_id_t(header.handler_id),
+                          request_id_t(header.request_id));
 }
 
 read_message_t read_message_t::parse(tcp_stream_t *stream) {
@@ -63,23 +91,9 @@ read_message_t read_message_t::parse(tcp_stream_t *stream) {
     stream->read_exactly(body_buffer.data(), body_buffer.capacity());
 
     return read_message_t(std::move(body_buffer),
-                          std::move(header.handler_id),
-                          std::move(header.request_id));
-}
-
-write_message_t::write_message_t(handler_id_t handler_id,
-                                 request_id_t request_id,
-                                 size_t payload_size) :
-        m_buffer(sizeof(message_header_t) + payload_size),
-        m_usage(0) {
-    message_header_t header(message_header_t::HEADER_MAGIC, handler_id.value(), request_id.value(), payload_size);
-    assert(serializer_t<message_header_t>::size(header) == sizeof(message_header_t));
-    serializer_t<message_header_t>::write(this, std::move(header));
-}
-
-void write_message_t::push_back(char c) {
-    assert(m_buffer.capacity() >= m_usage + 1);
-    m_buffer.data()[m_usage++] = c;
+                          target_id_t(header.source_id),
+                          handler_id_t(header.handler_id),
+                          request_id_t(header.request_id));
 }
 
 } // namespace indecorous

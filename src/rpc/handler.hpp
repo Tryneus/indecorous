@@ -16,7 +16,7 @@ class message_hub_t;
 class handler_callback_t {
 public:
     virtual ~handler_callback_t();
-    virtual void handle(read_message_t *msg, target_id_t target) = 0;
+    virtual void handle(read_message_t *msg) = 0;
     virtual void handle_noreply(read_message_t *msg) = 0;
     virtual handler_id_t id() const = 0;
 };
@@ -39,10 +39,10 @@ public:
     template <typename Res, typename... Args>
     class internal_handler_t : public handler_callback_t {
     public:
-        write_message_t handle(read_message_t *msg) {
+        void handle(read_message_t *msg, target_id_t target) {
             Res res = handle(std::index_sequence_for<Args...>{},
                              std::tuple<Args...>{serializer_t<Args>::read(msg)...});
-            return write_message_t::create(handler_id_t::reply(),
+            write_message_t::create(handler_id_t::reply(),
                                            msg->request_id,
                                            std::move(res));
         }

@@ -17,32 +17,13 @@ private:
     uint64_t next_id;
 };
 
-template <typename T>
-class id_equal_t {
-public:
-    bool operator() (const T &lhs, const T &rhs) const {
-        return lhs.value() == rhs.value();
-    }
-};
-
-template <typename T>
-class id_hash_t {
-public:
-    constexpr size_t operator () (const T &item) const {
-        return std::hash<uint64_t>()(item.value());
-    }
-};
-
 class target_id_t {
 public:
-    typedef id_hash_t<target_id_t> hash_t;
-    typedef id_equal_t<target_id_t> equal_t;
-
     // This should only be called before spawning threads
     static target_id_t assign();
 
     uint64_t value() const;
-    bool operator <(const target_id_t &other) const;
+    bool operator ==(const target_id_t &other) const;
 private:
     static id_generator_t<target_id_t> generator;
 
@@ -54,11 +35,9 @@ private:
 
 class handler_id_t {
 public:
-    typedef id_hash_t<handler_id_t> hash_t;
-    typedef id_equal_t<handler_id_t> equal_t;
-
     uint64_t value() const;
     static handler_id_t reply();
+    bool operator ==(const handler_id_t &other) const;
 private:
     friend class id_generator_t<handler_id_t>;
     friend class read_message_t;
@@ -68,11 +47,9 @@ private:
 
 class request_id_t {
 public:
-    typedef id_hash_t<request_id_t> hash_t;
-    typedef id_equal_t<request_id_t> equal_t;
-
     uint64_t value() const;
     static request_id_t noreply();
+    bool operator ==(const request_id_t &other) const;
 private:
     friend class id_generator_t<request_id_t>;
     friend class read_message_t;
@@ -81,5 +58,25 @@ private:
 };
 
 } // namespace indecorous
+
+namespace std {
+
+template <> struct hash<indecorous::target_id_t> {
+    size_t operator () (const indecorous::target_id_t &id) const {
+        return std::hash<uint64_t>()(id.value());
+    }
+};
+template <> struct hash<indecorous::handler_id_t> {
+    size_t operator () (const indecorous::handler_id_t &id) const {
+        return std::hash<uint64_t>()(id.value());
+    }
+};
+template <> struct hash<indecorous::request_id_t> {
+    size_t operator () (const indecorous::request_id_t &id) const {
+        return std::hash<uint64_t>()(id.value());
+    }
+};
+
+} // namespace std
 
 #endif // ID_HPP_

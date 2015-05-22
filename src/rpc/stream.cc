@@ -13,7 +13,7 @@ local_stream_t::local_stream_t(thread_t *_thread) :
     thread(_thread) { }
 
 void local_stream_t::write(write_message_t &&msg) {
-    message_queue.push(msg.m_buffer.release());
+    message_queue.push(msg.release());
 }
 
 read_message_t local_stream_t::read() {
@@ -34,7 +34,8 @@ read_message_t tcp_stream_t::read() {
 }
 
 void tcp_stream_t::write(write_message_t &&msg) {
-    write_exactly(msg.m_buffer.data(), msg.m_buffer.capacity());
+    buffer_owner_t buffer = msg.release();
+    write_exactly(buffer.data(), buffer.capacity());
 }
 
 void tcp_stream_t::read_exactly(char *, size_t) {

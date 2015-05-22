@@ -9,6 +9,7 @@ namespace indecorous {
 
 class target_t;
 class handler_callback_t;
+class read_message_t;
 
 class message_hub_t {
 public:
@@ -27,7 +28,7 @@ public:
         T *member;
     };
 
-    bool spawn(read_message_t &&msg);
+    bool spawn(read_message_t msg);
 
 private:
     void add(target_t *_target);
@@ -35,18 +36,10 @@ private:
     void add(handler_callback_t *callback);
     void remove(handler_callback_t *callback);
 
-    std::unordered_map<target_id_t,
-                       target_t *,
-                       target_id_t::hash_t,
-                       target_id_t::equal_t>
-        targets;
+    std::unordered_map<target_id_t, target_t *> targets;
 
     // TODO: allow changing these at runtime?
-    std::unordered_map<handler_id_t,
-                       handler_callback_t *,
-                       handler_id_t::hash_t,
-                       handler_id_t::equal_t>
-        callbacks;
+    std::unordered_map<handler_id_t, handler_callback_t *> callbacks;
 };
 
 } // namespace indecorous

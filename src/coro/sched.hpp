@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <atomic>
 #include <map>
-#include <set>
+#include <unordered_set>
 #include <pthread.h>
 
 #include "sync/wait_object.hpp"
@@ -26,7 +26,7 @@ public:
 
     // TODO: get a more portable definition of target ids - these will change from node to node
     // UUIDs?
-    const std::set<target_id_t> &all_threads() const;
+    const std::unordered_set<target_id_t> &all_threads() const;
 
     message_hub_t *message_hub();
 
@@ -43,7 +43,7 @@ private:
     size_t m_num_threads;
     static scheduler_t* s_instance;
     message_hub_t m_message_hub; // For passing messages between threads/processes
-    std::set<target_id_t> m_thread_ids;
+    std::unordered_set<target_id_t> m_thread_ids;
 };
 
 } // namespace indecorous

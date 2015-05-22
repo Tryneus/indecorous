@@ -61,10 +61,7 @@ private:
     future_t<read_message_t> get_response(request_id_t request_id); // TODO: implement
     id_generator_t<request_id_t> request_gen;
 
-    std::unordered_map<request_id_t,
-                       promise_t<read_message_t>,
-                       request_id_t::hash_t,
-                       request_id_t::equal_t> request_map;
+    std::unordered_map<request_id_t, promise_t<read_message_t> > request_map;
 
     target_id_t target_id;
     message_hub_t::membership_t<target_t> membership;
