@@ -2,6 +2,7 @@
 
 #include <cassert>
 
+#include "coro/thread.hpp"
 #include "rpc/message.hpp"
 
 namespace indecorous {
@@ -12,33 +13,36 @@ local_stream_t::local_stream_t(thread_t *_thread) :
     thread(_thread) { }
 
 void local_stream_t::write(write_message_t &&msg) {
-    // TODO: somehow notify the thread that it has messages
-    // TODO: do this without mutexes
-    std::lock_guard<std::mutex> lock(mutex);
-    message_queue.emplace(std::move(msg));
+    message_queue.push(msg.m_buffer.release());
 }
 
 read_message_t local_stream_t::read() {
-    std::vector<char> buffer;
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        buffer.swap(message_queue.front().buffer);
-        message_queue.pop();
+    assert(thread_t::self() == thread);
+    buffer_owner_t buffer = buffer_owner_t::from_heap(message_queue.pop());
+
+    if (buffer.has()) {
+        return read_message_t::parse(std::move(buffer));
     }
-    return read_message_t::parse(std::move(buffer));
+
+    return read_message_t::empty();
 }
 
 tcp_stream_t::tcp_stream_t(int _fd) : fd(_fd) { }
 
 read_message_t tcp_stream_t::read() {
-    // TODO: implement
-    printf("Unimplemented tcp_stream_t::read with fd: %d\n", fd);
-    return read_message_t::parse(std::vector<char>());
+    return read_message_t::parse(this);
 }
 
-void tcp_stream_t::write(write_message_t &&) {
+void tcp_stream_t::write(write_message_t &&msg) {
+    write_exactly(msg.m_buffer.data(), msg.m_buffer.capacity());
+}
+
+void tcp_stream_t::read_exactly(char *, size_t) {
     // TODO: implement
-    printf("Unimplemented tcp_stream_t::write with fd: %d\n", fd);
+}
+
+void tcp_stream_t::write_exactly(char *, size_t) {
+    // TODO: implement
 }
 
 } // namespace indecorous

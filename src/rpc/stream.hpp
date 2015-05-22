@@ -6,6 +6,9 @@
 #include <mutex>
 #include <queue>
 
+#include "containers/buffer.hpp"
+#include "containers/queue.hpp"
+
 namespace indecorous {
 
 class thread_t;
@@ -26,8 +29,7 @@ public:
     read_message_t read();
 private:
     thread_t *thread;
-    std::queue<write_message_t> message_queue;
-    std::mutex mutex;
+    mpsc_queue_t<linkable_buffer_t> message_queue;
 };
 
 class tcp_stream_t : public stream_t {
@@ -36,6 +38,9 @@ public:
     void write(write_message_t &&msg);
     read_message_t read();
 private:
+    friend class read_message_t;
+    void read_exactly(char *buffer, size_t data);
+    void write_exactly(char *buffer, size_t data);
     int fd;
 };
 

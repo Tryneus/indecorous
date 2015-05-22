@@ -25,6 +25,20 @@ template class message_hub_t::membership_t<target_t>;
 message_hub_t::message_hub_t() { }
 message_hub_t::~message_hub_t() { }
 
+bool message_hub_t::spawn(read_message_t msg) {
+    if (!msg.buffer.has()) return false;
+
+    auto cb_it = callbacks.find(msg.handler_id);
+    if (cb_it == callbacks.end()) {
+        printf("No extant handler for handler_id (%" PRIu64 ")\n", msg.handler_id.value());
+    } else if (msg.request_id == request_id_t::noreply()) {
+        cb_it->second->handle_noreply(&msg);
+    } else {
+        cb_it->second->handle(&msg, msg.source_target_id);
+    }
+    return true;
+}
+
 target_t *message_hub_t::target(target_id_t id) const {
     auto it = targets.find(id);
     return (it == targets.end()) ? nullptr : it->second;

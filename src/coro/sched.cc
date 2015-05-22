@@ -52,11 +52,7 @@ scheduler_t::~scheduler_t() {
     s_instance = nullptr;
 }
 
-target_id_t scheduler_t::current_thread() {
-    return thread_t::get_instance().m_target.id();
-}
-
-const std::set<target_id_t> &scheduler_t::all_threads() {
+const std::set<target_id_t> &scheduler_t::all_threads() const {
     return m_thread_ids;
 }
 
@@ -64,11 +60,9 @@ message_hub_t *scheduler_t::message_hub() {
     return &m_message_hub;
 }
 
-dispatcher_t& scheduler_t::get_dispatcher(size_t thread_id) {
+scheduler_t& scheduler_t::get_instance() {
     assert(s_instance != nullptr);
-    assert(thread_id < s_instance->m_num_threads);
-
-    return *s_instance->m_threads[thread_id]->m_dispatch;
+    return *s_instance;
 }
 
 void scheduler_t::run() {

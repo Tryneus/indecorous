@@ -24,10 +24,9 @@ public:
     // This function will not return until all coroutines (and children thereof) return
     void run();
 
-    // This function will return the target id for the current thread (which can
-    // be used to send/receive RPCs.
-    target_id_t current_thread();
-    const std::set<target_id_t> &all_threads();
+    // TODO: get a more portable definition of target ids - these will change from node to node
+    // UUIDs?
+    const std::set<target_id_t> &all_threads() const;
 
     message_hub_t *message_hub();
 
@@ -36,7 +35,7 @@ private:
     friend class thread_t;
     friend class coro_t;
 
-    static dispatcher_t& get_dispatcher(size_t thread_id);
+    static scheduler_t &get_instance();
 
     bool m_running;
     pthread_barrier_t m_barrier;

@@ -72,28 +72,24 @@ private:
 
 class local_target_t : public target_t {
 public:
-    local_target_t(message_hub_t *hub,
-                   thread_t *owner);
+    local_target_t(message_hub_t *hub, thread_t *owner);
+
+    // Convert RPCs into local coroutines on the owning thread
+    void pull_calls();
 private:
     stream_t *stream();
     local_stream_t m_stream;
 };
 
-/*
-class remote_process_t {
+// TODO: need to be able to address multiple targets in a remote process
+class remote_target_t {
 public:
     remote_target_t(message_hub_t *hub);
-
-    class remote_target_t : public target_t {
-        remote_target_t(remote_process_t *parent) :
-            m_parent(parent) { }
-    };
 
 private:
     stream_t *stream();
     tcp_stream_t m_stream;
 };
-*/
 
 } // namespace indecorous
 

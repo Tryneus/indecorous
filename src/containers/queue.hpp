@@ -135,38 +135,41 @@ private:
 // Implementation copied from:
 // http://www.1024cores.net/home/lock-free-algorithms/queues/intrusive-mpsc-node-based-queue
 template <typename T>
-class intrusive_mpsc_queue_t : public intrusive_node_t<T> {
+class mpsc_queue_t : public intrusive_node_t<T> {
 public:
-    intrusive_mpsc_queue_t() {
+    mpsc_queue_t() {
         m_head = this;
-        m_tail.store(this);
+        m_tail.store(reinterpret_cast<intptr_t>(this));
     }
 
     void push(intrusive_node_t<T> *item) {
-        intrusive_node_t<T> *old_tail = m_tail.exchange(item);
-        old_tail->next = item;
+        intrusive_node_t<T> *old_tail =
+            reinterpret_cast<intrusive_node_t<T> *>(m_tail.exchange(
+                reinterpret_cast<intptr_t>(item)));
+        old_tail->set_next_node(item);
     }
 
     T *pop() {
         intrusive_node_t<T>* head = m_head;
-        intrusive_node_t<T>* next = head->next;
+        intrusive_node_t<T>* next = head->next_node();
         if (head == this) {
             if (next == nullptr) { return nullptr; }
             m_head = next;
             head = next;
-            next = next->next;
+            next = next->next_node();
         }
         if (next) {
             m_head = next;
-            return head;
+            return static_cast<T *>(head);
         }
-        intrusive_node_t<T>* tail = m_tail;
+        intrusive_node_t<T>* tail =
+            reinterpret_cast<intrusive_node_t<T> *>(m_tail.load());
         if (head != tail) { return nullptr; }
         push(this);
-        next = head->next;
+        next = head->next_node();
         if (next != nullptr) {
             m_head = next;
-            return head;
+            return static_cast<T *>(head);
         }
         return nullptr;
     } 

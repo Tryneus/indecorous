@@ -27,6 +27,8 @@ public:
         T *member;
     };
 
+    bool spawn(read_message_t &&msg);
+
 private:
     void add(target_t *_target);
     void remove(target_t *_target);
@@ -39,6 +41,7 @@ private:
                        target_id_t::equal_t>
         targets;
 
+    // TODO: allow changing these at runtime?
     std::unordered_map<handler_id_t,
                        handler_callback_t *,
                        handler_id_t::hash_t,

@@ -70,6 +70,7 @@ void thread_t::thread_main() {
             break;
 
         while (m_dispatch->run() > 0) {
+            m_target.pull_calls();
             do_wait();
         }
 
@@ -80,6 +81,10 @@ void thread_t::thread_main() {
 
 void thread_t::shutdown() {
     m_shutdown = true;
+}
+
+thread_t *thread_t::self() {
+    return s_instance;
 }
 
 thread_t& thread_t::get_instance() {

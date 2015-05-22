@@ -26,6 +26,8 @@ public:
 
     thread_t(scheduler_t* parent, size_t thread_id, pthread_barrier_t *barrier);
 
+    static thread_t *self();
+
 private:
     friend class scheduler_t;
 
