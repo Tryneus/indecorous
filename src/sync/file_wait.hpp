@@ -3,7 +3,7 @@
 #include <poll.h>
 
 #include "sync/wait_object.hpp"
-#include "containers/queue.hpp"
+#include "containers/intrusive.hpp"
 #include "coro/coro.hpp"
 #include "coro/sched.hpp"
 

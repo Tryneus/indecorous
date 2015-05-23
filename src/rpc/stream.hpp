@@ -7,7 +7,7 @@
 #include <queue>
 
 #include "containers/buffer.hpp"
-#include "containers/queue.hpp"
+#include "containers/intrusive.hpp"
 
 namespace indecorous {
 

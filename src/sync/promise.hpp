@@ -5,7 +5,7 @@
 
 #include "common.hpp"
 #include "errors.hpp"
-#include "containers/queue.hpp"
+#include "containers/intrusive.hpp"
 #include "sync/wait_object.hpp"
 
 namespace indecorous {

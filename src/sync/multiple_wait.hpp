@@ -4,7 +4,7 @@
 
 #include "sync/wait_object.hpp"
 #include "containers/arena.hpp"
-#include "containers/queue.hpp"
+#include "containers/intrusive.hpp"
 
 namespace indecorous {
 

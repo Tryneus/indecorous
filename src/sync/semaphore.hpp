@@ -2,7 +2,7 @@
 #define SYNC_SEMAPHORE_HPP_
 
 #include "sync/wait_object.hpp"
-#include "containers/queue.hpp"
+#include "containers/intrusive.hpp"
 #include "coro/coro.hpp"
 
 namespace indecorous {

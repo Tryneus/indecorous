@@ -1,7 +1,7 @@
 #ifndef SYNC_WAIT_OBJECT_HPP_
 #define SYNC_WAIT_OBJECT_HPP_
 
-#include "containers/queue.hpp"
+#include "containers/intrusive.hpp"
 
 namespace indecorous {
 

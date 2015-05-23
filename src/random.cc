@@ -7,7 +7,7 @@ namespace indecorous {
 random_t::~random_t() { }
 
 template <typename gen_t>
-void random_t::fill_internal(char *buffer, size_t length, gen_t *generator) {
+void random_t::fill_internal(void *buffer, size_t length, gen_t *generator) {
     typedef typename gen_t::val_t val_t;
     union wrapped_t { val_t t; char c[sizeof(val_t)]; } w;
     for (size_t i = 0; i < length; ++i) {
@@ -15,13 +15,13 @@ void random_t::fill_internal(char *buffer, size_t length, gen_t *generator) {
         if (offset == 0) {
             w.t = generator->next();
         }
-        buffer[i] = w.c[offset];
+        reinterpret_cast<char *>(buffer)[i] = w.c[offset];
     }
 }
 
 true_random_t::true_random_t() { }
 
-void true_random_t::fill(char *buffer, size_t length) {
+void true_random_t::fill(void *buffer, size_t length) {
     fill_internal(buffer, length, this);
 }
 
@@ -34,7 +34,7 @@ pseudo_random_t::pseudo_random_t() {
     dev.seed(r.generate<val_t>());
 }
 
-void pseudo_random_t::fill(char *buffer, size_t length) {
+void pseudo_random_t::fill(void *buffer, size_t length) {
     fill_internal(buffer, length, this);
 }
 

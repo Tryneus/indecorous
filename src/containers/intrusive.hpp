@@ -1,5 +1,5 @@
-#ifndef CONTAINERS_QUEUE_HPP_
-#define CONTAINERS_QUEUE_HPP_
+#ifndef CONTAINERS_INTRUSIVE_HPP_
+#define CONTAINERS_INTRUSIVE_HPP_
 
 #include <atomic>
 #include <cassert>
@@ -102,7 +102,7 @@ public:
     }
 
     bool empty() const {
-        return this->next_node() == this;
+        return (this->next_node() == this);
     }
 
 private:
@@ -181,4 +181,4 @@ private:
 
 } // namespace indecorous
 
-#endif // CONTAINERS_QUEUE_HPP_
+#endif // CONTAINERS_INTRUSIVE_HPP_

@@ -11,26 +11,26 @@ class random_t {
 public:
     virtual ~random_t();
 
-    virtual void fill(char *buffer, size_t length) = 0;
+    virtual void fill(void *buffer, size_t length) = 0;
 
     template <typename T>
     T generate() {
         static_assert(std::is_integral<T>::value,
                       "Cannot generate a random number for a non-integral type");
         T res;
-        fill(reinterpret_cast<char *>(&res), sizeof(res));
+        fill(&res, sizeof(res));
         return res;
     }
 
 protected:
     template <typename gen_t>
-    void fill_internal(char *buffer, size_t length, gen_t *generator);
+    void fill_internal(void *buffer, size_t length, gen_t *generator);
 };
 
 class true_random_t : public random_t {
 public:
     true_random_t();
-    void fill(char *buffer, size_t length);
+    void fill(void *buffer, size_t length);
 private:
     friend class random_t;
     typedef std::random_device::result_type val_t;
@@ -43,7 +43,7 @@ private:
 class pseudo_random_t : public random_t {
 public:
     pseudo_random_t();
-    void fill(char *buffer, size_t length);
+    void fill(void *buffer, size_t length);
 private:
     friend class random_t;
     typedef std::mt19937::result_type val_t;

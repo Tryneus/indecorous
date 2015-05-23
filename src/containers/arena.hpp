@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <utility>
 
-#include "containers/queue.hpp"
+#include "containers/intrusive.hpp"
 
 namespace indecorous {
 
