@@ -13,6 +13,8 @@ namespace indecorous {
 
 class coro_t;
 
+[[noreturn]] void launch_coro();
+
 // Not thread-safe, exactly one dispatcher_t per thread
 class dispatcher_t
 {

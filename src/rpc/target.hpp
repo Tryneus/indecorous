@@ -51,7 +51,7 @@ public:
     template <typename Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>
     future_t<result_t> async_call(Args &&...args) {
         request_id_t request_id = send_request(std::forward<Args>(args)...);
-        return coro_t::spawn(parse_result<result_t>, get_response(request_id));
+        return coro_t::spawn(&target_t::parse_result<result_t>, get_response(request_id));
     }
 
 

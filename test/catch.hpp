@@ -27,6 +27,7 @@
 #       pragma clang diagnostic ignored "-Wc99-extensions"
 #       pragma clang diagnostic ignored "-Wunused-variable"
 #       pragma clang diagnostic push
+#       pragma clang diagnostic ignored "-Wswitch-enum"
 #       pragma clang diagnostic ignored "-Wpadded"
 #       pragma clang diagnostic ignored "-Wc++98-compat"
 #       pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
@@ -35,6 +36,9 @@
 #    pragma GCC diagnostic ignored "-Wvariadic-macros"
 #    pragma GCC diagnostic ignored "-Wunused-variable"
 #    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wswitch-default"
+#    pragma GCC diagnostic ignored "-Wswitch-enum"
+#    pragma GCC diagnostic ignored "-Wshadow"
 #    pragma GCC diagnostic ignored "-Wpadded"
 #endif
 

@@ -115,7 +115,7 @@ coro_t::~coro_t() {
     VALGRIND_STACK_DEREGISTER(m_valgrindStackId);
 }
 
-[[noreturn]] void launch_coro() {
+void launch_coro() {
     handover_params.check_valid();
 
     // Copy out the handover parameters so we can clear them
