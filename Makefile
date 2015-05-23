@@ -21,7 +21,7 @@ ifeq ($(CXX),clang++)
   CXX = clang++-3.5
 endif
 
-CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -g -Wall -Wextra -Werror
+CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -Wall -Wextra -Werror
 CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
 CXX_FLAGS += -Wformat=2 -Wswitch-enum -Wswitch-default
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
@@ -30,6 +30,10 @@ ifneq ($(DEBUG),1)
   RT_CXXFLAGS += -O3 -DNDEBUG
   #RT_CXXFLAGS += -fno-strict-aliasing
 endif
+
+# Hack because newton's version of gdb is older
+#CXX_FLAGS += -g
+CXX_FLAGS += -gdwarf-3
 
 LD_FLAGS = -lstdc++ -lpthread
 BIN_NAME = coro_test

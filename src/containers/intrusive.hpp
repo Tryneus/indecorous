@@ -44,7 +44,10 @@ template <typename T>
 class intrusive_list_t : public intrusive_node_t<T> {
 public:
     intrusive_list_t() :
-        m_size(0) { }
+            m_size(0) {
+        this->set_prev_node(this);
+        this->set_next_node(this);
+    }
 
     intrusive_list_t(intrusive_list_t<T> &&other) :
             intrusive_node_t<T>(std::move(other)),
