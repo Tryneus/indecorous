@@ -64,7 +64,6 @@ read_message_t read_message_t::empty() {
 }
 
 read_message_t read_message_t::parse(buffer_owner_t &&buffer) {
-    static_assert(sizeof(message_header_t) == sizeof(uint64_t) * 4, "error");
     read_message_t message(std::move(buffer),
                            target_id_t(-1), handler_id_t(-1), request_id_t(-1));
     message_header_t header = serializer_t<message_header_t>::read(&message);
@@ -83,7 +82,8 @@ read_message_t read_message_t::parse(tcp_stream_t *stream) {
         array.data(), array.size(), sizeof(message_header_t));
     stream->read_exactly(header_buffer.data(), header_buffer.capacity());
 
-    read_message_t message(std::move(header_buffer), handler_id_t(-1), request_id_t(-1));
+    read_message_t message(std::move(header_buffer),
+                           target_id_t(-1), handler_id_t(-1), request_id_t(-1));
     message_header_t header = serializer_t<message_header_t>::read(&message);
     assert(header.header_magic == message_header_t::HEADER_MAGIC);
 

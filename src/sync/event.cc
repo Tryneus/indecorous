@@ -56,10 +56,7 @@ void event_t::wait() {
         if (m_autoReset)
             m_triggered = false;
     } else {
-        DEBUG_ONLY(coro_t* self = coro_t::self());
-        m_waiters.push_back(coro_t::self());
-        coro_t::wait();
-        assert(coro_t::self() == self);
+        coro_wait(&m_waiters);
     }
 }
 

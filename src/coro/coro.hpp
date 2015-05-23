@@ -78,6 +78,8 @@ public:
         return coro_t::self()->spawn_internal(true, fn, instance, std::forward<Args>(args)...);
     }
 
+    typedef void(coro_t::*hook_fn_t)(coro_t*, void*, bool);
+
 private:
     friend class scheduler_t;
     friend class dispatcher_t;
@@ -91,10 +93,7 @@ private:
         coro_t *context = m_dispatch->m_context_arena.get(m_dispatch);
         std::tuple<promise_t<Res>, Res(*)(Args...), Args...> params(
             { std::move(promise), fn, std::forward<Args>(args)... });
-
-        // Start the other coroutine - it will give us execution back after it has 
-        // copied the parameters
-        context->begin(&hook<Res, Args...>, &params, this, immediate);
+        context->begin(&coro_t::hook<Res, decltype(params), 2>, &params, this, immediate);
         return res;
     }
 
@@ -105,18 +104,11 @@ private:
         coro_t *context = m_dispatch->m_context_arena.get(m_dispatch);
         std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> params(
             std::move(promise), fn, instance, std::forward<Args>(args)... );
-
-        // Start the other coroutine - it will give us execution back after it has 
-        // copied the parameters
-        context->begin(hook_member_fn<Res, Class, Args...>, &params, this, immediate);
+        context->begin(&coro_t::hook<Res, decltype(params), 3>, this, &params, immediate);
         return res;
     }
 
-    template <typename Res, typename... Args>
-    [[noreturn]] void hook(void *p, coro_t *parent, bool immediate) {
-        typedef std::tuple<promise_t<Res>, Res(*)(Args...), Args...> params_t;
-        params_t params = std::move(*reinterpret_cast<params_t *>(p));
-
+    void maybe_swap_parent(coro_t *parent, bool immediate) {
         if (immediate) {
             // We're running immediately, put our parent on the back of the run queue
             m_dispatch->m_run_queue.push_back(parent);
@@ -126,46 +118,40 @@ private:
             m_dispatch->m_run_queue.push_back(this);
             swap(parent);
         }
+    }
 
-        promise_t<Res> *promise = &std::get<0>(params);
-        promise->fulfill(hook_internal(std::index_sequence_for<Args...>{}, params));
+    template <typename Res, typename Tuple, size_t ArgOffset>
+    void hook(coro_t *parent, void *p, bool immediate) {
+        Tuple params(std::move(*reinterpret_cast<Tuple *>(p)));
+        maybe_swap_parent(parent, immediate);
+        runner_t<Res>::run(std::make_index_sequence<std::tuple_size<Tuple>::value - ArgOffset>{}, &params);
         end();
     }
 
-    template <typename Res, typename Class, typename... Args>
-    [[noreturn]] void hook_member_fn(void *p, coro_t *parent, bool immediate) {
-        typedef std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> params_t;
-        params_t params = std::move(*reinterpret_cast<params_t *>(p));
-
-        if (immediate) {
-            // We're running immediately, put our parent on the back of the run queue
-            m_dispatch->m_run_queue.push_back(parent);
-        } else {
-            // We're delaying our execution, put ourselves on the back of the run queue
-            // and swap back in our parent so they can continue
-            m_dispatch->m_run_queue.push_back(this);
-            swap(parent);
+    template <typename Res>
+    class runner_t {
+    public:
+        template <size_t... N, typename... Args>
+        static void run(std::integer_sequence<size_t, N...>,
+                        std::tuple<promise_t<Res>, Res(*)(Args...), Args...> *args) {
+            promise_t<Res> promise(std::get<0>(std::move(args)));
+            promise.fulfill(std::get<1>(args)(std::get<N+2>(std::move(args))...));
         }
 
-        promise_t<Res> *promise = &std::get<0>(params);
-        promise->fulfill(hook_internal(std::index_sequence_for<Args...>{}, params));
-        end();
-    }
-
-    template <size_t... N, typename Res, typename... Args>
-    static Res hook_internal(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Res(*)(Args...), Args...> &args) {
-        return std::get<1>(args)(std::get<N+2>(std::move(args))...);
-    }
-
-    template <size_t... N, typename Res, typename Class, typename... Args>
-    static Res hook_internal(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> &args) {
-        return std::get<1>(args)(std::get<2>(std::move(args)), std::get<N+3>(std::move(args))...);
-    }
+        template <size_t... N, typename Class, typename... Args>
+        static void run(std::integer_sequence<size_t, N...>,
+                        std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> *args) {
+            promise_t<Res> promise(std::get<0>(std::move(args)));
+            Class *instance = std::get<2>(args);
+            Res(Class::*fn)(Args...) = std::get<1>(args);
+            promise.fulfill((instance->*fn)(std::get<N+3>(std::move(args))...));
+        }
+    };
 
     coro_t(dispatcher_t *dispatch);
     ~coro_t();
 
-    void begin(void(coro_t::*fn)(void*, coro_t*, bool), void *params, coro_t *parent, bool immediate);
+    void begin(hook_fn_t, coro_t *parent, void *params, bool immediate);
     [[noreturn]] void end();
     void swap(coro_t *next = nullptr);
 
@@ -178,6 +164,28 @@ private:
     char m_stack[s_stackSize];
     int m_valgrindStackId;
     wait_result_t m_wait_result;
+};
+
+// Specialization for void-returning functions
+template <> class coro_t::runner_t<void> {
+public:
+    template <size_t... N, typename... Args>
+    static void run(std::integer_sequence<size_t, N...>,
+                    std::tuple<promise_t<void>, void(*)(Args...), Args...> *args) {
+        promise_t<void> promise(std::get<0>(std::move(*args)));
+        std::get<1>(*args)(std::get<N+2>(std::move(*args))...);
+        promise.fulfill();
+    }
+
+    template <size_t... N, typename Class, typename... Args>
+    static void run(std::integer_sequence<size_t, N...>,
+                    std::tuple<promise_t<void>, void(Class::*)(Args...), Class *, Args...> *args) {
+        promise_t<void> promise(std::get<0>(std::move(*args)));
+        Class *instance = std::get<2>(*args);
+        void(Class::*fn)(Args...) = std::get<1>(*args);
+        (instance->*fn)(std::get<N+3>(std::move(*args))...);
+        promise.fulfill();
+    }
 };
 
 } // namespace indecorous

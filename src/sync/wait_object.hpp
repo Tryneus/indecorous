@@ -30,6 +30,10 @@ protected:
     virtual void removeWait(wait_callback_t* waiter) = 0;
 };
 
+// Adds the current coroutine to the list and waits
+// This is useful to avoid circular dependencies with coro_t
+void coro_wait(intrusive_list_t<wait_callback_t> *list);
+
 } // namespace indecorous
 
 #endif // SYNC_WAIT_OBJECT_HPP_

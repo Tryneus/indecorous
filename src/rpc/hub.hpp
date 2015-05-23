@@ -23,8 +23,8 @@ public:
     public:
         membership_t(message_hub_t *_hub, T *_member);
         ~membership_t();
+        message_hub_t * const hub;
     private:
-        message_hub_t *hub;
         T *member;
     };
 

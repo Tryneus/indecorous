@@ -38,8 +38,7 @@ public:
         } else if (m_data->has()) {
             return;
         } else {
-            m_data->m_waiters.push_back(coro_self());
-            coro_wait();
+            coro_wait(&m_waiters);
         }
     }
 
@@ -69,7 +68,7 @@ private:
         } else if (m_data->has()) {
             cb->wait_callback(wait_result_t::Success);
         } else {
-            m_data->m_waiters.push(cb);
+            m_waiters.push_back(cb);
         }
     }
     void removeWait(wait_callback_t *cb) {
@@ -97,11 +96,11 @@ public:
         }
     }
 
-    void has() const {
+    bool has() const {
         return m_state == state_t::fulfilled;
     }
 
-    void released() const {
+    bool released() const {
         return m_state == state_t::released;
     }
 
@@ -217,8 +216,8 @@ public:
     promise_data_t();
     ~promise_data_t();
 
-    void has() const;
-    void released() const;
+    bool has() const;
+    bool released() const;
 
     void assign();
     future_t<void> add_future();

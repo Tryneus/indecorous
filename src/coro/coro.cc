@@ -19,7 +19,7 @@ __thread dispatcher_t* dispatcher_t::s_instance = nullptr;
 // Used to hand over parameters to a new coroutine - since we can't safely pass pointers
 struct handover_params_t {
     void init(coro_t *_self,
-              void(coro_t::*_fn)(void*, coro_t*, bool),
+              coro_t::hook_fn_t _fn,
               void *_params,
               coro_t *_parent,
               bool _immediate) {
@@ -46,7 +46,7 @@ struct handover_params_t {
     }
 
     coro_t *self;
-    void (coro_t::*fn)(void*, coro_t*, bool);
+    coro_t::hook_fn_t fn;
     void *params;
     coro_t *parent;
     bool immediate;
@@ -119,7 +119,7 @@ coro_t::~coro_t() {
     handover_params.check_valid();
 
     // Copy out the handover parameters so we can clear them
-    void (coro_t::*fn)(void*, coro_t*, bool) = handover_params.fn;
+    coro_t::hook_fn_t fn = handover_params.fn;
     void *params = handover_params.params;
     coro_t *self = handover_params.self;
     coro_t *parent = handover_params.parent;
@@ -127,11 +127,11 @@ coro_t::~coro_t() {
 
     // Reset the handover parameters for the next coroutine to be spawned
     handover_params.clear();
-    (self->*fn)(params, parent, immediate);
+    (self->*fn)(parent, params, immediate);
     assert(false);
 }
 
-void coro_t::begin(void(coro_t::*fn)(void*, coro_t*, bool), void *params, coro_t *parent, bool immediate) {
+void coro_t::begin(coro_t::hook_fn_t fn, coro_t *parent, void *params, bool immediate) {
     int res = getcontext(&m_context);
     assert(res == 0);
 

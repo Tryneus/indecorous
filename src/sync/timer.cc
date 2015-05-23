@@ -52,34 +52,33 @@ bool timer_t::stop() {
 }
 
 void timer_t::wait() {
-  DEBUG_ONLY(coro_t* self = coro_t::self());
-  m_waiters.push_back(coro_t::self());
-  coro_t::wait();
-  assert(coro_t::self() == self);
+    coro_wait(&m_waiters);
 }
 
 void timer_t::addWait(wait_callback_t* cb) {
-  m_waiters.push_back(cb);
+    m_waiters.push_back(cb);
 }
 
 void timer_t::removeWait(wait_callback_t* cb) {
-  m_waiters.remove(cb);
+    m_waiters.remove(cb);
 }
 
 void timer_t::wait_callback(wait_result_t result) {
-  assert(m_running);
+    assert(m_running);
 
-  if (m_wakeAll)
-    while (!m_waiters.empty()) {
-      m_waiters.pop_back()->wait_callback(result);
+    if (m_wakeAll) {
+        while (!m_waiters.empty()) {
+            m_waiters.pop_back()->wait_callback(result);
+        }
+    } else if (!m_waiters.empty()) {
+        m_waiters.pop_back()->wait_callback(result);
     }
-  else if (!m_waiters.empty())
-    m_waiters.pop_back()->wait_callback(result);
 
-  if (m_autoReset)
-    reset();
-  else
-    m_running = false;
+    if (m_autoReset) {
+        reset();
+    } else {
+        m_running = false;
+    }
 }
 
 } // namespace indecorous

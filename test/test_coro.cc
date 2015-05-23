@@ -30,7 +30,7 @@ const handler_id_t unique_handler_t<test_callback_t>::unique_id = handler_id_gen
 
 TEST_CASE("coro/spawn", "Test basic coroutine spawning and running") {
     scheduler_t sched(num_threads);
-    std::set<target_id_t> threads = sched.all_threads();
+    std::unordered_set<target_id_t> threads = sched.all_threads();
     // Perform an RPC into each thread to start
     for (auto const &id : threads) {
         sched.message_hub()->target(id)->noreply_call<test_callback_t>("foo", "bar", 1);

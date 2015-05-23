@@ -25,7 +25,8 @@ public:
     request_id_t send_request(Args &&...args) {
         request_id_t request_id = request_gen.next();
         write_message_t msg =
-            handler_t<Callback>::handler_impl_t::make_write(request_id,
+            handler_t<Callback>::handler_impl_t::make_write(id(),
+                                                            request_id,
                                                             std::forward<Args>(args)...);
         stream()->write(std::move(msg));
         return request_id;
@@ -57,14 +58,14 @@ public:
 protected:
     virtual stream_t *stream() = 0;
 
-private:
-    future_t<read_message_t> get_response(request_id_t request_id); // TODO: implement
-    id_generator_t<request_id_t> request_gen;
+    target_id_t target_id;
+    message_hub_t::membership_t<target_t> membership;
 
     std::unordered_map<request_id_t, promise_t<read_message_t> > request_map;
 
-    target_id_t target_id;
-    message_hub_t::membership_t<target_t> membership;
+private:
+    future_t<read_message_t> get_response(request_id_t request_id); // TODO: implement
+    id_generator_t<request_id_t> request_gen;
 };
 
 class local_target_t : public target_t {
@@ -79,7 +80,7 @@ private:
 };
 
 // TODO: need to be able to address multiple targets in a remote process
-class remote_target_t {
+class remote_target_t : public target_t {
 public:
     remote_target_t(message_hub_t *hub);
 
