@@ -34,7 +34,7 @@ bool message_hub_t::spawn(read_message_t msg) {
     } else if (msg.request_id == request_id_t::noreply()) {
         coro_t::spawn(&handler_callback_t::handle_noreply, cb_it->second, &msg);
     } else {
-        coro_t::spawn(&handler_callback_t::handle, cb_it->second, &msg);
+        coro_t::spawn(&handler_callback_t::handle, cb_it->second, this, &msg);
     }
     return true;
 }
@@ -42,6 +42,15 @@ bool message_hub_t::spawn(read_message_t msg) {
 target_t *message_hub_t::target(target_id_t id) const {
     auto it = targets.find(id);
     return (it == targets.end()) ? nullptr : it->second;
+}
+
+void message_hub_t::send_reply(target_id_t target_id, write_message_t &&msg) {
+    target_t *t = target(target_id);
+    if (t != nullptr) {
+        t->stream()->write(std::move(msg));
+    } else {
+        printf("Cannot find target (%lu) to send reply to.\n", target_id.value());
+    }
 }
 
 void message_hub_t::add(handler_callback_t *callback) {

@@ -38,8 +38,8 @@ public:
         return coro_t::spawn(&target_t::parse_result<result_t>, get_response(request_id));
     }
 
-
 protected:
+    friend class message_hub_t;
     virtual stream_t *stream() = 0;
 
     target_id_t target_id;

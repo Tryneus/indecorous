@@ -16,7 +16,7 @@ class message_hub_t;
 class handler_callback_t {
 public:
     virtual ~handler_callback_t();
-    virtual void handle(read_message_t *msg) = 0;
+    virtual void handle(message_hub_t *hub, read_message_t *msg) = 0;
     virtual void handle_noreply(read_message_t *msg) = 0;
     virtual handler_id_t id() const = 0;
 };
@@ -39,19 +39,19 @@ public:
     template <typename Res, typename... Args>
     class internal_handler_t : public handler_callback_t {
     public:
-        void handle(read_message_t *msg) {
-            Res res = handle(std::index_sequence_for<Args...>{},
-                             std::tuple<Args...>{serializer_t<Args>::read(msg)...});
-            write_message_t::create(msg->source_id,
-                                    handler_id_t::reply(),
-                                    msg->request_id,
-                                    std::move(res));
-            // TODO: find target and send response
+        void handle(message_hub_t *hub, read_message_t *msg) {
+            Res res = handle_internal(std::index_sequence_for<Args...>{},
+                                      std::tuple<Args...>{serializer_t<Args>::read(msg)...});
+            hub->send_reply(msg->source_id,
+                            write_message_t::create(msg->source_id,
+                                                    handler_id_t::reply(),
+                                                    msg->request_id,
+                                                    std::move(res)));
         }
 
         void handle_noreply(read_message_t *msg) {
-            handle(std::index_sequence_for<Args...>{},
-                   std::tuple<Args...>{serializer_t<Args>::read(msg)...});
+            handle_internal(std::index_sequence_for<Args...>{},
+                            std::tuple<Args...>{serializer_t<Args>::read(msg)...});
         }
 
         handler_id_t id() const {
@@ -67,7 +67,8 @@ public:
 
     private:
         template <size_t... N>
-        static Res handle(std::integer_sequence<size_t, N...>, std::tuple<Args...> &&args) {
+        static Res handle_internal(std::integer_sequence<size_t, N...>,
+                                   std::tuple<Args...> &&args) {
             return Callback::call(std::move(std::get<N>(args))...);
         }
     };

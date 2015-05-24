@@ -10,6 +10,7 @@ namespace indecorous {
 class target_t;
 class handler_callback_t;
 class read_message_t;
+class write_message_t;
 
 class message_hub_t {
 public:
@@ -29,6 +30,8 @@ public:
     };
 
     bool spawn(read_message_t msg);
+
+    void send_reply(target_id_t target_id, write_message_t &&msg);
 
 private:
     void add(target_t *_target);
