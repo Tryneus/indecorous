@@ -61,7 +61,7 @@ private:
     scheduler_t* m_parent;
     bool m_shutdown;
     thread_barrier_t *m_barrier;
-    dispatcher_t m_dispatch;
+    dispatcher_t *m_dispatch;
 
     // TODO: make these use intrusive queues or something for performance?
     // TODO: also consider unordered maps

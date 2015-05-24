@@ -1,4 +1,5 @@
 #include "coro/barrier.hpp"
+#include <stdio.h>
 
 namespace indecorous {
 
@@ -17,7 +18,7 @@ void thread_barrier_t::wait() {
     if (++m_check_in == m_total) {
         m_cond.notify_all();
     } else {
-        m_cond.wait(lock, [this] { return m_check_in == m_total; });
+        m_cond.wait(lock, [this] { return m_check_in >= m_total; });
     }
 
     ++m_check_out;
