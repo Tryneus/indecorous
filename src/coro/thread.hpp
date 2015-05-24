@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <map>
 #include <thread>
-#include <memory>
 
 #include "rpc/target.hpp"
 #include "sync/file_wait.hpp"
@@ -29,6 +28,8 @@ public:
     thread_t(scheduler_t* parent, thread_barrier_t *barrier);
 
     static thread_t *self();
+
+    dispatcher_t *dispatcher();
     void shutdown();
     target_id_t id() const;
 
@@ -62,7 +63,7 @@ private:
     scheduler_t* m_parent;
     bool m_shutdown;
     thread_barrier_t *m_barrier;
-    std::unique_ptr<dispatcher_t> m_dispatch;
+    dispatcher_t m_dispatch;
 
     // TODO: make these use intrusive queues or something for performance?
     // TODO: also consider unordered maps

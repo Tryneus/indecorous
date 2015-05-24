@@ -27,9 +27,6 @@ public:
     message_hub_t *message_hub();
 
 private:
-    static scheduler_t &get_instance();
-    static scheduler_t* s_instance;
-
     bool m_running;
     size_t m_num_threads;
     thread_barrier_t m_barrier;

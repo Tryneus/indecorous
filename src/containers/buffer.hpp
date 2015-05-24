@@ -79,7 +79,6 @@ public:
     }
 
     linkable_buffer_t *release() {
-        assert(has());
         linkable_buffer_t *res = m_buffer;
         m_buffer = nullptr;
         return res;

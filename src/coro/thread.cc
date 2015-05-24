@@ -24,7 +24,6 @@ thread_t::thread_t(scheduler_t* parent,
 
 void thread_t::main() {
     s_instance = this;
-    m_dispatch.reset(new dispatcher_t());
 
     m_barrier->wait(); // Barrier for the scheduler_t constructor, thread ready
 
@@ -36,7 +35,7 @@ void thread_t::main() {
 
         m_target.pull_calls();
         // TODO: this is completely wrong, need to continue until all threads have no activity
-        while (m_dispatch->run() > 0) {
+        while (m_dispatch.run() > 0) {
             m_target.pull_calls();
             do_wait();
         }
@@ -45,6 +44,10 @@ void thread_t::main() {
     }
 
     m_barrier->wait(); // Barrier for ~scheduler_t, safe to destruct
+}
+
+dispatcher_t *thread_t::dispatcher() {
+    return &m_dispatch;
 }
 
 void thread_t::shutdown() {
@@ -128,7 +131,7 @@ void thread_t::do_wait() {
 }
 
 int thread_t::get_wait_timeout() {
-    if (m_dispatch->m_run_queue.size() > 0)
+    if (m_dispatch.m_run_queue.size() > 0)
         return 0;
 
     if (m_timer_waiters.empty())

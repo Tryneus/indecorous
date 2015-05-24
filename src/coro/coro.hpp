@@ -28,14 +28,12 @@ public:
     uint32_t run();
 
 private:
+    // TODO: make the interface public, remove friends
     friend class scheduler_t;
     friend class thread_t;
     friend class coro_t;
-    static dispatcher_t& get_instance();
 
     void enqueue_release(coro_t *coro);
-
-    static __thread dispatcher_t* s_instance;
 
     coro_t *volatile m_self;
     coro_t *m_release_coro; // Recently-finished coro_t to be released
