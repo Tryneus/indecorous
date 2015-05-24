@@ -5,7 +5,6 @@
 #include "sync/wait_object.hpp"
 #include "containers/intrusive.hpp"
 #include "coro/coro.hpp"
-#include "coro/sched.hpp"
 
 namespace indecorous {
 

@@ -34,5 +34,6 @@ TEST_CASE("intrusive_list_t", "[containers][intrusive]") {
 }
 
 TEST_CASE("mpsc_queue_t", "[containers][intrusive]") {
+    node_t nodes[5];
 
 }

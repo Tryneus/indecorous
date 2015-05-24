@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
-#include <pthread.h>
+#include <thread>
 
 #include "rpc/target.hpp"
 #include "sync/file_wait.hpp"
@@ -14,6 +14,7 @@ struct pollfd;
 namespace indecorous {
 
 class scheduler_t;
+class thread_barrier_t;
 
 class thread_t {
 public:
@@ -24,7 +25,7 @@ public:
     static bool add_file_wait(int fd, int event_mask, wait_callback_t* waiter);
     static bool remove_file_wait(int fd, int event_mask, wait_callback_t* waiter);
 
-    thread_t(scheduler_t* parent, size_t thread_id, pthread_barrier_t *barrier);
+    thread_t(scheduler_t* parent, thread_barrier_t *barrier);
 
     static thread_t *self();
 
@@ -32,10 +33,7 @@ private:
     friend class scheduler_t;
 
     void shutdown();
-    static thread_t& get_instance();
-
-    static void* thread_hook(void* param);
-    void thread_main();
+    void main();
 
     void do_wait();
     void build_poll_set(struct pollfd* poll_array);
@@ -63,9 +61,8 @@ private:
 
     scheduler_t* m_parent;
     bool m_shutdown;
-    pthread_t m_pthread;
-    pthread_barrier_t *m_barrier;
-    dispatcher_t* m_dispatch;
+    thread_barrier_t *m_barrier;
+    dispatcher_t m_dispatch;
 
     // TODO: make these use intrusive queues or something for performance?
     // TODO: also consider unordered maps
@@ -73,9 +70,9 @@ private:
     std::multimap<uint64_t, wait_callback_t*> m_timer_waiters;
 
     local_target_t m_target;
+    std::thread m_thread;
 
     static __thread thread_t* s_instance;
-    static __thread size_t s_thread_id;
 };
 
 } // namespace indecorous

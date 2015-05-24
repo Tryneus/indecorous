@@ -1,15 +1,11 @@
 #ifndef CORO_CORO_SCHED_HPP_
 #define CORO_CORO_SCHED_HPP_
-#include <poll.h>
-#include <stdint.h>
-#include <atomic>
-#include <map>
-#include <unordered_set>
-#include <pthread.h>
 
-#include "sync/wait_object.hpp"
-#include "rpc/target.hpp"
+#include <unordered_set>
+
+#include "coro/barrier.hpp"
 #include "rpc/hub.hpp"
+#include "rpc/id.hpp"
 
 namespace indecorous {
 
@@ -38,12 +34,12 @@ private:
     static scheduler_t &get_instance();
 
     bool m_running;
-    pthread_barrier_t m_barrier;
-    thread_t** m_threads;
     size_t m_num_threads;
+    thread_barrier_t m_barrier;
     static scheduler_t* s_instance;
     message_hub_t m_message_hub; // For passing messages between threads/processes
     std::unordered_set<target_id_t> m_thread_ids;
+    thread_t** m_threads;
 };
 
 } // namespace indecorous

@@ -35,7 +35,7 @@ endif
 #CXX_FLAGS += -g
 CXX_FLAGS += -gdwarf-3
 
-LD_FLAGS = -lstdc++ -lpthread
+LD_FLAGS = -lstdc++
 BIN_NAME = coro_test
 
 ALL_SOURCES := $(shell find $(SRC_DIR) -name '*.cc' -not -name '\.*')

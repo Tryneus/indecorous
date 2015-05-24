@@ -3,80 +3,44 @@
 #include <limits>
 #include <sys/time.h>
 
+#include "coro/barrier.hpp"
 #include "coro/sched.hpp"
 #include "errors.hpp"
 
 namespace indecorous {
 
 __thread thread_t* thread_t::s_instance = nullptr;
-__thread size_t thread_t::s_thread_id = -1;
-
-struct thread_args_t {
-    thread_t* instance;
-    size_t thread_id;
-};
 
 thread_t::thread_t(scheduler_t* parent,
-                   size_t thread_id,
-                   pthread_barrier_t* barrier) :
+                   thread_barrier_t* barrier) :
         m_parent(parent),
         m_shutdown(false),
         m_barrier(barrier),
-        m_target(&parent->m_message_hub, this) {
-    // Launch pthread for the new thread, then return
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        m_dispatch(),
+        m_target(&parent->m_message_hub, this),
+        m_thread(&thread_t::main, this) { }
 
-    thread_args_t* args = new thread_args_t;
+void thread_t::main() {
+    s_instance = this;
 
-    args->instance = this;
-    args->thread_id = thread_id;
-
-    pthread_create(&m_pthread, &attr, &thread_hook, args);
-    pthread_attr_destroy(&attr);
-}
-
-void* thread_t::thread_hook(void* param) {
-    thread_args_t *args = reinterpret_cast<thread_args_t*>(param);
-    s_thread_id = args->thread_id;
-    s_instance = args->instance;
-    delete args;
-
-    s_instance->m_dispatch = new dispatcher_t();
-
-    s_instance->thread_main();
-
-    delete s_instance->m_dispatch;
-    s_instance->m_dispatch = nullptr;
-
-    // Last barrier is for the scheduler_t destructor,
-    //  indicates that the thread_t objects are safe for destruction
-    pthread_barrier_wait(s_instance->m_barrier);
-
-    return nullptr;
-}
-
-void thread_t::thread_main() {
-    // First barrier is for the scheduler_t constructor,
-    //  indicates that the dispatchers are ready
-    pthread_barrier_wait(m_barrier);
+    m_barrier->wait(); // Barrier for the scheduler_t constructor, thread ready
 
     while (true) {
-        // Wait for run or ~scheduler_t
-        pthread_barrier_wait(m_barrier);
+        m_barrier->wait(); // Wait for run or ~scheduler_t
 
         if (m_shutdown)
             break;
 
-        while (m_dispatch->run() > 0) {
+        // TODO: this is completely wrong, need to continue until all threads have no activity
+        while (m_dispatch.run() > 0) {
             m_target.pull_calls();
             do_wait();
         }
 
-        // Wait for other threads to finish
-        pthread_barrier_wait(m_barrier);
+        m_barrier->wait(); // Wait for other threads to finish
     }
+
+    m_barrier->wait(); // Barrier for ~scheduler_t, safe to destruct
 }
 
 void thread_t::shutdown() {
@@ -84,12 +48,8 @@ void thread_t::shutdown() {
 }
 
 thread_t *thread_t::self() {
-    return s_instance;
-}
-
-thread_t& thread_t::get_instance() {
     assert(s_instance != nullptr);
-    return *s_instance;
+    return s_instance;
 }
 
 void thread_t::build_poll_set(struct pollfd* poll_array) {
@@ -160,7 +120,7 @@ void thread_t::do_wait() {
 }
 
 int thread_t::get_wait_timeout() {
-    if (m_dispatch->m_run_queue.size() > 0)
+    if (m_dispatch.m_run_queue.size() > 0)
         return 0;
 
     if (m_timer_waiters.empty())
@@ -195,36 +155,36 @@ uint64_t thread_t::get_end_time(uint32_t timeout) {
 
 void thread_t::add_timer(wait_callback_t* cb, uint32_t timeout) {
     // TODO: do a better than O(n) search - store expiration time in timer?
-    thread_t& thread = get_instance();
+    thread_t *instance = self();
 
-    auto i = thread.m_timer_waiters.begin();
-    for (; i != thread.m_timer_waiters.end() && i->second != cb; ++i);
-    assert(i == thread.m_timer_waiters.end());
+    auto i = instance->m_timer_waiters.begin();
+    for (; i != instance->m_timer_waiters.end() && i->second != cb; ++i);
+    assert(i == instance->m_timer_waiters.end());
 
     uint64_t endTime = get_end_time(timeout);
-    thread.m_timer_waiters.insert(std::make_pair(endTime, cb));
+    instance->m_timer_waiters.insert(std::make_pair(endTime, cb));
 }
 
 void thread_t::update_timer(wait_callback_t* cb, uint32_t timeout) {
     // TODO: do a better than O(n) search - store expiration time in timer?
-    thread_t& thread = get_instance();
+    thread_t *instance = self();
 
-    auto i = thread.m_timer_waiters.begin();
-    for (; i != thread.m_timer_waiters.end() && i->second != cb; ++i);
-    assert(i != thread.m_timer_waiters.end());
-    thread.m_timer_waiters.erase(i);
+    auto i = instance->m_timer_waiters.begin();
+    for (; i != instance->m_timer_waiters.end() && i->second != cb; ++i);
+    assert(i != instance->m_timer_waiters.end());
+    instance->m_timer_waiters.erase(i);
 
     uint64_t endTime = get_end_time(timeout);
-    thread.m_timer_waiters.insert(std::make_pair(endTime, cb));
+    instance->m_timer_waiters.insert(std::make_pair(endTime, cb));
 }
 
 void thread_t::remove_timer(wait_callback_t* cb) {
     // TODO: do a better than O(n) search - store expiration time in timer?
-    thread_t& thread = get_instance();
-    auto i = thread.m_timer_waiters.begin();
-    for (; i != thread.m_timer_waiters.end() && i->second != cb; ++i);
-    assert(i != thread.m_timer_waiters.end());
-    thread.m_timer_waiters.erase(i);
+    thread_t *instance = self();
+    auto i = instance->m_timer_waiters.begin();
+    for (; i != instance->m_timer_waiters.end() && i->second != cb; ++i);
+    assert(i != instance->m_timer_waiters.end());
+    instance->m_timer_waiters.erase(i);
 }
 
 bool thread_t::add_file_wait(int fd, int event_mask, wait_callback_t* cb) {
@@ -235,28 +195,28 @@ bool thread_t::add_file_wait(int fd, int event_mask, wait_callback_t* cb) {
            event_mask == POLLPRI ||
            event_mask == POLLIN);
 
-    thread_t& thread = get_instance();
+    thread_t *instance = self();
     file_wait_info_t info = { fd, event_mask };
 
-    for (auto i = thread.m_file_waiters.lower_bound(info);
-         i != thread.m_file_waiters.end() && i->first == info; ++i) {
+    for (auto i = instance->m_file_waiters.lower_bound(info);
+         i != instance->m_file_waiters.end() && i->first == info; ++i) {
         if (i->second == cb)
             return false;
     }
 
-    thread.m_file_waiters.insert(std::make_pair(info, cb));
+    instance->m_file_waiters.insert(std::make_pair(info, cb));
     return true;
 }
 
 bool thread_t::remove_file_wait(int fd, int event_mask, wait_callback_t* cb) {
-    thread_t& thread = get_instance();
+    thread_t *instance = self();
     file_wait_info_t info = { fd, event_mask };
 
     // Find the specified item in the map
-    for (auto i = thread.m_file_waiters.lower_bound(info);
-         i != thread.m_file_waiters.end() && i->first == info; ++i) {
+    for (auto i = instance->m_file_waiters.lower_bound(info);
+         i != instance->m_file_waiters.end() && i->first == info; ++i) {
         if (i->second == cb) {
-            thread.m_file_waiters.erase(i);
+            instance->m_file_waiters.erase(i);
             return true;
         }
     }
