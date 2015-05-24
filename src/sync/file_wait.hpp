@@ -10,31 +10,31 @@ namespace indecorous {
 
 class file_wait_base_t : public wait_object_t, public wait_callback_t {
 public:
-  file_wait_base_t(int fd, bool wakeAll);
-  virtual ~file_wait_base_t();
+    file_wait_base_t(int fd, bool wakeAll);
+    virtual ~file_wait_base_t();
 
 protected:
-  int m_fd;
-  bool m_triggered;
+    int m_fd;
+    bool m_triggered;
 
-  void addWait(wait_callback_t* cb);
-  void removeWait(wait_callback_t* cb);
+    void addWait(wait_callback_t* cb);
+    void removeWait(wait_callback_t* cb);
 
 private:
-  friend class scheduler_t;
-  void wait_callback(wait_result_t result);
+    friend class scheduler_t;
+    void wait_callback(wait_result_t result);
 
-  bool m_wakeAll;
-  intrusive_list_t<wait_callback_t> m_waiters;
+    bool m_wakeAll;
+    intrusive_list_t<wait_callback_t> m_waiters;
 };
 
 template <int EventFlag>
 class file_wait_template_t : public file_wait_base_t {
 public:
-  file_wait_template_t(int fd, bool wakeAll) : file_wait_base_t(fd, wakeAll) { }
-  ~file_wait_template_t() { }
+    file_wait_template_t(int fd, bool wakeAll) : file_wait_base_t(fd, wakeAll) { }
+    ~file_wait_template_t() { }
 
-  void wait();
+    void wait();
 };
 
 typedef file_wait_template_t<POLLIN> file_wait_in_t;

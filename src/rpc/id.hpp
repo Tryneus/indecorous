@@ -29,7 +29,7 @@ private:
 
     friend class id_generator_t<target_id_t>;
     friend class read_message_t;
-    target_id_t(uint64_t _value);
+    explicit target_id_t(uint64_t _value);
     uint64_t value_;
 };
 
@@ -41,7 +41,7 @@ public:
 private:
     friend class id_generator_t<handler_id_t>;
     friend class read_message_t;
-    handler_id_t(uint64_t _value);
+    explicit handler_id_t(uint64_t _value);
     uint64_t value_;
 };
 
@@ -53,7 +53,7 @@ public:
 private:
     friend class id_generator_t<request_id_t>;
     friend class read_message_t;
-    request_id_t(uint64_t _value);
+    explicit request_id_t(uint64_t _value);
     uint64_t value_;
 };
 

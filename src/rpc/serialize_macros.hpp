@@ -33,26 +33,26 @@
     template <typename T, size_t... N, typename... Args> \
     friend T full_deserialize_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...>); \
     template <typename T, typename... Args> \
-    friend T full_deserialize(read_message_t *) \
+    friend T full_deserialize(read_message_t *); \
 
-#define CONCAT(a,b) a##b
+#define CONCAT(a, b) a##b
 
 // Put a DECLARE call in the header file and an IMPL call in the implementation
 // file so we don't cause as much preprocessor load in the header.
 #define DECLARE_SERIALIZABLE(Type, ...) \
     DECLARE_SERIALIZABLE_INTERNAL(ZERO_OR_N(__VA_ARGS__), Type, NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
 #define DECLARE_SERIALIZABLE_INTERNAL(X, ...) \
-    CONCAT(DECLARE_SERIALIZABLE_,X)(__VA_ARGS__)
+    CONCAT(DECLARE_SERIALIZABLE_, X)(__VA_ARGS__)
 
 #define MAKE_SERIALIZABLE(Type, ...) \
     MAKE_SERIALIZABLE_INTERNAL(ZERO_OR_N(__VA_ARGS__), Type, NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
 #define MAKE_SERIALIZABLE_INTERNAL(X, ...) \
-    CONCAT(MAKE_SERIALIZABLE_,X)(__VA_ARGS__)
+    CONCAT(MAKE_SERIALIZABLE_, X)(__VA_ARGS__)
 
 #define IMPL_SERIALIZABLE(Type, ...) \
     IMPL_SERIALIZABLE_INTERNAL(ZERO_OR_N(__VA_ARGS__), Type, NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
 #define IMPL_SERIALIZABLE_INTERNAL(X, ...) \
-    CONCAT(IMPL_SERIALIZABLE_,X)(__VA_ARGS__)
+    CONCAT(IMPL_SERIALIZABLE_, X)(__VA_ARGS__)
 
 // Function declarations and implementations for each member function needed by
 // serialization - Zero-arity serializable types are not given a constructor function.
@@ -78,57 +78,57 @@
 
 #define DECLARE_SERIALIZABLE_0(Type, ...) \
     DECLARE_SERIALIZED_SIZE_FN(); \
-    DECLARE_SERIALIZE_FN(,); \
-    static DECLARE_DESERIALIZE_FN(Type,,); \
+    DECLARE_SERIALIZE_FN(, ); \
+    static DECLARE_DESERIALIZE_FN(Type, , ); \
     FRIEND_SERIALIZERS()
 
 #define DECLARE_SERIALIZABLE_N(Type, ...) \
     DECLARE_SERIALIZED_SIZE_FN(); \
-    DECLARE_SERIALIZE_FN(,msg); \
-    static DECLARE_DESERIALIZE_FN(Type,,msg); \
+    DECLARE_SERIALIZE_FN(, msg); \
+    static DECLARE_DESERIALIZE_FN(Type, , msg); \
     Type(CALL_MACRO(N, MAKE_DECLTYPE_PARAM, __VA_ARGS__)); \
     FRIEND_SERIALIZERS()
 
 #define MAKE_SERIALIZABLE_0(Type, ...) \
     DECLARE_SERIALIZED_SIZE_FN() { return 0; } \
-    DECLARE_SERIALIZE_FN(,) { return 0; } \
-    static DECLARE_DESERIALIZE_FN(Type,,) { return Type(); } \
+    DECLARE_SERIALIZE_FN(, ) { return 0; } \
+    static DECLARE_DESERIALIZE_FN(Type, , ) { return Type(); } \
     FRIEND_SERIALIZERS()
 
 #define MAKE_SERIALIZABLE_N(Type, N, ...) \
     DECLARE_SERIALIZED_SIZE_FN() IMPL_SERIALIZED_SIZE_BODY(__VA_ARGS__) \
-    DECLARE_SERIALIZE_FN(,msg) IMPL_SERIALIZE_BODY(msg, __VA_ARGS__) \
-    static DECLARE_DESERIALIZE_FN(Type,,msg) IMPL_DESERIALIZE_BODY(Type, msg, N, __VA_ARGS__) \
-    DECLARE_CONSTRUCTOR_FN(Type,,N,__VA_ARGS__) IMPL_CONSTRUCTOR_BODY(N, __VA_ARGS__) \
+    DECLARE_SERIALIZE_FN(, msg) IMPL_SERIALIZE_BODY(msg, __VA_ARGS__) \
+    static DECLARE_DESERIALIZE_FN(Type, , msg) IMPL_DESERIALIZE_BODY(Type, msg, N, __VA_ARGS__) \
+    DECLARE_CONSTRUCTOR_FN(Type, , N, __VA_ARGS__) IMPL_CONSTRUCTOR_BODY(N, __VA_ARGS__) \
     FRIEND_SERIALIZERS()
 
 #define IMPL_SERIALIZABLE_0(Type, ...) \
     DECLARE_SERIALIZED_SIZE_FN(Type::) { return 0; } \
-    DECLARE_SERIALIZE_FN(Type::,) { return 0; } \
-    DECLARE_DESERIALIZE_FN(Type, Type::,) { return Type(); }
+    DECLARE_SERIALIZE_FN(Type::, ) { return 0; } \
+    DECLARE_DESERIALIZE_FN(Type, Type::, ) { return Type(); }
 
 #define IMPL_SERIALIZABLE_N(Type, ...) \
     DECLARE_SERIALIZED_SIZE_FN(Type::) IMPL_SERIALIZED_SIZE_BODY(__VA_ARGS__) \
-    DECLARE_SERIALIZE_FN(Type::,msg) IMPL_SERIALIZE_BODY(msg, __VA_ARGS__) \
-    static DECLARE_DESERIALIZE_FN(Type,Type::,msg) IMPL_DESERIALIZE_BODY(Type, msg, N, __VA_ARGS__) \
-    DECLARE_CONSTRUCTOR_FN(Type,Type::,N,__VA_ARGS__) IMPL_CONSTRUCTOR_BODY(N, __VA_ARGS__)
+    DECLARE_SERIALIZE_FN(Type::, msg) IMPL_SERIALIZE_BODY(msg, __VA_ARGS__) \
+    static DECLARE_DESERIALIZE_FN(Type, Type::, msg) IMPL_DESERIALIZE_BODY(Type, msg, N, __VA_ARGS__) \
+    DECLARE_CONSTRUCTOR_FN(Type, Type::, N, __VA_ARGS__) IMPL_CONSTRUCTOR_BODY(N, __VA_ARGS__)
 
 // These macros allow SERIALIZABLE to be called with up to 32 member variables,
 // this can be extended by continuing the sequences in these macros.
-#define NUM_ARGS(...) NUM_ARGS_(__VA_ARGS__,32,31,30,29,28,27,26,25,24,23,22,21,20 \
-                                19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
-#define NUM_ARGS_( _1, _2, _3, _4, _5, _6, _7, _8, \
-                   _9,_10,_11,_12,_13,_14,_15,_16, \
-                  _17,_18,_19,_20,_21,_22,_23,_24, \
-                  _25,_26,_27,_28,_29,_30,_31,X,...) X
+#define NUM_ARGS(...) NUM_ARGS_(__VA_ARGS__, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, \
+                                18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define NUM_ARGS_( _1,  _2,  _3,  _4,  _5,  _6,  _7,  _8, \
+                   _9, _10, _11, _12, _13, _14, _15, _16, \
+                  _17, _18, _19, _20, _21, _22, _23, _24, \
+                  _25, _26, _27, _28, _29, _30, _31,   X, ...) X
 
 // These macros choose between SERIALIZABLE_0 and SERIALIZABLE_N
-#define ZERO_OR_N(...) ZERO_OR_N_(__VA_ARGS__,N,N,N,N,N,N,N,N,N,N,N,N \
-                                  N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,0)
-#define ZERO_OR_N_( _1, _2, _3, _4, _5, _6, _7, _8, \
-                    _9,_10,_11,_12,_13,_14,_15,_16, \
-                   _17,_18,_19,_20,_21,_22,_23,_24, \
-                   _25,_26,_27,_28,_29,_30,_31,X,...) X
+#define ZERO_OR_N(...) ZERO_OR_N_(__VA_ARGS__, N, N, N, N, N, N, N, N, N, N, N, N, N, N, \
+                                  N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, 0)
+#define ZERO_OR_N_( _1,  _2,  _3,  _4,  _5,  _6,  _7,  _8, \
+                    _9, _10, _11, _12, _13, _14, _15, _16, \
+                   _17, _18, _19, _20, _21, _22, _23, _24, \
+                   _25, _26, _27, _28, _29, _30, _31,   X, ...) X
 
 #define CALL_MACRO(N, name, ...) CALL_MACRO_##N(name, __VA_ARGS__)
 #define CALL_MACRO_32(name, x, ...) CALL_MACRO_1(name, x), CALL_MACRO_31(name, __VA_ARGS__)

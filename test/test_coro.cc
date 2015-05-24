@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <iostream>
-#include <atomic>
 #include <unistd.h>
 
 #include "catch.hpp"

@@ -16,7 +16,7 @@ class thread_t;
 
 class target_t {
 public:
-    target_t(message_hub_t *hub);
+    explicit target_t(message_hub_t *hub);
     virtual ~target_t();
 
     target_id_t id() const;
@@ -82,7 +82,7 @@ private:
 // TODO: need to be able to address multiple targets in a remote process
 class remote_target_t : public target_t {
 public:
-    remote_target_t(message_hub_t *hub);
+    explicit remote_target_t(message_hub_t *hub);
 
 private:
     stream_t *stream();

@@ -34,10 +34,12 @@ bool event_t::set() {
             m_triggered = true;
 
         if (m_wakeAll) {
-            while (!m_waiters.empty())
+            while (!m_waiters.empty()) {
                 m_waiters.pop_front()->wait_callback(wait_result_t::Success);
-        } else if (!m_waiters.empty())
+            }
+        } else if (!m_waiters.empty()) {
             m_waiters.pop_front()->wait_callback(wait_result_t::Success);
+        }
     }
 
     return true;

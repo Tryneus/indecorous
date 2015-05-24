@@ -9,7 +9,7 @@ namespace indecorous {
 
 class thread_barrier_t {
 public:
-    thread_barrier_t(size_t total);
+    explicit thread_barrier_t(size_t total);
     void wait();
 private:
     const size_t m_total;

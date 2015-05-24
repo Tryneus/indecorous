@@ -59,7 +59,7 @@ public:
 
 private:
     friend class promise_data_t<T>;
-    future_t(promise_data_t<T> *data) : m_data(data) { }
+    explicit future_t(promise_data_t<T> *data) : m_data(data) { }
 
     void addWait(wait_callback_t *cb) {
         assert(m_data != nullptr);
@@ -165,8 +165,7 @@ private:
 template <typename T>
 class promise_t {
 public:
-    promise_t() :
-        m_data(new promise_data_t<T>()) { }
+    promise_t() : m_data(new promise_data_t<T>()) { }
     ~promise_t() {
         if (m_data->abandon()) {
             delete m_data;
@@ -200,7 +199,7 @@ public:
 
 private:
     friend class promise_data_t<void>;
-    future_t(promise_data_t<void> *data);
+    explicit future_t(promise_data_t<void> *data);
 
     void addWait(wait_callback_t *cb);
     void removeWait(wait_callback_t *cb);

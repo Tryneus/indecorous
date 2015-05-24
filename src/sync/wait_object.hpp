@@ -21,7 +21,7 @@ public:
 
 class wait_object_t {
 public:
-    virtual ~wait_object_t() { };
+    virtual ~wait_object_t() { }
 
     virtual void wait() = 0;
 protected:

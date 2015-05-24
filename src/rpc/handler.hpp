@@ -34,7 +34,7 @@ private:
 template <typename Callback>
 class handler_t : public unique_handler_t<Callback> {
 public:
-    handler_t(message_hub_t *hub) : membership(hub, &internal_handler) { }
+    explicit handler_t(message_hub_t *hub) : membership(hub, &internal_handler) { }
 
     template <typename Res, typename... Args>
     class internal_handler_t : public handler_callback_t {

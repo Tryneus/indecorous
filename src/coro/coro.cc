@@ -1,10 +1,8 @@
 #include "coro/coro.hpp"
 
-#include <stdexcept>
 #include <sys/eventfd.h>
-#include <valgrind/valgrind.h>
-#include <iostream>
 #include <unistd.h>
+#include <valgrind/valgrind.h>
 
 #include "sync/event.hpp"
 #include "coro/sched.hpp"

@@ -74,39 +74,39 @@ template <typename T> struct serializer_t<std::vector<T> > {
 };
 
 // std::pair
-template <typename A, typename B> struct serializer_t<std::pair<A,B> > {
-    static size_t size(const std::pair<A,B> &item) {
+template <typename A, typename B> struct serializer_t<std::pair<A, B> > {
+    static size_t size(const std::pair<A, B> &item) {
         return serializer_t<A>::size(item.first) + serializer_t<B>::size(item.second);
     }
-    static int write(write_message_t *msg, const std::pair<A,B> &item) {
+    static int write(write_message_t *msg, const std::pair<A, B> &item) {
         return full_serialize(msg, item.first, item.second);
     }
-    static std::pair<A,B> read(read_message_t *msg) {
-        return full_deserialize<std::pair<A,B>,A,B>(msg);
+    static std::pair<A, B> read(read_message_t *msg) {
+        return full_deserialize<std::pair<A, B>, A, B>(msg);
     }
 };
 
 
 // std::map
 template <typename K, typename V, typename C>
-struct serializer_t<std::map<K,V,C> > {
-    typedef typename std::map<K,V,C>::value_type Value;
-    static size_t size(const std::map<K,V,C> &item) {
+struct serializer_t<std::map<K, V, C> > {
+    typedef typename std::map<K, V, C>::value_type Value;
+    static size_t size(const std::map<K, V, C> &item) {
         size_t res = serializer_t<uint64_t>::size(item.size());
         for (auto const &i : item) {
             res += serializer_t<Value>::size(i);
         }
         return res;
     }
-    static int write(write_message_t *msg, const std::map<K,V,C> &item) {
+    static int write(write_message_t *msg, const std::map<K, V, C> &item) {
         serializer_t<uint64_t>::write(msg, item.size());
         return serialize_container(msg, item);
     }
-    static std::map<K,V,C> read(read_message_t *msg) {
-        std::map<K,V,C> res;
+    static std::map<K, V, C> read(read_message_t *msg) {
+        std::map<K, V, C> res;
         size_t size = serializer_t<uint64_t>::read(msg);
         for (size_t i = 0; i < size; ++i) {
-            res.emplace_hint(res.end(), serializer_t<std::pair<K,V> >::read(msg));
+            res.emplace_hint(res.end(), serializer_t<std::pair<K, V> >::read(msg));
         }
         return res;
     }
@@ -114,24 +114,24 @@ struct serializer_t<std::map<K,V,C> > {
 
 // std::multimap
 template <typename K, typename V, typename C>
-struct serializer_t<std::multimap<K,V,C> > {
-    typedef typename std::multimap<K,V,C>::value_type Value;
-    static size_t size(const std::multimap<K,V,C> &item) {
+struct serializer_t<std::multimap<K, V, C> > {
+    typedef typename std::multimap<K, V, C>::value_type Value;
+    static size_t size(const std::multimap<K, V, C> &item) {
         size_t res = serializer_t<uint64_t>::size(item.size());
         for (auto const &i : item) {
             res += serializer_t<Value>::size(i);
         }
         return res;
     }
-    static int write(write_message_t *msg, const std::multimap<K,V,C> &item) {
+    static int write(write_message_t *msg, const std::multimap<K, V, C> &item) {
         serializer_t<uint64_t>::write(msg, item.size());
         return serialize_container(msg, item);
     }
-    static std::multimap<K,V,C> read(read_message_t *msg) {
-        std::multimap<K,V,C> res;
+    static std::multimap<K, V, C> read(read_message_t *msg) {
+        std::multimap<K, V, C> res;
         size_t size = serializer_t<uint64_t>::read(msg);
         for (size_t i = 0; i < size; ++i) {
-            res.emplace_hint(res.end(), serializer_t<std::pair<K,V> >::read(msg));
+            res.emplace_hint(res.end(), serializer_t<std::pair<K, V> >::read(msg));
         }
         return res;
     }
@@ -139,25 +139,25 @@ struct serializer_t<std::multimap<K,V,C> > {
 
 // std::unordered_map
 template <typename K, typename V, typename H, typename E>
-struct serializer_t<std::unordered_map<K,V,H,E> > {
-    typedef typename std::unordered_map<K,V,H,E>::value_type Value;
-    static size_t size(const std::unordered_map<K,V,H,E> &item) {
+struct serializer_t<std::unordered_map<K, V, H, E> > {
+    typedef typename std::unordered_map<K, V, H, E>::value_type Value;
+    static size_t size(const std::unordered_map<K, V, H, E> &item) {
         size_t res = serializer_t<uint64_t>::size(item.size());
         for (auto const &i : item) {
             res += serializer_t<Value>::size(i);
         }
         return res;
     }
-    static int write(write_message_t *msg, const std::unordered_map<K,V,H,E> &item) {
+    static int write(write_message_t *msg, const std::unordered_map<K, V, H, E> &item) {
         serializer_t<uint64_t>::write(msg, item.size());
         return serialize_container(msg, item);
     }
-    static std::unordered_map<K,V,H,E> read(read_message_t *msg) {
-        std::unordered_map<K,V,H,E> res;
+    static std::unordered_map<K, V, H, E> read(read_message_t *msg) {
+        std::unordered_map<K, V, H, E> res;
         size_t size = serializer_t<uint64_t>::read(msg);
         res.reserve(size);
         for (size_t i = 0; i < size; ++i) {
-            res.emplace(serializer_t<std::pair<K,V> >::read(msg));
+            res.emplace(serializer_t<std::pair<K, V> >::read(msg));
         }
         return res;
     }
@@ -165,45 +165,45 @@ struct serializer_t<std::unordered_map<K,V,H,E> > {
 
 // std::unordered_multimap
 template <typename K, typename V, typename H, typename E>
-struct serializer_t<std::unordered_multimap<K,V,H,E> > {
-    typedef typename std::unordered_multimap<K,V,H,E>::value_type Value;
-    static size_t size(const std::unordered_multimap<K,V,H,E> &item) {
+struct serializer_t<std::unordered_multimap<K, V, H, E> > {
+    typedef typename std::unordered_multimap<K, V, H, E>::value_type Value;
+    static size_t size(const std::unordered_multimap<K, V, H, E> &item) {
         size_t res = serializer_t<uint64_t>::size(item.size());
         for (auto const &i : item) {
             res += serializer_t<Value>::size(i);
         }
         return res;
     }
-    static int write(write_message_t *msg, const std::unordered_multimap<K,V,H,E> &item) {
+    static int write(write_message_t *msg, const std::unordered_multimap<K, V, H, E> &item) {
         serializer_t<uint64_t>::write(msg, item.size());
         return serialize_container(msg, item);
     }
-    static std::unordered_multimap<K,V,H,E> read(read_message_t *msg) {
-        std::unordered_multimap<K,V,H,E> res;
+    static std::unordered_multimap<K, V, H, E> read(read_message_t *msg) {
+        std::unordered_multimap<K, V, H, E> res;
         size_t size = serializer_t<uint64_t>::read(msg);
         res.reserve(size);
         for (size_t i = 0; i < size; ++i) {
-            res.emplace(serializer_t<std::pair<K,V> >::read(msg));
+            res.emplace(serializer_t<std::pair<K, V> >::read(msg));
         }
         return res;
     }
 };
 
 // std::set
-template <typename T, typename C> struct serializer_t<std::set<T,C> > {
-    static size_t size(const std::set<T,C> &item) {
+template <typename T, typename C> struct serializer_t<std::set<T, C> > {
+    static size_t size(const std::set<T, C> &item) {
         size_t res = serializer_t<uint64_t>::size(item.size());
         for (auto const &i : item) {
             res += serializer_t<T>::size(i);
         }
         return res;
     }
-    static int write(write_message_t *msg, const std::set<T,C> &item) {
+    static int write(write_message_t *msg, const std::set<T, C> &item) {
         serializer_t<uint64_t>::write(msg, item.size());
         return serialize_container(msg, item);
     }
-    static std::set<T,C> read(read_message_t *msg) {
-        std::set<T,C> res;
+    static std::set<T, C> read(read_message_t *msg) {
+        std::set<T, C> res;
         size_t size = serializer_t<uint64_t>::read(msg);
         for (size_t i = 0; i < size; ++i) {
             res.emplace_hint(res.end(), serializer_t<T>::read(msg));
@@ -213,20 +213,20 @@ template <typename T, typename C> struct serializer_t<std::set<T,C> > {
 };
 
 // std::multiset
-template <typename T, typename C> struct serializer_t<std::multiset<T,C> > {
-    static size_t size(const std::multiset<T,C> &item) {
+template <typename T, typename C> struct serializer_t<std::multiset<T, C> > {
+    static size_t size(const std::multiset<T, C> &item) {
         size_t res = serializer_t<uint64_t>::size(item.size());
         for (auto const &i : item) {
             res += serializer_t<T>::size(i);
         }
         return res;
     }
-    static int write(write_message_t *msg, const std::multiset<T,C> &item) {
+    static int write(write_message_t *msg, const std::multiset<T, C> &item) {
         serializer_t<uint64_t>::write(msg, item.size());
         return serialize_container(msg, item);
     }
-    static std::multiset<T,C> read(read_message_t *msg) {
-        std::multiset<T,C> res;
+    static std::multiset<T, C> read(read_message_t *msg) {
+        std::multiset<T, C> res;
         size_t size = serializer_t<uint64_t>::read(msg);
         for (size_t i = 0; i < size; ++i) {
             res.emplace_hint(res.end(), serializer_t<T>::read(msg));
@@ -237,20 +237,20 @@ template <typename T, typename C> struct serializer_t<std::multiset<T,C> > {
 
 // std::unordered_set
 template <typename T, typename H, typename E>
-struct serializer_t<std::unordered_set<T,H,E> > {
-    static size_t size(const std::unordered_set<T,H,E> &item) {
+struct serializer_t<std::unordered_set<T, H, E> > {
+    static size_t size(const std::unordered_set<T, H, E> &item) {
         size_t res = serializer_t<uint64_t>::size(item.size());
         for (auto const &i : item) {
             res += serializer_t<T>::size(i);
         }
         return res;
     }
-    static int write(write_message_t *msg, const std::unordered_set<T,H,E> &item) {
+    static int write(write_message_t *msg, const std::unordered_set<T, H, E> &item) {
         serializer_t<uint64_t>::write(msg, item.size());
         return serialize_container(msg, item);
     }
-    static std::unordered_set<T,H,E> read(read_message_t *msg) {
-        std::unordered_set<T,H,E> res;
+    static std::unordered_set<T, H, E> read(read_message_t *msg) {
+        std::unordered_set<T, H, E> res;
         size_t size = serializer_t<uint64_t>::read(msg);
         res.reserve(size);
         for (size_t i = 0; i < size; ++i) {
@@ -262,20 +262,20 @@ struct serializer_t<std::unordered_set<T,H,E> > {
 
 // std::unordered_multiset
 template <typename T, typename H, typename E>
-struct serializer_t<std::unordered_multiset<T,H,E> > {
-    static size_t size(const std::unordered_multiset<T,H,E> &item) {
+struct serializer_t<std::unordered_multiset<T, H, E> > {
+    static size_t size(const std::unordered_multiset<T, H, E> &item) {
         size_t res = serializer_t<uint64_t>::size(item.size());
         for (auto const &i : item) {
             res += serializer_t<T>::size(i);
         }
         return res;
     }
-    static int write(write_message_t *msg, const std::unordered_multiset<T,H,E> &item) {
+    static int write(write_message_t *msg, const std::unordered_multiset<T, H, E> &item) {
         serializer_t<uint64_t>::write(msg, item.size());
         return serialize_container(msg, item);
     }
-    static std::unordered_multiset<T,H,E> read(read_message_t *msg) {
-        std::unordered_multiset<T,H,E> res;
+    static std::unordered_multiset<T, H, E> read(read_message_t *msg) {
+        std::unordered_multiset<T, H, E> res;
         size_t size = serializer_t<uint64_t>::read(msg);
         res.reserve(size);
         for (size_t i = 0; i < size; ++i) {
@@ -400,26 +400,26 @@ template <typename T> struct serializer_t<std::forward_list<T> > {
 
 // std::priority_queue
 template <typename T, typename U, typename C>
-struct serializer_t<std::priority_queue<T,U,C> > {
-    static size_t size(const std::priority_queue<T,U,C> &item) {
+struct serializer_t<std::priority_queue<T, U, C> > {
+    static size_t size(const std::priority_queue<T, U, C> &item) {
         const U &container = get_container(item);
         return serializer_t<U>::size(container);
     }
-    static int write(write_message_t *msg, const std::priority_queue<T,U,C> &item) {
+    static int write(write_message_t *msg, const std::priority_queue<T, U, C> &item) {
         const U &container = get_container(item);
         return serializer_t<U>::write(msg, container);
     }
-    static std::priority_queue<T,U,C> read(read_message_t *msg) {
-        return std::priority_queue<T,U,C>(C(), serializer_t<U>::read(msg));
+    static std::priority_queue<T, U, C> read(read_message_t *msg) {
+        return std::priority_queue<T, U, C>(C(), serializer_t<U>::read(msg));
     }
 };
 
 // std::array - uses templates to push evaluation to compile-time
 // TODO: is this necessary, or will the compiler do this automatically?
-template <typename T, size_t N> struct serializer_t<std::array<T,N> > {
+template <typename T, size_t N> struct serializer_t<std::array<T, N> > {
     template <size_t... X>
     static size_t size_internal(std::integer_sequence<size_t, X...>,
-                                const std::array<T,N> &item) {
+                                const std::array<T, N> &item) {
         struct accumulator_t {
             accumulator_t() : total(0) { }
             int add(size_t value) { total += value; return 0; }
@@ -429,26 +429,26 @@ template <typename T, size_t N> struct serializer_t<std::array<T,N> > {
             { acc.add(serializer_t<T>::size(std::get<X>(item)))... };
         return acc.total;
     }
-    static size_t size(const std::array<T,N> &item) {
+    static size_t size(const std::array<T, N> &item) {
         return size_internal(std::make_index_sequence<N>(), item);
     }
     template <size_t... X>
     static int write_internal(std::integer_sequence<size_t, X...>,
-                              write_message_t *msg, const std::array<T,N> &item) {
+                              write_message_t *msg, const std::array<T, N> &item) {
         __attribute__((unused)) int dummy[] =
             { serializer_t<T>::write(msg, std::get<X>(item))... };
         return 0;
     }
-    static int write(write_message_t *msg, const std::array<T,N> &item) {
+    static int write(write_message_t *msg, const std::array<T, N> &item) {
         return write_internal(std::make_index_sequence<N>(), msg, item);
     }
     template <size_t... X>
-    static std::array<T,N> read_internal(std::integer_sequence<size_t, X...>,
+    static std::array<T, N> read_internal(std::integer_sequence<size_t, X...>,
                                          read_message_t *msg) {
         // The comma operator here is an ugly hack to get the parameter pack running
-        return std::array<T,N>({ ((void)X, serializer_t<T>::read(msg))... });
+        return std::array<T, N>({ ((void)X, serializer_t<T>::read(msg))... });
     }
-    static std::array<T,N> read(read_message_t *msg) {
+    static std::array<T, N> read(read_message_t *msg) {
         return read_internal(std::make_index_sequence<N>(), msg);
     }
 };

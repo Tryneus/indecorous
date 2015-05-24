@@ -24,7 +24,7 @@ public:
 
 class local_stream_t : public stream_t {
 public:
-    local_stream_t(thread_t *_thread);
+    explicit local_stream_t(thread_t *_thread);
     void write(write_message_t &&msg);
     read_message_t read();
 private:
@@ -34,7 +34,7 @@ private:
 
 class tcp_stream_t : public stream_t {
 public:
-    tcp_stream_t(int _fd);
+    explicit tcp_stream_t(int _fd);
     void write(write_message_t &&msg);
     read_message_t read();
 private:

@@ -36,7 +36,7 @@ public:
     }
 private:
     friend class buffer_owner_t;
-    linkable_buffer_t(size_t cap) : m_capacity(cap) { }
+    explicit linkable_buffer_t(size_t cap) : m_capacity(cap) { }
     ~linkable_buffer_t() { }
 
     size_t m_capacity;
@@ -46,7 +46,7 @@ private:
 class buffer_owner_t {
     enum class alloc_info_t { HEAP, ARRAY };
 public:
-    buffer_owner_t(size_t cap) :
+    explicit buffer_owner_t(size_t cap) :
         m_alloc(alloc_info_t::HEAP), m_buffer(linkable_buffer_t::create(cap)) { }
     buffer_owner_t(buffer_owner_t &&other) :
         m_alloc(other.m_alloc), m_buffer(other.release()) { }

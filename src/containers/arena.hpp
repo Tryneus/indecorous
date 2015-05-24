@@ -29,7 +29,7 @@ public:
   // TODO: consider adding parameters:
   //  chunk_size - number of buffers to allocate with one alloc call
   //  initial_size - start with a static buffer of some number of T buffers
-  Arena(size_t max_free_nodes) :
+  explicit Arena(size_t max_free_nodes) :
     m_max_free_nodes(max_free_nodes),
     m_free_node_count(0)
   { }

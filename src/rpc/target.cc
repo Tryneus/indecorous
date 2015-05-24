@@ -19,7 +19,7 @@ local_target_t::local_target_t(message_hub_t *hub, thread_t *thread) :
 
 void local_target_t::pull_calls() {
     // TODO: handle replies
-    while (membership.hub->spawn(m_stream.read()));
+    while (membership.hub->spawn(m_stream.read())) { }
 }
 
 stream_t *local_target_t::stream() {

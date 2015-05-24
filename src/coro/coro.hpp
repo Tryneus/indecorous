@@ -1,13 +1,15 @@
 #ifndef CORO_CORO_HPP_
 #define CORO_CORO_HPP_
-#include <atomic>
+
 #include <ucontext.h>
+
+#include <atomic>
 #include <cassert>
 
 #include "containers/arena.hpp"
 #include "containers/intrusive.hpp"
-#include "sync/wait_object.hpp"
 #include "sync/promise.hpp"
+#include "sync/wait_object.hpp"
 
 namespace indecorous {
 
@@ -150,7 +152,7 @@ private:
         }
     };
 
-    coro_t(dispatcher_t *dispatch);
+    explicit coro_t(dispatcher_t *dispatch);
     ~coro_t();
 
     void begin(hook_fn_t, coro_t *parent, void *params, bool immediate);

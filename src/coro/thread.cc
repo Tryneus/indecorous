@@ -1,7 +1,8 @@
 #include "coro/thread.hpp"
 
-#include <limits>
 #include <sys/time.h>
+
+#include <limits>
 
 #include "coro/barrier.hpp"
 #include "coro/sched.hpp"
@@ -162,7 +163,7 @@ void thread_t::add_timer(wait_callback_t* cb, uint32_t timeout) {
     thread_t *instance = self();
 
     auto i = instance->m_timer_waiters.begin();
-    for (; i != instance->m_timer_waiters.end() && i->second != cb; ++i);
+    for (; i != instance->m_timer_waiters.end() && i->second != cb; ++i) { }
     assert(i == instance->m_timer_waiters.end());
 
     uint64_t endTime = get_end_time(timeout);
@@ -174,7 +175,7 @@ void thread_t::update_timer(wait_callback_t* cb, uint32_t timeout) {
     thread_t *instance = self();
 
     auto i = instance->m_timer_waiters.begin();
-    for (; i != instance->m_timer_waiters.end() && i->second != cb; ++i);
+    for (; i != instance->m_timer_waiters.end() && i->second != cb; ++i) { }
     assert(i != instance->m_timer_waiters.end());
     instance->m_timer_waiters.erase(i);
 
@@ -186,7 +187,7 @@ void thread_t::remove_timer(wait_callback_t* cb) {
     // TODO: do a better than O(n) search - store expiration time in timer?
     thread_t *instance = self();
     auto i = instance->m_timer_waiters.begin();
-    for (; i != instance->m_timer_waiters.end() && i->second != cb; ++i);
+    for (; i != instance->m_timer_waiters.end() && i->second != cb; ++i) { }
     assert(i != instance->m_timer_waiters.end());
     instance->m_timer_waiters.erase(i);
 }

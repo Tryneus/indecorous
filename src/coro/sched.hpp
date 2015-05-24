@@ -14,7 +14,7 @@ class thread_t;
 
 class scheduler_t {
 public:
-    scheduler_t(size_t num_threads);
+    explicit scheduler_t(size_t num_threads);
     ~scheduler_t();
 
     // This function will not return until all coroutines (and children thereof) return
