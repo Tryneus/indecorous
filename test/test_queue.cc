@@ -61,27 +61,22 @@ const size_t produce_count = 100000;
 const size_t producer_count = 5;
 
 void mpsc_queue_producer(mpsc_queue_t<node_t> *queue, thread_barrier_t *barrier) {
-    printf("producer started\n");
     barrier->wait();
     for (size_t i = 0; i < produce_count; ++i) {
         queue->push(new node_t());
     }
-    printf("producer exiting\n");
 }
 
 void mpsc_queue_consumer(mpsc_queue_t<node_t> *queue, thread_barrier_t *barrier) {
-    printf("consumer started\n");
     barrier->wait();
     for (size_t i = 0; i < produce_count * producer_count; ++i) {
         node_t *node = nullptr;
         while (node == nullptr) {
             node = queue->pop();
-            if (node == nullptr) { usleep(10000); }
+            if (node == nullptr) { usleep(100); }
         }
         delete node;
-        if (i % produce_count == 0) printf("consumed %zu items\n", i);
     }
-    printf("consumer exiting\n");
 }
 
 TEST_CASE("mpsc_queue_t/multi_thread", "[containers][intrusive]") {

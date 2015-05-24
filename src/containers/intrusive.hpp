@@ -144,6 +144,12 @@ public:
         this->set_next_node(nullptr);
     }
 
+    ~mpsc_queue_t() {
+        assert(this == m_front);
+        assert(this == reinterpret_cast<intrusive_node_t<T> *>(m_back.load()));
+        assert(this->next_node() == nullptr);
+    }
+
     void push(T *item) {
         item->set_next_node(nullptr);
         intrusive_node_t<T> *prev = exchange_back(item);
@@ -161,10 +167,13 @@ public:
             this->set_next_node(nullptr);
         }
 
+        assert(m_front != this);
+
         intrusive_node_t<T> *node = m_front;
         intrusive_node_t<T> *next = m_front->next_node();
 
         if (next != nullptr) {
+            assert(node != this);
             m_front = next;
             return static_cast<T *>(node);
         }
@@ -187,6 +196,7 @@ public:
 
 private:
     void push_self() {
+        assert(this->next_node() == nullptr);
         intrusive_node_t<T> *prev = exchange_back(this);
         prev->set_next_node(this);
     }
