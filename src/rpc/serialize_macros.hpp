@@ -27,7 +27,7 @@
 #define MAKE_MOVE_CONSTRUCT(x) x(std::move(arg_##x))
 #define MAKE_DECLTYPE(x) decltype(x)
 
-// TODO: consider wrapping these instide a static class to reduce verbosity and code generation
+// TODO: consider wrapping these inside a static class to reduce verbosity and code generation
 #define FRIEND_SERIALIZERS() \
     template <typename T> friend struct serializer_t; \
     template <typename T, size_t... N, typename... Args> \
