@@ -19,7 +19,9 @@ thread_t::thread_t(scheduler_t* parent,
         m_barrier(barrier),
         m_dispatch(nullptr),
         m_target(parent->message_hub(), this),
-        m_thread(&thread_t::main, this) { }
+        m_thread(&thread_t::main, this) {
+    m_thread.detach();
+}
 
 void thread_t::main() {
     s_instance = this;

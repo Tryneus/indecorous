@@ -1,27 +1,29 @@
 #include "coro/barrier.hpp"
-#include <stdio.h>
 
 namespace indecorous {
 
 thread_barrier_t::thread_barrier_t(size_t total) :
-    m_total(total), m_check_in(0), m_check_out(0) { }
+    m_total(total), m_side(side_t::A), m_count_a(0), m_count_b(0) { }
+
+void thread_barrier_t::wait_internal(size_t *count, size_t *reset,
+                                     std::unique_lock<std::mutex> &lock) {
+    if (++*count == m_total) {
+        *reset = 0;
+        m_cond.notify_all();
+    } else {
+        m_cond.wait(lock, [count, this] { return *count == m_total; });
+    }
+}
 
 void thread_barrier_t::wait() {
     std::unique_lock<std::mutex> lock(m_lock);
-
-    // Reset a previously-used barrier (after all threads have checked out)
-    if (m_check_out == m_total) {
-        m_check_out = 0;
-        m_check_in -= m_total;
-    }
-
-    if (++m_check_in == m_total) {
-        m_cond.notify_all();
+    if (m_side == side_t::A) {
+        wait_internal(&m_count_a, &m_count_b, lock);
+        m_side = side_t::B;
     } else {
-        m_cond.wait(lock, [this] { return m_check_in >= m_total; });
+        wait_internal(&m_count_b, &m_count_a, lock);
+        m_side = side_t::A;
     }
-
-    ++m_check_out;
 }
 
 } // namespace indecorous

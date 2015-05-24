@@ -12,9 +12,13 @@ public:
     explicit thread_barrier_t(size_t total);
     void wait();
 private:
+    void wait_internal(size_t *count, size_t *reset,
+                       std::unique_lock<std::mutex> &lock);
+
     const size_t m_total;
-    size_t m_check_in;
-    size_t m_check_out;
+    enum class side_t { A, B } m_side;
+    size_t m_count_a;
+    size_t m_count_b;
     std::mutex m_lock;
     std::condition_variable m_cond;
 };
