@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <map>
 #include <thread>
+#include <memory>
 
 #include "rpc/target.hpp"
 #include "sync/file_wait.hpp"
@@ -61,7 +62,7 @@ private:
     scheduler_t* m_parent;
     bool m_shutdown;
     thread_barrier_t *m_barrier;
-    dispatcher_t *m_dispatch;
+    std::unique_ptr<dispatcher_t> m_dispatch;
 
     // TODO: make these use intrusive queues or something for performance?
     // TODO: also consider unordered maps

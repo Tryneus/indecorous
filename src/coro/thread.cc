@@ -17,7 +17,6 @@ thread_t::thread_t(scheduler_t* parent,
         m_parent(parent),
         m_shutdown(false),
         m_barrier(barrier),
-        m_dispatch(nullptr),
         m_target(parent->message_hub(), this),
         m_thread(&thread_t::main, this) {
     m_thread.detach();
@@ -25,7 +24,7 @@ thread_t::thread_t(scheduler_t* parent,
 
 void thread_t::main() {
     s_instance = this;
-    m_dispatch = new dispatcher_t();
+    m_dispatch.reset(new dispatcher_t());
 
     m_barrier->wait(); // Barrier for the scheduler_t constructor, thread ready
 

@@ -22,22 +22,6 @@ public:
     target_id_t id() const;
 
     template <typename Callback, typename... Args>
-    request_id_t send_request(Args &&...args) {
-        request_id_t request_id = request_gen.next();
-        write_message_t msg =
-            handler_t<Callback>::handler_impl_t::make_write(id(),
-                                                            request_id,
-                                                            std::forward<Args>(args)...);
-        stream()->write(std::move(msg));
-        return request_id;
-    }
-
-    template <typename result_t>
-    result_t parse_result(future_t<read_message_t> data) {
-        return serializer_t<result_t>::read(data.release());
-    }
-
-    template <typename Callback, typename... Args>
     void noreply_call(Args &&...args) {
         send_request<Callback>(std::forward<Args>(args)...);
     }
@@ -64,6 +48,22 @@ protected:
     std::unordered_map<request_id_t, promise_t<read_message_t> > request_map;
 
 private:
+    template <typename Callback, typename... Args>
+    request_id_t send_request(Args &&...args) {
+        request_id_t request_id = request_gen.next();
+        write_message_t msg =
+            handler_t<Callback>::handler_impl_t::make_write(id(),
+                                                            request_id,
+                                                            std::forward<Args>(args)...);
+        stream()->write(std::move(msg));
+        return request_id;
+    }
+
+    template <typename result_t>
+    result_t parse_result(future_t<read_message_t> data) {
+        return serializer_t<result_t>::read(data.release());
+    }
+
     future_t<read_message_t> get_response(request_id_t request_id); // TODO: implement
     id_generator_t<request_id_t> request_gen;
 };
