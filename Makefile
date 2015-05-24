@@ -3,29 +3,32 @@ TEST_DIR = ./test
 OBJ_DIR = ./bin/obj
 BIN_DIR = ./bin
 
-# We use c++14 extensions, so we need the latest versions of the compilers
-ifndef $(CXX)
-  CXX = g++-4.9
-endif
+CXX ?= g++
 
 ifeq ($(CXX),gcc)
-  CXX = g++-4.9
-endif
-ifeq ($(CXX),g++)
-  CXX = g++-4.9
-endif
-ifeq ($(CXX),clang)
-  CXX = clang++-3.5
-endif
-ifeq ($(CXX),clang++)
-  CXX = clang++-3.5
+  override CXX = g++
+else
+  ifeq ($(CXX),clang)
+    override CXX = clang++
+  endif
 endif
 
 CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -Wall -Wextra -Werror
 CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
 CXX_FLAGS += -Wformat=2 -Wswitch-enum -Wswitch-default
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
-#CXX_FLAGS += -Wconditional-uninitialized -Wused-but-marked-unused
+
+# We use c++14 extensions, so force us to use a compiler version with support
+# TODO: make this more portable
+ifeq ($(CXX),g++)
+  override CXX = g++-4.9
+else
+  ifeq ($(CXX),clang++)
+    override CXX = clang++-3.5
+    CXX_FLAGS += -Wconditional-uninitialized -Wused-but-marked-unused
+  endif
+endif
+
 ifneq ($(DEBUG),1)
   RT_CXXFLAGS += -O3 -DNDEBUG
   #RT_CXXFLAGS += -fno-strict-aliasing
