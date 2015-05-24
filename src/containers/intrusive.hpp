@@ -138,48 +138,66 @@ private:
 // Implementation copied from:
 // http://www.1024cores.net/home/lock-free-algorithms/queues/intrusive-mpsc-node-based-queue
 template <typename T>
-class mpsc_queue_t : public intrusive_node_t<T> {
+class mpsc_queue_t : private intrusive_node_t<T> {
 public:
-    mpsc_queue_t() {
-        m_head = this;
-        m_tail.store(reinterpret_cast<intptr_t>(this));
+    mpsc_queue_t() : m_front(this), m_back(reinterpret_cast<intptr_t>(this)) {
+        this->set_next_node(nullptr);
     }
 
-    void push(intrusive_node_t<T> *item) {
-        intrusive_node_t<T> *old_tail =
-            reinterpret_cast<intrusive_node_t<T> *>(m_tail.exchange(
-                reinterpret_cast<intptr_t>(item)));
-        old_tail->set_next_node(item);
+    void push(T *item) {
+        item->set_next_node(nullptr);
+        intrusive_node_t<T> *prev = exchange_back(item);
+        if (prev == this) {
+            this->set_next_node(item);
+        } else {
+            prev->set_next_node(item);
+        }
     }
 
     T *pop() {
-        intrusive_node_t<T>* head = m_head;
-        intrusive_node_t<T>* next = head->next_node();
-        if (head == this) {
-            if (next == nullptr) { return nullptr; }
-            m_head = next;
-            head = next;
-            next = next->next_node();
+        if (m_front == this) {
+            if (this->next_node() == nullptr) { return nullptr; }
+            m_front = this->next_node();
+            this->set_next_node(nullptr);
         }
-        if (next) {
-            m_head = next;
-            return static_cast<T *>(head);
-        }
-        intrusive_node_t<T>* tail =
-            reinterpret_cast<intrusive_node_t<T> *>(m_tail.load());
-        if (head != tail) { return nullptr; }
-        push(this);
-        next = head->next_node();
+
+        intrusive_node_t<T> *node = m_front;
+        intrusive_node_t<T> *next = m_front->next_node();
+
         if (next != nullptr) {
-            m_head = next;
-            return static_cast<T *>(head);
+            m_front = next;
+            return static_cast<T *>(node);
         }
+
+        if (m_front != reinterpret_cast<intrusive_node_t<T> *>(m_back.load())) {
+            return nullptr;
+        }
+
+        push_self();
+        next = m_front->next_node();
+
+        if (next != nullptr) {
+            m_front = next;
+            node->set_next_node(nullptr);
+            return static_cast<T *>(node);
+        }
+
         return nullptr;
-    } 
+    }
 
 private:
-    intrusive_node_t<T> *m_head;
-    std::atomic<intptr_t> m_tail;
+    void push_self() {
+        intrusive_node_t<T> *prev = exchange_back(this);
+        prev->set_next_node(this);
+    }
+
+    intrusive_node_t<T> *exchange_back(intrusive_node_t<T> *item) {
+        return reinterpret_cast<intrusive_node_t<T> *>(m_back.exchange(
+            reinterpret_cast<intptr_t>(item)));
+    }
+
+    intrusive_node_t<T> *m_front;
+    std::atomic<intptr_t> m_back; // intrusive_node_t<T> *
 };
 
 } // namespace indecorous

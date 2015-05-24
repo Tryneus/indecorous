@@ -35,6 +35,7 @@ void thread_t::main() {
         if (m_shutdown)
             break;
 
+        m_target.pull_calls();
         // TODO: this is completely wrong, need to continue until all threads have no activity
         while (m_dispatch->run() > 0) {
             m_target.pull_calls();
