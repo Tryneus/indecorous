@@ -17,7 +17,7 @@ thread_t::thread_t(scheduler_t* parent,
         m_shutdown(false),
         m_barrier(barrier),
         m_dispatch(),
-        m_target(&parent->m_message_hub, this),
+        m_target(parent->message_hub(), this),
         m_thread(&thread_t::main, this) { }
 
 void thread_t::main() {
@@ -45,6 +45,10 @@ void thread_t::main() {
 
 void thread_t::shutdown() {
     m_shutdown = true;
+}
+
+target_id_t thread_t::id() const {
+    return m_target.id();
 }
 
 thread_t *thread_t::self() {

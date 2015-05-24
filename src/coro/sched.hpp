@@ -27,16 +27,12 @@ public:
     message_hub_t *message_hub();
 
 private:
-    friend class dispatcher_t;
-    friend class thread_t;
-    friend class coro_t;
-
     static scheduler_t &get_instance();
+    static scheduler_t* s_instance;
 
     bool m_running;
     size_t m_num_threads;
     thread_barrier_t m_barrier;
-    static scheduler_t* s_instance;
     message_hub_t m_message_hub; // For passing messages between threads/processes
     std::unordered_set<target_id_t> m_thread_ids;
     thread_t** m_threads;

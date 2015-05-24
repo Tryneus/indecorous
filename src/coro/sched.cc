@@ -17,7 +17,7 @@ scheduler_t::scheduler_t(size_t num_threads) :
     m_threads = new thread_t*[m_num_threads];
     for (size_t i = 0; i < m_num_threads; ++i) {
         m_threads[i] = new thread_t(this, &m_barrier);
-        m_thread_ids.insert(m_threads[i]->m_target.id());
+        m_thread_ids.insert(m_threads[i]->id());
     }
 
     m_barrier.wait(); // Wait for all threads to start up

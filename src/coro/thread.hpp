@@ -28,11 +28,10 @@ public:
     thread_t(scheduler_t* parent, thread_barrier_t *barrier);
 
     static thread_t *self();
+    void shutdown();
+    target_id_t id() const;
 
 private:
-    friend class scheduler_t;
-
-    void shutdown();
     void main();
 
     void do_wait();
