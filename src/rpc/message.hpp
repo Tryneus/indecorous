@@ -52,6 +52,7 @@ public:
 
 private:
     read_message_t(buffer_owner_t _buffer,
+                   size_t _offset,
                    target_id_t _source_id,
                    handler_id_t _handler_id,
                    request_id_t _request_id);

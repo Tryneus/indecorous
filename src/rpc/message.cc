@@ -44,11 +44,12 @@ buffer_owner_t write_message_t::release() && {
 }
 
 read_message_t::read_message_t(buffer_owner_t _buffer,
+                               size_t _offset,
                                target_id_t _source_id,
                                handler_id_t _handler_id,
                                request_id_t _request_id) :
     buffer(std::move(_buffer)),
-    offset(0),
+    offset(_offset),
     source_id(std::move(_source_id)),
     handler_id(std::move(_handler_id)),
     request_id(std::move(_request_id)) { }
@@ -59,17 +60,17 @@ char read_message_t::pop() {
 }
 
 read_message_t read_message_t::empty() {
-    return read_message_t(buffer_owner_t::empty(),
+    return read_message_t(buffer_owner_t::empty(), 0,
                           target_id_t(-1), handler_id_t(-1), request_id_t(-1));
 }
 
 read_message_t read_message_t::parse(buffer_owner_t &&buffer) {
-    read_message_t message(std::move(buffer),
+    read_message_t message(std::move(buffer), 0,
                            target_id_t(-1), handler_id_t(-1), request_id_t(-1));
     message_header_t header = serializer_t<message_header_t>::read(&message);
     assert(header.header_magic == message_header_t::HEADER_MAGIC);
 
-    return read_message_t(std::move(message.buffer),
+    return read_message_t(std::move(message.buffer), message.offset,
                           target_id_t(header.source_id),
                           handler_id_t(header.handler_id),
                           request_id_t(header.request_id));
@@ -82,7 +83,7 @@ read_message_t read_message_t::parse(tcp_stream_t *stream) {
         array.data(), array.size(), sizeof(message_header_t));
     stream->read_exactly(header_buffer.data(), header_buffer.capacity());
 
-    read_message_t message(std::move(header_buffer),
+    read_message_t message(std::move(header_buffer), 0,
                            target_id_t(-1), handler_id_t(-1), request_id_t(-1));
     message_header_t header = serializer_t<message_header_t>::read(&message);
     assert(header.header_magic == message_header_t::HEADER_MAGIC);
@@ -90,7 +91,7 @@ read_message_t read_message_t::parse(tcp_stream_t *stream) {
     buffer_owner_t body_buffer(header.payload_size);
     stream->read_exactly(body_buffer.data(), body_buffer.capacity());
 
-    return read_message_t(std::move(body_buffer),
+    return read_message_t(std::move(body_buffer), 0,
                           target_id_t(header.source_id),
                           handler_id_t(header.handler_id),
                           request_id_t(header.request_id));
