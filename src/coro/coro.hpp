@@ -32,19 +32,24 @@ private:
     friend class scheduler_t;
     friend class thread_t;
     friend class coro_t;
+    friend void coro_pull();
 
     void enqueue_release(coro_t *coro);
 
-    coro_t *volatile m_self;
-    coro_t *m_release_coro; // Recently-finished coro_t to be released
+    static uint32_t s_max_swaps_per_loop;
+
+    arena_t<coro_t> m_context_arena; // arena used to cache context allocations
+    intrusive_list_t<coro_t> m_run_queue; // Queue of contexts to run
+
+    coro_t *m_rpc_consumer;
+    coro_t *volatile m_running;
+    coro_t *m_release; // Recently-finished coro_t to be released
+
     ucontext_t m_parentContext; // Used to store the parent context, switch to when no coroutines to run
     uint32_t m_swap_count;
     int32_t m_active_contexts;
-    static uint32_t s_max_swaps_per_loop;
 
-    Arena<coro_t> m_context_arena; // Arena used to cache context allocations
-
-    intrusive_list_t<coro_t> m_run_queue; // Queue of contexts to run
+    bool m_shutdown;
 };
 
 class coro_t : public wait_callback_t, public intrusive_node_t<coro_t>
@@ -60,7 +65,7 @@ public:
     static void yield();
 
     // Queue up another coroutine to be run
-    static void notify(coro_t* coro);
+    void notify();
 
     // Create a coroutine and put it on the queue to run
     template <typename Res, typename... Args>
@@ -85,17 +90,18 @@ public:
 private:
     friend class scheduler_t;
     friend class dispatcher_t;
-    friend class Arena<coro_t>; // To allow instantiation of this class
+    friend class arena_t<coro_t>; // To allow instantiation of this class
     friend void launch_coro();
 
     template <typename Res, typename... Args>
     future_t<Res> spawn_internal(bool immediate, Res(*fn)(Args...), Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
-        coro_t *context = m_dispatch->m_context_arena.get(m_dispatch);
+        coro_t *context = coro_t::create();
         std::tuple<promise_t<Res>, Res(*)(Args...), Args...> params(
             { std::move(promise), fn, std::forward<Args>(args)... });
         context->begin(&coro_t::hook<Res, decltype(params), 2>, &params, this, immediate);
+        swap(context);
         return res;
     }
 
@@ -103,24 +109,15 @@ private:
     future_t<Res> spawn_internal(bool immediate, Res(Class::*fn)(Args...), Class *instance, Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
-        coro_t *context = m_dispatch->m_context_arena.get(m_dispatch);
+        coro_t *context = coro_t::create();
         std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> params(
             std::move(promise), fn, instance, std::forward<Args>(args)... );
         context->begin(&coro_t::hook<Res, decltype(params), 3>, this, &params, immediate);
+        swap(context);
         return res;
     }
 
-    void maybe_swap_parent(coro_t *parent, bool immediate) {
-        if (immediate) {
-            // We're running immediately, put our parent on the back of the run queue
-            m_dispatch->m_run_queue.push_back(parent);
-        } else {
-            // We're delaying our execution, put ourselves on the back of the run queue
-            // and swap back in our parent so they can continue
-            m_dispatch->m_run_queue.push_back(this);
-            swap(parent);
-        }
-    }
+    void maybe_swap_parent(coro_t *parent, bool immediate);
 
     template <typename Res, typename Tuple, size_t ArgOffset>
     void hook(coro_t *parent, void *p, bool immediate) {
@@ -150,7 +147,7 @@ private:
         }
     };
 
-    explicit coro_t(dispatcher_t *dispatch);
+    coro_t(dispatcher_t *dispatch);
     ~coro_t();
 
     void begin(hook_fn_t, coro_t *parent, void *params, bool immediate);
@@ -159,9 +156,11 @@ private:
 
     void wait_callback(wait_result_t result);
 
+    static coro_t *create();
+
     static const size_t s_stackSize = 65535; // TODO: This is probably way too small
 
-    dispatcher_t* m_dispatch;
+    dispatcher_t *m_dispatch;
     ucontext_t m_context;
     char m_stack[s_stackSize];
     int m_valgrindStackId;

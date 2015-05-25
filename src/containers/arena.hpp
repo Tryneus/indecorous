@@ -10,71 +10,72 @@
 namespace indecorous {
 
 template <typename T>
-class Arena {
+class arena_t {
 private:
-  static const uint32_t s_node_magic = 0x712B4057;
-  // linked list of unallocated items
-  struct node_t : public intrusive_node_t<node_t>
-  {
-    uint32_t magic;
-    alignas(T) char buffer[sizeof(T)];
-  };
+    struct node_t : public intrusive_node_t<node_t>
+    {
+    public:
+        node_t() : magic(s_node_magic) { }
+        ~node_t() { assert(magic == s_node_magic); }
 
-  const size_t m_max_free_nodes;
-  size_t m_free_node_count;
-  intrusive_list_t<node_t> m_free_nodes;
+        template <typename... Args>
+        T *construct(Args &&...args) {
+            new (buffer) T(std::forward<Args>(args)...);
+            return reinterpret_cast<T *>(buffer);
+        }
+
+        static node_t *from_buffer(void *p) {
+            node_t *temp = reinterpret_cast<node_t*>(p);
+            size_t offset = reinterpret_cast<char*>(&temp->buffer) - reinterpret_cast<char*>(temp);
+            return reinterpret_cast<node_t*>(reinterpret_cast<char*>(p) - offset);
+        }
+
+    private:
+        uint32_t magic;
+        alignas(T) char buffer[sizeof(T)];
+        static const uint32_t s_node_magic = 0x712B4057;
+    };
+
+    const size_t m_max_free_nodes;
+    size_t m_allocated;
+    intrusive_list_t<node_t> m_free_nodes;
 
 public:
-  //  max_free_nodes - maximum number of unused buffers to keep around before releasing
-  // TODO: consider adding parameters:
-  //  chunk_size - number of buffers to allocate with one alloc call
-  //  initial_size - start with a static buffer of some number of T buffers
-  explicit Arena(size_t max_free_nodes) :
-    m_max_free_nodes(max_free_nodes),
-    m_free_node_count(0)
-  { }
+    explicit arena_t(size_t max_free_nodes) :
+        m_max_free_nodes(max_free_nodes),
+        m_allocated(0)
+    { }
 
-  ~Arena() {
-    while (!m_free_nodes.empty()) {
-      delete m_free_nodes.pop_front();
-      --m_free_node_count;
+    ~arena_t() {
+        while (!m_free_nodes.empty()) {
+            delete m_free_nodes.pop_front();
+            --m_allocated;
+        }
+
+        assert(m_allocated == 0);
     }
 
-    assert(m_free_node_count == 0);
-  }
-
-  size_t free_count() const {
-    return m_free_node_count;
-  }
-
-  template <typename... Args>
-  T *get(Args &&...args) {
-    node_t *selected_node = m_free_nodes.pop_front();
-    if (selected_node == nullptr) {
-        selected_node = new node_t;
-        selected_node->magic = s_node_magic;
-    } else {
-        --m_free_node_count;
+    template <typename... Args>
+    T *get(Args &&...args) {
+        node_t *selected_node = m_free_nodes.pop_front();
+        if (selected_node == nullptr) {
+            selected_node = new node_t();
+            ++m_allocated;
+        }
+        return selected_node->construct(std::forward<Args>(args)...);
     }
-    new (selected_node->buffer) T(std::forward<Args>(args)...);
-    return reinterpret_cast<T *>(selected_node->buffer);
-  }
 
-  void release(T* item) {
-    node_t *dummy = reinterpret_cast<node_t*>(item);
-    size_t offset = reinterpret_cast<char*>(&dummy->buffer) - reinterpret_cast<char*>(dummy);
-    node_t *node = reinterpret_cast<node_t*>(reinterpret_cast<char*>(item) - offset);
+    void release(T* item) {
+        node_t *node = node_t::from_buffer(item);
+        item->~T();
 
-    assert(node->magic == s_node_magic);
-    item->~T();
-
-    if (m_free_node_count >= m_max_free_nodes) {
-      delete node;
-    } else {
-      m_free_nodes.push_back(node);
-      ++m_free_node_count;
+        if (m_free_nodes.size() >= m_max_free_nodes) {
+            delete node;
+            --m_allocated;
+        } else {
+            m_free_nodes.push_back(node);
+        }
     }
-  }
 };
 
 } // namespace indecorous

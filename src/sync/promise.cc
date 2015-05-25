@@ -87,18 +87,24 @@ bool promise_data_t<void>::abandon() {
 }
 
 promise_t<void>::promise_t() : m_data(new promise_data_t<void>()) { }
+promise_t<void>::promise_t(promise_t &&other) :
+        m_data(other.m_data) {
+    other.m_data = nullptr;
+}
 
 promise_t<void>::~promise_t() {
-    if (m_data->abandon()) {
+    if (m_data != nullptr && m_data->abandon()) {
         delete m_data;
     }
 }
 
 void promise_t<void>::fulfill() {
+    assert(m_data != nullptr);
     m_data->assign();
 }
 
 future_t<void> promise_t<void>::get_future() {
+    assert(m_data != nullptr);
     return m_data->add_future();
 }
 

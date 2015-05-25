@@ -26,21 +26,13 @@ void thread_t::main() {
     s_instance = this;
 
     m_barrier->wait(); // Barrier for the scheduler_t constructor, thread ready
+    m_barrier->wait(); // Wait for run or ~scheduler_t
 
-    while (true) {
-        m_barrier->wait(); // Wait for run or ~scheduler_t
-
-        if (m_shutdown)
-            break;
-
-        m_target.pull_calls();
-        // TODO: this is completely wrong, need to continue until all threads have no activity
-        while (m_dispatch.run() > 0) {
-            m_target.pull_calls();
-            do_wait();
-        }
+    while (!m_shutdown) {
+        while (m_dispatch.run() > 0) { do_wait(); }
 
         m_barrier->wait(); // Wait for other threads to finish
+        m_barrier->wait(); // Wait for run or ~scheduler_t
     }
 
     m_barrier->wait(); // Barrier for ~scheduler_t, safe to destruct

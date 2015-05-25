@@ -72,8 +72,7 @@ class local_target_t : public target_t {
 public:
     local_target_t(message_hub_t *hub, thread_t *owner);
 
-    // Convert RPCs into local coroutines on the owning thread
-    void pull_calls();
+    read_message_t read();
 private:
     stream_t *stream();
     local_stream_t m_stream;

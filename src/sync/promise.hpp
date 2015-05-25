@@ -23,7 +23,7 @@ public:
     }
     ~future_t() {
         if (m_data->remove_future(this)) {
-            delete m_data;   
+            delete m_data;
         }
     }
 
@@ -166,17 +166,20 @@ template <typename T>
 class promise_t {
 public:
     promise_t() : m_data(new promise_data_t<T>()) { }
+    promise_t(promise_t &&other) : m_data(other.m_data) { other.m_data = nullptr; }
     ~promise_t() {
-        if (m_data->abandon()) {
+        if (m_data != nullptr && m_data->abandon()) {
             delete m_data;
         }
     }
 
     void fulfill(T &&value) {
+        assert(m_data != nullptr);
         m_data->assign(std::move(value));
     }
 
     future_t<T> get_future() {
+        assert(m_data != nullptr);
         return m_data->add_future();
     }
 
@@ -233,6 +236,7 @@ private:
 template <> class promise_t<void> {
 public:
     promise_t();
+    promise_t(promise_t &&other);
     ~promise_t();
 
     void fulfill();

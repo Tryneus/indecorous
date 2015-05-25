@@ -83,6 +83,44 @@ public:
     message_hub_t::membership_t<handler_callback_t> membership;
 };
 
+// Specialization for handlers with a void return type
+template <typename Callback>
+template <typename... Args>
+class handler_t<Callback>::internal_handler_t<void, Args...> : public handler_callback_t {
+public:
+    void handle(message_hub_t *hub, read_message_t *msg) {
+        handle_internal(std::index_sequence_for<Args...>{},
+                        std::tuple<Args...>{serializer_t<Args>::read(msg)...});
+        hub->send_reply(msg->source_id,
+                        write_message_t::create(msg->source_id,
+                                                handler_id_t::reply(),
+                                                msg->request_id));
+    }
+
+    void handle_noreply(read_message_t *msg) {
+        handle_internal(std::index_sequence_for<Args...>{},
+                        std::tuple<Args...>{serializer_t<Args>::read(msg)...});
+    }
+
+    handler_id_t id() const {
+        return handler_t<Callback>::handler_id();
+    }
+
+    static write_message_t make_write(target_id_t target, request_id_t request_id, Args &&...args) {
+        return write_message_t::create(target,
+                                       handler_t<Callback>::handler_id(),
+                                       request_id,
+                                       std::forward<Args>(args)...);
+    }
+
+private:
+    template <size_t... N>
+    static void handle_internal(std::integer_sequence<size_t, N...>,
+                                std::tuple<Args...> &&args) {
+        Callback::call(std::move(std::get<N>(args))...);
+    }
+};
+
 } // namespace indecorous
 
 #endif // HANDLER_HPP_

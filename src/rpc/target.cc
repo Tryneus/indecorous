@@ -17,9 +17,8 @@ target_id_t target_t::id() const {
 local_target_t::local_target_t(message_hub_t *hub, thread_t *thread) :
     target_t(hub), m_stream(thread) { }
 
-void local_target_t::pull_calls() {
-    // TODO: handle replies
-    while (membership.hub->spawn(m_stream.read())) { }
+read_message_t local_target_t::read() {
+    return m_stream.read();
 }
 
 stream_t *local_target_t::stream() {

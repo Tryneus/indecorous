@@ -50,7 +50,7 @@ private:
     wait_callback_t* m_waiter; // Only one waiter allowed per set
     std::set<wait_object_t*> m_waitSuccesses;
     std::set<multiple_wait_callback_t*, multiple_wait_callback_lt> m_waits;
-    Arena<multiple_wait_callback_t> m_cb_arena;
+    arena_t<multiple_wait_callback_t> m_cb_arena;
 };
 
 } // namespace indecorous

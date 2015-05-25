@@ -50,49 +50,85 @@ struct handover_params_t {
 };
 __thread handover_params_t handover_params;
 
+void coro_pull() {
+    thread_t *t = thread_t::self();
+    dispatcher_t *dispatch = t->dispatcher();
+
+    printf("coro_pull starting\n");
+    while (!dispatch->m_shutdown) {
+        read_message_t msg(t->m_target.read());
+
+        if (!msg.buffer.has()) {
+            printf("Waiting for more rpcs\n");
+            coro_t::wait(); // Will be woken up every event loop
+        } else {
+            printf("Spawning rpc locally\n");
+            t->m_parent->message_hub()->spawn(std::move(msg));
+        }
+    }
+
+    printf("coro_pull stopping\n");
+    // Double check that the stream is empty
+    // Orderly shutdown should ensure that all coroutines are done
+    read_message_t msg(t->m_target.read());
+    assert(!msg.buffer.has());
+}
+
 dispatcher_t::dispatcher_t() :
-    m_self(nullptr),
-    m_active_contexts(), // TODO: init this to the number of queued coros
-    m_context_arena(256) { }
+        m_context_arena(256),
+        m_rpc_consumer(m_context_arena.get(this)),
+        m_running(nullptr),
+        m_release(nullptr),
+        m_swap_count(0),
+        m_active_contexts(0),
+        m_shutdown(false) {
+    // Set up the rpc_consumer coroutine
+    makecontext(&m_rpc_consumer->m_context, coro_pull, 0);
+}
 
 dispatcher_t::~dispatcher_t() {
-    assert(m_self == nullptr);
+    assert(m_running == nullptr);
+    m_context_arena.release(m_rpc_consumer);
 }
 
 uint32_t dispatcher_t::run() {
-    assert(m_self == nullptr);
+    assert(m_running == nullptr);
     m_swap_count = 0;
 
-    if (!m_run_queue.empty()) {
-        // Save the currently running context
-        int res = getcontext(&m_parentContext);
-        assert(res == 0);
+    // Save the currently running context
+    int res = getcontext(&m_parentContext);
+    assert(res == 0);
 
-        // Start the queue of coroutines - they will swap in the next until no more are left
-        m_self = m_run_queue.pop_front();
-        assert(m_self != nullptr);
-        swapcontext(&m_parentContext, &m_self->m_context);
+    // Kick off the coroutines, they will give us back execution later
+    m_running = m_rpc_consumer;
+    swapcontext(&m_parentContext, &m_running->m_context);
+
+    if (m_release != nullptr) {
+        m_context_arena.release(m_release);
+        m_release = nullptr;
     }
 
-    if (m_release_coro != nullptr) {
-        m_context_arena.release(m_release_coro);
-        m_release_coro = nullptr;
-    }
-
-    assert(m_self == nullptr);
+    assert(m_running == nullptr);
     return m_active_contexts;
 }
 
 void dispatcher_t::enqueue_release(coro_t *coro) {
-    assert(m_release_coro == nullptr);
-    m_release_coro = coro;
+    assert(m_release == nullptr);
+    m_release = coro;
     --m_active_contexts;
 }
 
-coro_t::coro_t(dispatcher_t* dispatch) :
-    m_dispatch(dispatch),
-    m_valgrindStackId(VALGRIND_STACK_REGISTER(m_stack, m_stack + sizeof(m_stack))),
-    m_wait_result(wait_result_t::Success) { }
+coro_t::coro_t(dispatcher_t *dispatch) :
+        m_dispatch(dispatch),
+        m_valgrindStackId(VALGRIND_STACK_REGISTER(m_stack, m_stack + sizeof(m_stack))),
+        m_wait_result(wait_result_t::Success) {
+    int res = getcontext(&m_context);
+    assert(res == 0);
+
+    m_context.uc_stack.ss_sp = m_stack;
+    m_context.uc_stack.ss_size = s_stackSize;
+    m_context.uc_link = nullptr;
+}
 
 coro_t::~coro_t() {
     VALGRIND_STACK_DEREGISTER(m_valgrindStackId);
@@ -115,18 +151,27 @@ void launch_coro() {
 }
 
 void coro_t::begin(coro_t::hook_fn_t fn, coro_t *parent, void *params, bool immediate) {
-    int res = getcontext(&m_context);
-    assert(res == 0);
-
-    m_context.uc_stack.ss_sp = m_stack;
-    m_context.uc_stack.ss_size = s_stackSize;
-    m_context.uc_link = nullptr;
-
     // The new coroutine will pick up its parameters from the thread-static variable
     assert(handover_params.fn == nullptr);
     handover_params.init(this, fn, params, parent, immediate);
     makecontext(&m_context, launch_coro, 0);
-    swap(this); // Swap in this coroutine immediately
+}
+
+void coro_t::maybe_swap_parent(coro_t *parent, bool immediate) {
+    if (immediate) {
+        // We're running immediately, put our parent on the back of the run queue
+        m_dispatch->m_run_queue.push_back(parent);
+    } else {
+        // We're delaying our execution, put ourselves on the back of the run queue
+        // and swap back in our parent so they can continue
+        m_dispatch->m_run_queue.push_back(this);
+        swap(parent);
+    }
+}
+
+coro_t *coro_t::create() {
+    dispatcher_t *dispatch = thread_t::self()->dispatcher();
+    return dispatch->m_context_arena.get(dispatch);
 }
 
 void coro_t::end() {
@@ -136,27 +181,27 @@ void coro_t::end() {
 }
 
 void coro_t::swap(coro_t *next) {
-    assert(m_dispatch->m_self == this);
     ++m_dispatch->m_swap_count;
 
-    if (next == nullptr) {
+    if (next != nullptr) {
         // The current coroutine specified that it needs another coroutine scheduled
         // immediately - skip the queue and run it now.
-        m_dispatch->m_self = next;
+        m_dispatch->m_running = next;
         swapcontext(&m_context, &next->m_context);
     } else if (m_dispatch->m_run_queue.empty() ||
-        m_dispatch->m_swap_count >= dispatcher_t::s_max_swaps_per_loop) {
-        m_dispatch->m_self = nullptr;
+               m_dispatch->m_swap_count >= dispatcher_t::s_max_swaps_per_loop) {
+        m_dispatch->m_running = nullptr;
         swapcontext(&m_context, &m_dispatch->m_parentContext);
     } else {
-        m_dispatch->m_self = m_dispatch->m_run_queue.pop_front();
-        if (m_dispatch->m_self != this)
-            swapcontext(&m_context, &m_dispatch->m_self->m_context);
+        m_dispatch->m_running = m_dispatch->m_run_queue.pop_front();
+        if (m_dispatch->m_running != this) {
+            swapcontext(&m_context, &m_dispatch->m_running->m_context);
+        }
     }
 
-    if (m_dispatch->m_release_coro != nullptr) {
-        m_dispatch->m_context_arena.release(m_dispatch->m_release_coro);
-        m_dispatch->m_release_coro = nullptr;
+    if (m_dispatch->m_release != nullptr) {
+        m_dispatch->m_context_arena.release(m_dispatch->m_release);
+        m_dispatch->m_release = nullptr;
     }
 
     // If we did a wait that failed, throw an appropriate exception,
@@ -175,11 +220,11 @@ void coro_t::swap(coro_t *next) {
         throw wait_error_exc_t("unrecognized error while waiting");
     }
 
-    assert(m_dispatch->m_self == this);
+    assert(m_dispatch->m_running == this);
 }
 
 coro_t* coro_t::self() {
-    return thread_t::self()->dispatcher()->m_self;
+    return thread_t::self()->dispatcher()->m_running;
 }
 
 void coro_t::wait() {
@@ -188,20 +233,18 @@ void coro_t::wait() {
 }
 
 void coro_t::yield() {
-    dispatcher_t *dispatch = thread_t::self()->dispatcher();
-    coro_t *coro = dispatch->m_self;
-    dispatch->m_run_queue.push_back(coro);
+    coro_t *coro = self();
+    coro->m_dispatch->m_run_queue.push_back(coro);
     coro->swap();
 }
 
-void coro_t::notify(coro_t* coro) {
-    dispatcher_t *dispatch = thread_t::self()->dispatcher();
-    dispatch->m_run_queue.push_back(coro);
+void coro_t::notify() {
+    m_dispatch->m_run_queue.push_back(this);
 }
 
 void coro_t::wait_callback(wait_result_t result) {
     m_wait_result = result;
-    notify(this);
+    notify();
 }
 
 } // namespace indecorous

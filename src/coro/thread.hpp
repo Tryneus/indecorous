@@ -45,6 +45,7 @@ private:
     static uint64_t get_end_time(uint32_t timeout);
 
     friend class coro_timer_t;
+    friend void coro_pull();
 
     struct file_wait_info_t {
         int fd;
