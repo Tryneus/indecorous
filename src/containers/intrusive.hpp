@@ -61,6 +61,10 @@ public:
     }
     ~intrusive_list_t() {
         assert(m_size == 0);
+        assert(this->next_node() == this);
+        assert(this->prev_node() == this);
+        this->set_next_node(nullptr);
+        this->set_prev_node(nullptr);
     }
 
     size_t size() const {

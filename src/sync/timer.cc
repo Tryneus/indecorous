@@ -55,23 +55,25 @@ const absolute_time_t &timer_callback_t::timeout() const {
     return m_timeout;
 }
 
-timer_t::timer_t() :
+single_timer_t::single_timer_t() :
     m_thread_events(thread_t::self()->events()) { }
 
-timer_t::timer_t(timer_t &&other) :
+single_timer_t::single_timer_t(single_timer_t &&other) :
         timer_callback_t(std::move(other)),
+        m_triggered(false),
         m_waiters(std::move(other.m_waiters)),
         m_thread_events(other.m_thread_events) {
     other.m_thread_events = nullptr;
 }
 
-timer_t::~timer_t() {
+single_timer_t::~single_timer_t() {
     while (!m_waiters.empty()) {
         m_waiters.pop_front()->wait_done(wait_result_t::ObjectLost);   
     }
 }
 
-void timer_t::start(uint32_t timeout_ms) {
+void single_timer_t::start(uint32_t timeout_ms) {
+    m_triggered = false;
     update(timeout_ms);
     if (in_a_list()) {
         // Re-`start`ing an already-running timer will update its timeout
@@ -81,7 +83,8 @@ void timer_t::start(uint32_t timeout_ms) {
     m_thread_events->add_timer(this);
 }
 
-void timer_t::stop() {
+void single_timer_t::stop() {
+    m_triggered = false;
     while (!m_waiters.empty()) {
         m_waiters.pop_front()->wait_done(wait_result_t::Interrupted);   
     }
@@ -90,21 +93,28 @@ void timer_t::stop() {
     }
 }
 
-void timer_t::wait() {
-    assert(in_a_list()); // You cannot wait on a timer that is not running
-    coro_wait(&m_waiters);
+void single_timer_t::wait() {
+    if (!m_triggered) {
+        assert(in_a_list()); // You cannot wait on a timer that is not running
+        coro_wait(&m_waiters);
+    }
 }
 
-void timer_t::addWait(wait_callback_t* cb) {
-    assert(in_a_list());
-    m_waiters.push_back(cb);
+void single_timer_t::addWait(wait_callback_t* cb) {
+    if (m_triggered) {
+        cb->wait_done(wait_result_t::Success);
+    } else {
+        assert(in_a_list());
+        m_waiters.push_back(cb);
+    }
 }
 
-void timer_t::removeWait(wait_callback_t* cb) {
+void single_timer_t::removeWait(wait_callback_t* cb) {
     m_waiters.remove(cb);
 }
 
-void timer_t::timer_callback(wait_result_t result) {
+void single_timer_t::timer_callback(wait_result_t result) {
+    m_triggered = true;
     while (!m_waiters.empty()) {
         m_waiters.pop_front()->wait_done(result);       
     }

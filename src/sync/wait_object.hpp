@@ -17,6 +17,9 @@ void check_wait_result(wait_result_t result);
 
 class wait_callback_t : public intrusive_node_t<wait_callback_t> {
 public:
+    wait_callback_t() = default;
+    wait_callback_t(wait_callback_t &&other) = default;
+
     virtual void wait_done(wait_result_t result) = 0;
 };
 

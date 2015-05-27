@@ -38,7 +38,7 @@ endif
 #CXX_FLAGS += -g
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
 
-LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread
+LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt
 BIN_NAME = coro_test
 
 ALL_SOURCES := $(shell find $(SRC_DIR) -name '*.cc' -not -name '\.*')

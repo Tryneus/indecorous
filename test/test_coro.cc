@@ -11,6 +11,8 @@
 #include "rpc/handler.hpp"
 #include "rpc/target.hpp"
 #include "rpc/serialize_stl.hpp"
+#include "sync/timer.hpp"
+#include "sync/multiple_wait.hpp"
 
 const size_t num_threads = 4;
 
@@ -20,6 +22,17 @@ class test_callback_t {
 public:
     static void call(std::string a, std::string b, int value) {
         printf("Got called with %s, %s, %d\n", a.c_str(), b.c_str(), value);
+    }
+};
+
+class wait_test_callback_t {
+public:
+    static void call() {
+        single_timer_t timer_a;
+        periodic_timer_t timer_b;
+        timer_a.start(10);
+        timer_b.start(100);
+        wait_any(&timer_a, &timer_b);
     }
 };
 
