@@ -58,7 +58,7 @@ public:
     static coro_t* self();
 
     // Give up execution indefinitely (until notified)
-    static void wait();
+    void wait();
 
     // Wait temporarily and be rescheduled
     static void yield();

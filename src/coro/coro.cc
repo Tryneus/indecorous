@@ -53,13 +53,14 @@ thread_local handover_params_t handover_params;
 void coro_pull() {
     thread_t *t = thread_t::self();
     dispatcher_t *dispatch = t->dispatcher();
+    coro_t *self = dispatch->m_running;
 
     printf("coro_pull starting\n");
     while (!dispatch->m_shutdown) {
         printf("Spawning rpcs locally\n");
         while (t->target()->handle()) { }
         printf("Waiting for more rpcs\n");
-        coro_t::wait(); // Woken up every event loop
+        self->wait(); // Woken up every event loop
     }
 
     printf("coro_pull stopping\n");
@@ -199,20 +200,10 @@ void coro_t::swap(coro_t *next) {
         m_dispatch->m_release = nullptr;
     }
 
-    // If we did a wait that failed, throw an appropriate exception,
-    //  so we can require the user to handle it
+    // Check if we did a wait that failed
     wait_result_t wait_result = m_wait_result;
     m_wait_result = wait_result_t::Success;
-    switch (wait_result) {
-    case wait_result_t::Success:
-        break;
-    case wait_result_t::Interrupted:
-        throw wait_interrupted_exc_t();
-    case wait_result_t::ObjectLost:
-        throw wait_object_lost_exc_t();
-    default:
-        throw wait_error_exc_t("unrecognized error while waiting");
-    }
+    check_wait_result(wait_result);
 
     assert(m_dispatch->m_running == this);
 }
@@ -222,8 +213,8 @@ coro_t* coro_t::self() {
 }
 
 void coro_t::wait() {
-    coro_t *coro = self();
-    coro->swap();
+    assert(this == self());
+    swap();
 }
 
 void coro_t::yield() {
