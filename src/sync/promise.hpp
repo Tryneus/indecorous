@@ -64,9 +64,9 @@ private:
     void addWait(wait_callback_t *cb) {
         assert(m_data != nullptr);
         if (m_data->released()) {
-            cb->wait_callback(wait_result_t::ObjectLost);
+            cb->wait_done(wait_result_t::ObjectLost);
         } else if (m_data->has()) {
-            cb->wait_callback(wait_result_t::Success);
+            cb->wait_done(wait_result_t::Success);
         } else {
             m_waiters.push_back(cb);
         }
@@ -77,7 +77,7 @@ private:
 
     void notify(wait_result_t result) {
         while (!m_waiters.empty()) {
-            m_waiters.pop_front()->wait_callback(result);
+            m_waiters.pop_front()->wait_done(result);
         }
     }
 

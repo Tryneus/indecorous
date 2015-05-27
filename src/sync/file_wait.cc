@@ -2,53 +2,91 @@
 
 #include "common.hpp"
 #include "coro/coro.hpp"
+#include "coro/events.hpp"
 #include "coro/thread.hpp"
 
 namespace indecorous {
 
-// TODO: only allow one coroutine to wait on a file at once?
-//  maybe get rid of wakeall, so we only allow one wakeup per scheduler loop
-file_wait_base_t::file_wait_base_t(int fd, bool wakeAll) :
-    m_fd(fd), m_triggered(false), m_wakeAll(wakeAll) { }
+file_callback_t::file_callback_t(int _fd, uint32_t _event_mask) :
+    m_fd(_fd), m_event_mask(_event_mask) { }
 
-file_wait_base_t::~file_wait_base_t() {
+file_callback_t::file_callback_t(file_callback_t &&other) :
+        m_fd(other.m_fd), m_event_mask(other.m_event_mask) {
+    other.m_fd = -1;
+    other.m_event_mask = 0;
+}
+
+int file_callback_t::fd() const {
+    return m_fd;
+}
+
+uint32_t file_callback_t::event_mask() const {
+    return m_event_mask;
+}
+
+file_wait_t::file_wait_t(int _fd, uint32_t _event_mask) :
+    file_callback_t(_fd, _event_mask),
+    m_thread_events(thread_t::self()->events()) { }
+
+file_wait_t::file_wait_t(file_wait_t &&other) :
+        file_callback_t(std::move(other)),
+        m_waiters(std::move(other.m_waiters)),
+        m_thread_events(other.m_thread_events) {
+    other.m_thread_events = nullptr;
+}
+
+file_wait_t::~file_wait_t() { }
+
+file_wait_t file_wait_t::in(int fd) {
+    return file_wait_t(fd, EPOLLIN);
+}
+
+file_wait_t file_wait_t::out(int fd) {
+    return file_wait_t(fd, EPOLLOUT);
+}
+
+file_wait_t file_wait_t::err(int fd) {
+    return file_wait_t(fd, EPOLLERR);
+}
+
+file_wait_t file_wait_t::hup(int fd) {
+    return file_wait_t(fd, EPOLLHUP);
+}
+
+file_wait_t file_wait_t::pri(int fd) {
+    return file_wait_t(fd, EPOLLPRI);
+}
+
+file_wait_t file_wait_t::rdhup(int fd) {
+    return file_wait_t(fd, EPOLLRDHUP);
+}
+
+void file_wait_t::wait() {
+    if (m_waiters.empty()) {
+        m_thread_events->add_file_wait(this);
+    }
+    coro_wait(&m_waiters);
+}
+
+void file_wait_t::file_callback(wait_result_t result) {
     while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_callback(wait_result_t::ObjectLost);
+        m_waiters.pop_front()->wait_done(result);
     }
+    m_thread_events->remove_file_wait(this);
 }
 
-void file_wait_base_t::wait_callback(wait_result_t result) {
-    if (m_wakeAll) {
-        while (!m_waiters.empty()) {
-            m_waiters.pop_front()->wait_callback(result);
-        }
-    } else if (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_callback(result);
+void file_wait_t::addWait(wait_callback_t* cb) {
+    if (m_waiters.empty()) {
+        m_thread_events->add_file_wait(this);
     }
-}
-
-void file_wait_base_t::addWait(wait_callback_t* cb) {
     m_waiters.push_back(cb);
 }
 
-void file_wait_base_t::removeWait(wait_callback_t* cb) {
+void file_wait_t::removeWait(wait_callback_t* cb) {
     m_waiters.remove(cb);
+    if (m_waiters.empty()) {
+        m_thread_events->remove_file_wait(this);
+    }
 }
-
-template <int EventFlag>
-void file_wait_template_t<EventFlag>::wait() {
-    DEBUG_ONLY(coro_t* self = coro_t::self());
-    addWait(coro_t::self());
-    thread_t::add_file_wait(m_fd, EventFlag, this);
-    coro_t::wait();
-    assert(self == coro_t::self());
-}
-
-template class file_wait_template_t<POLLIN>;
-template class file_wait_template_t<POLLOUT>;
-template class file_wait_template_t<POLLERR>;
-template class file_wait_template_t<POLLHUP>;
-template class file_wait_template_t<POLLPRI>;
-template class file_wait_template_t<POLLRDHUP>;
 
 } // namespace indecorous

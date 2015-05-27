@@ -15,7 +15,7 @@ event_t::event_t(bool autoReset, bool wakeAll) :
 event_t::~event_t() {
     // Fail any remaining waits
     while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_callback(wait_result_t::ObjectLost);
+        m_waiters.pop_front()->wait_done(wait_result_t::ObjectLost);
     }
 }
 
@@ -35,10 +35,10 @@ bool event_t::set() {
 
         if (m_wakeAll) {
             while (!m_waiters.empty()) {
-                m_waiters.pop_front()->wait_callback(wait_result_t::Success);
+                m_waiters.pop_front()->wait_done(wait_result_t::Success);
             }
         } else if (!m_waiters.empty()) {
-            m_waiters.pop_front()->wait_callback(wait_result_t::Success);
+            m_waiters.pop_front()->wait_done(wait_result_t::Success);
         }
     }
 
@@ -67,7 +67,7 @@ void event_t::addWait(wait_callback_t* cb) {
         assert(m_waiters.empty());
         if (m_autoReset)
             m_triggered = false;
-        cb->wait_callback(wait_result_t::Success);
+        cb->wait_done(wait_result_t::Success);
     } else {
         m_waiters.push_back(cb);
     }

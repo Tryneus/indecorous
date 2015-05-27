@@ -26,7 +26,12 @@ public:
         other.m_next = nullptr;
         other.m_prev = nullptr;
     }
-    virtual ~intrusive_node_t() { }
+    virtual ~intrusive_node_t() {
+        assert(m_next == nullptr);
+        assert(m_prev == nullptr);
+    }
+
+    bool in_a_list() { return (m_next != nullptr) || (m_prev != nullptr); }
 
     void clear() { m_next = nullptr; m_prev = nullptr; }
 
@@ -98,6 +103,10 @@ public:
         T *res = get_value(this->prev_node());
         if (res != nullptr) remove_node(res);
         return res;
+    }
+
+    void insert_before(T *after, T *item) {
+        insert_between(item, after->intrusive_node_t<T>::prev_node(), after);
     }
 
     void remove(T* item) {

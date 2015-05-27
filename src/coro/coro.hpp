@@ -52,8 +52,7 @@ private:
     bool m_shutdown;
 };
 
-class coro_t : public wait_callback_t, public intrusive_node_t<coro_t>
-{
+class coro_t : public intrusive_node_t<coro_t> {
 public:
     // Get the running coroutine
     static coro_t* self();
@@ -63,9 +62,6 @@ public:
 
     // Wait temporarily and be rescheduled
     static void yield();
-
-    // Queue up another coroutine to be run
-    void notify();
 
     // Create a coroutine and put it on the queue to run
     template <typename Res, typename... Args>
@@ -86,6 +82,8 @@ public:
     }
 
     typedef void(coro_t::*hook_fn_t)(coro_t*, void*, bool);
+
+    wait_callback_t *wait_callback();
 
 private:
     friend class scheduler_t;
@@ -154,16 +152,27 @@ private:
     [[noreturn]] void end();
     void swap(coro_t *next = nullptr);
 
-    void wait_callback(wait_result_t result);
+    void notify(wait_result_t result);
 
     static coro_t *create();
 
     static const size_t s_stackSize = 65535; // TODO: This is probably way too small
 
+    // Use this rather than inherit from it directly to avoid ugly multiple inheritance
+    // of intrusive_node_t.
+    class coro_wait_callback_t : public wait_callback_t {
+    public:
+        coro_wait_callback_t(coro_t *parent);
+    private:
+        void wait_done(wait_result_t result);
+        coro_t *m_parent;
+    };
+
     dispatcher_t *m_dispatch;
     ucontext_t m_context;
     char m_stack[s_stackSize];
     int m_valgrindStackId;
+    coro_wait_callback_t m_wait_callback;
     wait_result_t m_wait_result;
 };
 

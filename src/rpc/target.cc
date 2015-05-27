@@ -17,8 +17,11 @@ target_id_t target_t::id() const {
 local_target_t::local_target_t(message_hub_t *hub, thread_t *thread) :
     target_t(hub), m_stream(thread) { }
 
-read_message_t local_target_t::read() {
-    return m_stream.read();
+bool local_target_t::handle() {
+    read_message_t msg(m_stream.read());
+    if (!msg.buffer.has()) { return false; }
+    membership.hub->spawn(std::move(msg));
+    return true;
 }
 
 stream_t *local_target_t::stream() {

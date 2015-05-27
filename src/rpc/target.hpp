@@ -71,8 +71,7 @@ private:
 class local_target_t : public target_t {
 public:
     local_target_t(message_hub_t *hub, thread_t *owner);
-
-    read_message_t read();
+    bool handle(); // Returns true if a message was processed, false otherwise
 private:
     stream_t *stream();
     local_stream_t m_stream;

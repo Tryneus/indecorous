@@ -48,7 +48,7 @@ struct handover_params_t {
     coro_t *parent;
     bool immediate;
 };
-__thread handover_params_t handover_params;
+thread_local handover_params_t handover_params;
 
 void coro_pull() {
     thread_t *t = thread_t::self();
@@ -56,22 +56,16 @@ void coro_pull() {
 
     printf("coro_pull starting\n");
     while (!dispatch->m_shutdown) {
-        read_message_t msg(t->m_target.read());
-
-        if (!msg.buffer.has()) {
-            printf("Waiting for more rpcs\n");
-            coro_t::wait(); // Will be woken up every event loop
-        } else {
-            printf("Spawning rpc locally\n");
-            t->m_parent->message_hub()->spawn(std::move(msg));
-        }
+        printf("Spawning rpcs locally\n");
+        while (t->target()->handle()) { }
+        printf("Waiting for more rpcs\n");
+        coro_t::wait(); // Woken up every event loop
     }
 
     printf("coro_pull stopping\n");
     // Double check that the stream is empty
     // Orderly shutdown should ensure that all coroutines are done
-    read_message_t msg(t->m_target.read());
-    assert(!msg.buffer.has());
+    assert(!t->target()->handle());
 }
 
 dispatcher_t::dispatcher_t() :
@@ -121,6 +115,7 @@ void dispatcher_t::enqueue_release(coro_t *coro) {
 coro_t::coro_t(dispatcher_t *dispatch) :
         m_dispatch(dispatch),
         m_valgrindStackId(VALGRIND_STACK_REGISTER(m_stack, m_stack + sizeof(m_stack))),
+        m_wait_callback(this),
         m_wait_result(wait_result_t::Success) {
     int res = getcontext(&m_context);
     assert(res == 0);
@@ -215,7 +210,6 @@ void coro_t::swap(coro_t *next) {
         throw wait_interrupted_exc_t();
     case wait_result_t::ObjectLost:
         throw wait_object_lost_exc_t();
-    case wait_result_t::Error:
     default:
         throw wait_error_exc_t("unrecognized error while waiting");
     }
@@ -238,13 +232,22 @@ void coro_t::yield() {
     coro->swap();
 }
 
-void coro_t::notify() {
+void coro_t::notify(wait_result_t result) {
+    assert(!in_a_list());
     m_dispatch->m_run_queue.push_back(this);
+    m_wait_result = result;
 }
 
-void coro_t::wait_callback(wait_result_t result) {
-    m_wait_result = result;
-    notify();
+wait_callback_t *coro_t::wait_callback() {
+    return &m_wait_callback;
+}
+
+coro_t::coro_wait_callback_t::coro_wait_callback_t(coro_t *parent) :
+    m_parent(parent) { }
+
+void coro_t::coro_wait_callback_t::wait_done(wait_result_t result) {
+    assert(!in_a_list());
+    m_parent->notify(result);
 }
 
 } // namespace indecorous

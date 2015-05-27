@@ -13,7 +13,7 @@ semaphore_t::semaphore_t(size_t initial, size_t max) :
 semaphore_t::~semaphore_t() {
     // Fail any remaining waiters
     while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_callback(wait_result_t::ObjectLost);
+        m_waiters.pop_front()->wait_done(wait_result_t::ObjectLost);
     }
 }
 
@@ -34,7 +34,7 @@ void semaphore_t::unlock(size_t count) {
     for (size_t i = 0; i < count && !m_waiters.empty(); ++i) {
         assert(m_count > 0);
         --m_count;
-        m_waiters.pop_front()->wait_callback(wait_result_t::Success);
+        m_waiters.pop_front()->wait_done(wait_result_t::Success);
     }
 }
 
@@ -42,7 +42,7 @@ void semaphore_t::addWait(wait_callback_t* cb) {
     if (m_count > 0) {
         assert(m_waiters.empty());
         --m_count;
-        cb->wait_callback(wait_result_t::Success);
+        cb->wait_done(wait_result_t::Success);
     } else {
         m_waiters.push_back(cb);
     }

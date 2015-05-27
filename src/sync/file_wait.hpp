@@ -8,41 +8,50 @@
 
 namespace indecorous {
 
-class file_wait_base_t : public wait_object_t, public wait_callback_t {
+class events_t;
+
+class file_callback_t : public intrusive_node_t<file_callback_t> {
 public:
-    file_wait_base_t(int fd, bool wakeAll);
-    virtual ~file_wait_base_t();
+    file_callback_t(int _fd, uint32_t _event_mask);
+    file_callback_t(file_callback_t &&other);
+
+    int fd() const;
+    uint32_t event_mask() const;
+
+    virtual void file_callback(wait_result_t result) = 0;
+
+private:
+    int m_fd;
+    uint32_t m_event_mask;
+};
+
+class file_wait_t : public wait_object_t, private file_callback_t {
+public:
+    file_wait_t(file_wait_t &&other);
+
+    static file_wait_t in(int fd);
+    static file_wait_t out(int fd);
+    static file_wait_t err(int fd);
+    static file_wait_t hup(int fd);
+    static file_wait_t pri(int fd);
+    static file_wait_t rdhup(int fd);
+
+    ~file_wait_t();
+
+    void wait();
 
 protected:
-    int m_fd;
-    bool m_triggered;
-
     void addWait(wait_callback_t* cb);
     void removeWait(wait_callback_t* cb);
 
 private:
-    friend class scheduler_t;
-    void wait_callback(wait_result_t result);
+    file_wait_t(int _fd, uint32_t _event_mask);
 
-    bool m_wakeAll;
+    void file_callback(wait_result_t result);
+
     intrusive_list_t<wait_callback_t> m_waiters;
+    events_t *m_thread_events;
 };
-
-template <int EventFlag>
-class file_wait_template_t : public file_wait_base_t {
-public:
-    file_wait_template_t(int fd, bool wakeAll) : file_wait_base_t(fd, wakeAll) { }
-    ~file_wait_template_t() { }
-
-    void wait();
-};
-
-typedef file_wait_template_t<POLLIN> file_wait_in_t;
-typedef file_wait_template_t<POLLOUT> file_wait_out_t;
-typedef file_wait_template_t<POLLERR> file_wait_err_t; // TODO: merge with HUP?
-typedef file_wait_template_t<POLLHUP> file_wait_hup_t;
-typedef file_wait_template_t<POLLPRI> file_wait_pri_t;
-typedef file_wait_template_t<POLLRDHUP> file_wait_rdhup_t;
 
 } // namespace indecorous
 

@@ -31,7 +31,7 @@ void future_t<void>::wait() {
 
 void future_t<void>::addWait(wait_callback_t *cb) {
     if (m_data->has()) {
-        cb->wait_callback(wait_result_t::Success);
+        cb->wait_done(wait_result_t::Success);
     } else {
         m_waiters.push_back(cb);
     }
@@ -42,7 +42,7 @@ void future_t<void>::removeWait(wait_callback_t *cb) {
 
 void future_t<void>::notify(wait_result_t result) {
     while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_callback(result);
+        m_waiters.pop_front()->wait_done(result);
     }
 }
 
