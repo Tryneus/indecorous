@@ -71,6 +71,10 @@ dispatcher_t::dispatcher_t() :
         m_swap_count(0),
         m_active_contexts(0),
         m_rpc_consumer(m_context_arena.get(this)) {
+    // Save the currently running context
+    int res = getcontext(&m_main_context);
+    assert(res == 0);
+
     // Set up the rpc consumer coroutine
     makecontext(&m_rpc_consumer->m_context, coro_pull, 0);
 }
@@ -83,10 +87,6 @@ dispatcher_t::~dispatcher_t() {
 void dispatcher_t::run() {
     assert(m_running == nullptr);
     m_swap_count = 0;
-
-    // Save the currently running context
-    int res = getcontext(&m_main_context);
-    assert(res == 0);
 
     // Kick off the coroutines, they will give us back execution later
     m_running = m_rpc_consumer;
