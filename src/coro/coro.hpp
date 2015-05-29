@@ -39,13 +39,13 @@ private:
     static uint32_t s_max_swaps_per_loop;
 
     arena_t<coro_t> m_context_arena; // arena used to cache context allocations
-    intrusive_list_t<coro_t> m_run_queue; // Queue of contexts to run
+    intrusive_list_t<coro_t> m_run_queue; // queue of contexts to run
 
     coro_t *m_rpc_consumer;
     coro_t *volatile m_running;
     coro_t *m_release; // Recently-finished coro_t to be released
 
-    ucontext_t m_parentContext; // Used to store the parent context, switch to when no coroutines to run
+    ucontext_t m_main_context; // Used to store the thread's main context
     uint32_t m_swap_count;
     int32_t m_active_contexts;
 
@@ -149,8 +149,8 @@ private:
     ~coro_t();
 
     void begin(hook_fn_t, coro_t *parent, void *params, bool immediate);
+    void swap(coro_t *next);
     [[noreturn]] void end();
-    void swap(coro_t *next = nullptr);
 
     void notify(wait_result_t result);
 

@@ -14,11 +14,11 @@ absolute_time_t::absolute_time_t(uint32_t delta_ms) {
     int res = clock_gettime(CLOCK_MONOTONIC, &t);
     assert(res == 0);
     sec = t.tv_sec + (delta_ms / 1000);
-    nsec = t.tv_nsec + (delta_ms % 1000) * 1000;
-    if (nsec > 1000000) {
+    nsec = t.tv_nsec + (delta_ms % 1000) * 1000000;
+    if (nsec > 1000000000) {
         sec += 1;
-        nsec -= 1000000;
-        assert(nsec < 1000000);
+        nsec -= 1000000000;
+        assert(nsec < 1000000000);
     }
 }
 

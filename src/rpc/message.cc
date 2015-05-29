@@ -52,7 +52,8 @@ read_message_t::read_message_t(buffer_owner_t _buffer,
     offset(_offset),
     source_id(std::move(_source_id)),
     handler_id(std::move(_handler_id)),
-    request_id(std::move(_request_id)) { }
+    request_id(std::move(_request_id)) {
+}
 
 char read_message_t::pop() {
     assert(offset < buffer.capacity());

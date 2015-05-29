@@ -32,9 +32,9 @@ bool message_hub_t::spawn(read_message_t msg) {
     if (cb_it == callbacks.end()) {
         printf("No extant handler for handler_id (%lu).\n", msg.handler_id.value());
     } else if (msg.request_id == request_id_t::noreply()) {
-        coro_t::spawn(&handler_callback_t::handle_noreply, cb_it->second, &msg);
+        coro_t::spawn(&handler_callback_t::handle_noreply, cb_it->second, std::move(msg));
     } else {
-        coro_t::spawn(&handler_callback_t::handle, cb_it->second, this, &msg);
+        coro_t::spawn(&handler_callback_t::handle, cb_it->second, this, std::move(msg));
     }
     return true;
 }

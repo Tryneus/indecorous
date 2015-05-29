@@ -91,12 +91,12 @@ uint32_t dispatcher_t::run() {
     m_swap_count = 0;
 
     // Save the currently running context
-    int res = getcontext(&m_parentContext);
+    int res = getcontext(&m_main_context);
     assert(res == 0);
 
     // Kick off the coroutines, they will give us back execution later
     m_running = m_rpc_consumer;
-    swapcontext(&m_parentContext, &m_running->m_context);
+    swapcontext(&m_main_context, &m_running->m_context);
 
     if (m_release != nullptr) {
         m_context_arena.release(m_release);
@@ -172,7 +172,7 @@ coro_t *coro_t::create() {
 
 void coro_t::end() {
     m_dispatch->enqueue_release(this);
-    swap();
+    swap(nullptr);
     assert(false);
 }
 
@@ -187,7 +187,7 @@ void coro_t::swap(coro_t *next) {
     } else if (m_dispatch->m_run_queue.empty() ||
                m_dispatch->m_swap_count >= dispatcher_t::s_max_swaps_per_loop) {
         m_dispatch->m_running = nullptr;
-        swapcontext(&m_context, &m_dispatch->m_parentContext);
+        swapcontext(&m_context, &m_dispatch->m_main_context);
     } else {
         m_dispatch->m_running = m_dispatch->m_run_queue.pop_front();
         if (m_dispatch->m_running != this) {
@@ -214,13 +214,13 @@ coro_t* coro_t::self() {
 
 void coro_t::wait() {
     assert(this == self());
-    swap();
+    swap(nullptr);
 }
 
 void coro_t::yield() {
     coro_t *coro = self();
     coro->m_dispatch->m_run_queue.push_back(coro);
-    coro->swap();
+    coro->swap(nullptr);
 }
 
 void coro_t::notify(wait_result_t result) {

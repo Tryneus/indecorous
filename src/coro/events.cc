@@ -1,5 +1,7 @@
 #include "coro/events.hpp"
 
+#include <algorithm>
+
 #include "sync/file_wait.hpp"
 #include "sync/timer.hpp"
 
@@ -98,8 +100,9 @@ void events_t::update_epoll() {
 }
 
 void events_t::do_epoll_wait(int timeout) {
-    std::unique_ptr<epoll_event[]> events(new epoll_event[m_file_map.size()]);
-    int res = epoll_wait(m_epoll_set.get(), events.get(), m_file_map.size(), timeout);
+    size_t events_size = std::max<size_t>(m_file_map.size(), 1);
+    std::unique_ptr<epoll_event[]> events(new epoll_event[events_size]);
+    int res = epoll_wait(m_epoll_set.get(), events.get(), events_size, timeout);
     if (res <= 0) {
         // Ignore EINTR, just allow a spurious wakeup
         assert(res == 0 || res == EINTR);
