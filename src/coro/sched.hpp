@@ -2,8 +2,10 @@
 #define CORO_CORO_SCHED_HPP_
 
 #include <unordered_set>
+#include <vector>
 
 #include "coro/barrier.hpp"
+#include "coro/shutdown.hpp"
 #include "rpc/hub.hpp"
 #include "rpc/id.hpp"
 
@@ -32,7 +34,7 @@ private:
     thread_barrier_t m_barrier;
     message_hub_t m_message_hub; // For passing messages between threads/processes
     std::unordered_set<target_id_t> m_thread_ids;
-    thread_t** m_threads;
+    thread_t **m_threads;
 };
 
 } // namespace indecorous

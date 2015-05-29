@@ -11,7 +11,7 @@
 
 namespace indecorous {
 
-uint32_t dispatcher_t::s_max_swaps_per_loop = 100;
+size_t dispatcher_t::s_max_swaps_per_loop = 100;
 
 // Used to hand over parameters to a new coroutine - since we can't safely pass pointers
 struct handover_params_t {
@@ -50,34 +50,28 @@ struct handover_params_t {
 };
 thread_local handover_params_t handover_params;
 
-void coro_pull() {
+[[noreturn]] void coro_pull() {
     thread_t *t = thread_t::self();
     dispatcher_t *dispatch = t->dispatcher();
     coro_t *self = dispatch->m_running;
 
     printf("coro_pull starting\n");
-    while (!dispatch->m_shutdown) {
+    while (true) {
         printf("Spawning rpcs locally\n");
         while (t->target()->handle()) { }
         printf("Waiting for more rpcs\n");
         self->wait(); // Woken up every event loop
     }
-
-    printf("coro_pull stopping\n");
-    // Double check that the stream is empty
-    // Orderly shutdown should ensure that all coroutines are done
-    assert(!t->target()->handle());
 }
 
 dispatcher_t::dispatcher_t() :
         m_context_arena(256),
-        m_rpc_consumer(m_context_arena.get(this)),
         m_running(nullptr),
         m_release(nullptr),
         m_swap_count(0),
         m_active_contexts(0),
-        m_shutdown(false) {
-    // Set up the rpc_consumer coroutine
+        m_rpc_consumer(m_context_arena.get(this)) {
+    // Set up the rpc consumer coroutine
     makecontext(&m_rpc_consumer->m_context, coro_pull, 0);
 }
 
@@ -86,7 +80,7 @@ dispatcher_t::~dispatcher_t() {
     m_context_arena.release(m_rpc_consumer);
 }
 
-uint32_t dispatcher_t::run() {
+void dispatcher_t::run() {
     assert(m_running == nullptr);
     m_swap_count = 0;
 
@@ -104,7 +98,6 @@ uint32_t dispatcher_t::run() {
     }
 
     assert(m_running == nullptr);
-    return m_active_contexts;
 }
 
 void dispatcher_t::enqueue_release(coro_t *coro) {

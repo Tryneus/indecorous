@@ -22,9 +22,8 @@ scheduler_t::scheduler_t(size_t num_threads) :
 scheduler_t::~scheduler_t() {
     assert(!m_running);
 
-    // Tell all threads to shutdown once we hit the following barrier
     for (size_t i = 0; i < m_num_threads; ++i) {
-        m_threads[i]->shutdown();
+        m_threads[i]->exit();
     }
 
     m_barrier.wait(); // Start the threads so they can exit
@@ -47,10 +46,19 @@ message_hub_t *scheduler_t::message_hub() {
 void scheduler_t::run() {
     assert(!m_running);
 
+    shutdown_t shutdown(m_num_threads); // Control when the threads stop
+    for (size_t i = 0; i < m_num_threads; ++i) {
+        m_threads[i]->set_shutdown_context(&shutdown);
+    }
+
     m_running = true;
     m_barrier.wait(); // Wait for all threads to get to their loop
     m_barrier.wait(); // Wait for all threads to finish all their coroutines
     m_running = false;
+
+    for (size_t i = 0; i < m_num_threads; ++i) {
+        m_threads[i]->set_shutdown_context(nullptr);
+    }
 }
 
 } // namespace indecorous

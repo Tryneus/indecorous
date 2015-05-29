@@ -18,7 +18,7 @@ thread_t::thread_t(message_hub_t *hub,
         m_events(),
         m_dispatch(),
         m_target(hub, this),
-        m_shutdown(false),
+        m_exit(false),
         m_thread(&thread_t::main, this) {
     m_thread.detach();
 }
@@ -29,8 +29,18 @@ void thread_t::main() {
     m_barrier->wait(); // Barrier for the scheduler_t constructor, thread ready
     m_barrier->wait(); // Wait for run or ~scheduler_t
 
-    while (!m_shutdown) {
-        while (m_dispatch.run() > 0) { m_events.wait(); }
+    while (!m_exit.load()) {
+        bool stop = false;
+
+        do {
+            m_events.wait();
+            m_dispatch.run();
+            if (m_shutdown_context.shutting_down()) {
+                stop = m_shutdown_context.update(m_dispatch.m_swap_count > 1 ||
+                                                 m_dispatch.m_active_contexts > 1);
+            }
+        } while (!stop);
+
         m_barrier->wait(); // Wait for other threads to finish
         m_barrier->wait(); // Wait for run or ~scheduler_t
     }
@@ -50,8 +60,12 @@ events_t *thread_t::events() {
     return &m_events;
 }
 
-void thread_t::shutdown() {
-    m_shutdown = true;
+void thread_t::exit() {
+    m_exit.store(true);
+}
+
+void thread_t::set_shutdown_context(shutdown_t *shutdown) {
+    m_shutdown_context.reset(shutdown);
 }
 
 target_id_t thread_t::id() const {

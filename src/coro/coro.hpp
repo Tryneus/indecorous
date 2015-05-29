@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <cstddef>
 
 #include "containers/arena.hpp"
 #include "containers/intrusive.hpp"
@@ -24,32 +25,25 @@ public:
     dispatcher_t();
     ~dispatcher_t();
 
-    // Returns the number of outstanding coroutines
-    uint32_t run();
-
-private:
-    // TODO: make the interface public, remove friends
-    friend class scheduler_t;
-    friend class thread_t;
-    friend class coro_t;
-    friend void coro_pull();
+    void run();
+    void set_rpc_consumer(coro_t *coro);
 
     void enqueue_release(coro_t *coro);
-
-    static uint32_t s_max_swaps_per_loop;
 
     arena_t<coro_t> m_context_arena; // arena used to cache context allocations
     intrusive_list_t<coro_t> m_run_queue; // queue of contexts to run
 
-    coro_t *m_rpc_consumer;
     coro_t *volatile m_running;
     coro_t *m_release; // Recently-finished coro_t to be released
 
-    ucontext_t m_main_context; // Used to store the thread's main context
-    uint32_t m_swap_count;
-    int32_t m_active_contexts;
+    size_t m_swap_count;
+    size_t m_active_contexts;
 
-    bool m_shutdown;
+    ucontext_t m_main_context; // Used to store the thread's main context
+
+    static size_t s_max_swaps_per_loop;
+private:
+    coro_t *m_rpc_consumer;
 };
 
 class coro_t : public intrusive_node_t<coro_t> {
