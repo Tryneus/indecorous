@@ -43,7 +43,7 @@ message_hub_t *scheduler_t::message_hub() {
     return &m_message_hub;
 }
 
-void scheduler_t::run() {
+void scheduler_t::run(shutdown_policy_t policy) {
     assert(!m_running);
 
     shutdown_t shutdown(m_num_threads); // Control when the threads stop
@@ -53,6 +53,16 @@ void scheduler_t::run() {
 
     m_running = true;
     m_barrier.wait(); // Wait for all threads to get to their loop
+
+    switch (policy) {
+    case shutdown_policy_t::Eager: break; // Shutdown immediately
+    case shutdown_policy_t::Kill:
+        // TODO: wait for SIGINT, then shutdown
+        break;
+    }
+
+    shutdown.shutdown();
+
     m_barrier.wait(); // Wait for all threads to finish all their coroutines
     m_running = false;
 

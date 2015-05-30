@@ -14,13 +14,17 @@ namespace indecorous {
 class dispatcher_t;
 class thread_t;
 
+enum class shutdown_policy_t { Eager, Kill };
+
 class scheduler_t {
 public:
     explicit scheduler_t(size_t num_threads);
     ~scheduler_t();
 
-    // This function will not return until all coroutines (and children thereof) return
-    void run();
+    // This function will return based on the shutdown policy
+    // shutdown_policy_t::Eager - return as soon as all coroutines complete
+    // shutdown_policy_t::Kill - begin Eager shutdown after a SIGINT is received
+    void run(shutdown_policy_t policy);
 
     // TODO: get a more portable definition of target ids - these will change from node to node
     // UUIDs?

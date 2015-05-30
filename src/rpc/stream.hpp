@@ -7,6 +7,7 @@
 #include <queue>
 
 #include "containers/buffer.hpp"
+#include "containers/file.hpp"
 #include "containers/intrusive.hpp"
 
 namespace indecorous {
@@ -20,6 +21,7 @@ public:
     virtual ~stream_t();
     virtual void write(write_message_t &&) = 0;
     virtual read_message_t read() = 0;
+    virtual void wait() = 0;
 };
 
 class local_stream_t : public stream_t {
@@ -27,7 +29,9 @@ public:
     explicit local_stream_t(thread_t *_thread);
     void write(write_message_t &&msg);
     read_message_t read();
+    void wait();
 private:
+    scoped_fd_t fd;
     thread_t *thread;
     mpsc_queue_t<linkable_buffer_t> message_queue;
 };
@@ -37,6 +41,7 @@ public:
     explicit tcp_stream_t(int _fd);
     void write(write_message_t &&msg);
     read_message_t read();
+    void wait();
 private:
     friend class read_message_t;
     void read_exactly(char *buffer, size_t data);

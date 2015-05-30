@@ -15,7 +15,7 @@ endif
 
 CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -Wall -Wextra -Werror
 CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
-CXX_FLAGS += -Wformat=2 -Wswitch-enum -Wswitch-default
+CXX_FLAGS += -Wformat=2 -Wswitch-enum
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
 
 # We use c++14 extensions, so force us to use a compiler version with support

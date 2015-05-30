@@ -51,16 +51,14 @@ struct handover_params_t {
 thread_local handover_params_t handover_params;
 
 [[noreturn]] void coro_pull() {
-    thread_t *t = thread_t::self();
-    dispatcher_t *dispatch = t->dispatcher();
-    coro_t *self = dispatch->m_running;
+    local_target_t *target = thread_t::self()->target();
 
     printf("coro_pull starting\n");
     while (true) {
         printf("Spawning rpcs locally\n");
-        while (t->target()->handle()) { }
+        while (target->handle()) { }
         printf("Waiting for more rpcs\n");
-        self->wait(); // Woken up every event loop
+        target->wait();
     }
 }
 

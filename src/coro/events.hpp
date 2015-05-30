@@ -25,7 +25,7 @@ public:
     void add_file_wait(file_callback_t *cb);
     void remove_file_wait(file_callback_t *cb);
 
-    void wait();
+    void wait(bool shutting_down);
 
 private:
     void update_epoll();

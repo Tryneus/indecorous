@@ -57,6 +57,8 @@ public:
     intrusive_list_t(intrusive_list_t<T> &&other) :
             intrusive_node_t<T>(std::move(other)),
             m_size(other.m_size) {
+        other.set_next_node(&other);
+        other.set_prev_node(&other);
         other.m_size = 0;
     }
     ~intrusive_list_t() {
@@ -188,6 +190,7 @@ public:
         if (next != nullptr) {
             assert(node != this);
             m_front = next;
+            node->set_next_node(nullptr);
             return static_cast<T *>(node);
         }
 

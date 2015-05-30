@@ -31,15 +31,22 @@ void thread_t::main() {
 
     while (!m_exit.load()) {
         bool stop = false;
+        bool stopping = false;
 
-        do {
-            m_events.wait();
+        while (!stop) {
             m_dispatch.run();
-            if (m_shutdown_context.shutting_down()) {
-                stop = m_shutdown_context.update(m_dispatch.m_swap_count > 1 ||
+
+            if (!stopping) {
+                stopping = m_shutdown_context.shutting_down();
+            }
+
+            if (stopping) {
+                stop = m_shutdown_context.update(m_dispatch.m_swap_count == 0 ||
                                                  m_dispatch.m_active_contexts > 1);
             }
-        } while (!stop);
+
+            m_events.wait(stopping);
+        }
 
         m_barrier->wait(); // Wait for other threads to finish
         m_barrier->wait(); // Wait for run or ~scheduler_t

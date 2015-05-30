@@ -7,20 +7,19 @@
 
 #include "containers/intrusive.hpp"
 #include "coro/barrier.hpp"
-#include "random.hpp"
 
 using namespace indecorous;
 
 class node_t : public intrusive_node_t<node_t> {
 public:
-    node_t() : m_value(s_rng.generate<uint64_t>()) { }
+    node_t() : m_value(s_next_value++) { }
     bool operator ==(const node_t &other) { return m_value == other.m_value; }
 private:
-    static pseudo_random_t s_rng;
+    static uint64_t s_next_value;
     uint64_t m_value;
 };
 
-pseudo_random_t node_t::s_rng;
+uint64_t node_t::s_next_value = 0;
 
 TEST_CASE("intrusive_list_t", "[containers][intrusive]") {
     node_t nodes[5];

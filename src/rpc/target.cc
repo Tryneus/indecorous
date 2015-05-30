@@ -14,6 +14,10 @@ target_id_t target_t::id() const {
     return target_id;
 }
 
+void target_t::wait() {
+    stream()->wait();
+}
+
 local_target_t::local_target_t(message_hub_t *hub, thread_t *thread) :
     target_t(hub), m_stream(thread) { }
 

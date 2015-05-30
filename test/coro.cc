@@ -49,7 +49,7 @@ TEST_CASE("coro/spawn", "Test basic coroutine spawning and running") {
     for (auto const &id : threads) {
         sched.message_hub()->target(id)->noreply_call<test_callback_t>("foo", "bar", 1);
     }
-    sched.run();
+    sched.run(shutdown_policy_t::Eager);
 }
 
 TEST_CASE("coro/wait", "Test basic coroutine waiting") {
