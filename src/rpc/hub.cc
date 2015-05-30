@@ -5,6 +5,8 @@
 #include "rpc/handler.hpp"
 #include "rpc/target.hpp"
 
+#include "coro/thread.hpp"
+
 namespace indecorous {
 
 template <typename T>
@@ -26,15 +28,17 @@ message_hub_t::message_hub_t() { }
 message_hub_t::~message_hub_t() { }
 
 bool message_hub_t::spawn(read_message_t msg) {
-    if (!msg.buffer.has()) return false;
+    assert(msg.buffer.has());
 
     auto cb_it = callbacks.find(msg.handler_id);
-    if (cb_it == callbacks.end()) {
-        printf("No extant handler for handler_id (%lu).\n", msg.handler_id.value());
-    } else if (msg.request_id == request_id_t::noreply()) {
+    if (msg.request_id == request_id_t::noreply()) {
+        debugf("handling noreply rpc\n");
         coro_t::spawn(&handler_callback_t::handle_noreply, cb_it->second, std::move(msg));
-    } else {
+    } else if (cb_it != callbacks.end()) {
+        debugf("handling reply rpc\n");
         coro_t::spawn(&handler_callback_t::handle, cb_it->second, this, std::move(msg));
+    } else {
+        printf("No extant handler for handler_id (%lu).\n", msg.handler_id.value());
     }
     return true;
 }

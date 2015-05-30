@@ -52,12 +52,8 @@ thread_local handover_params_t handover_params;
 
 [[noreturn]] void coro_pull() {
     local_target_t *target = thread_t::self()->target();
-
-    printf("coro_pull starting\n");
     while (true) {
-        printf("Spawning rpcs locally\n");
         while (target->handle()) { }
-        printf("Waiting for more rpcs\n");
         target->wait();
     }
 }

@@ -63,11 +63,13 @@ size_t full_serialized_size(const Args &...args) {
 
 template <typename... Args>
 int full_serialize(write_message_t *msg, const Args &...args) {
-    msg = msg; // Hack to avoid unused variable warning
     __attribute__((unused)) int dummy[] =
         { serializer_t<Args>::write(msg, args)... };
     return 0;
 }
+
+// Specialization to avoid unused variable warning
+template <> int full_serialize<>(write_message_t *);
 
 template <typename T, size_t... N, typename... Args>
 T full_deserialize_internal(std::integer_sequence<size_t, N...>,

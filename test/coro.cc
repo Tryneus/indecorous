@@ -14,7 +14,7 @@
 #include "sync/timer.hpp"
 #include "sync/multiple_wait.hpp"
 
-const size_t num_threads = 4;
+const size_t num_threads = 1;
 
 using namespace indecorous;
 

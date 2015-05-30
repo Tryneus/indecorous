@@ -75,6 +75,9 @@ public:
         }
     };
 
+    // Predeclare the void specialization or this breaks on clang
+    template <typename... Args> class internal_handler_t<void, Args...>;
+
     // Used to convert a function to a parameter pack of result and arg types
     template <typename Res, typename... Args>
     static internal_handler_t<Res, Args...> dummy_translator(Res(*fn)(Args...));

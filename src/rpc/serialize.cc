@@ -75,5 +75,9 @@ class unused_sizer_t {
     static_assert(sizeof(double) == 8, "double type has unexpected length");
 };
 
+template <> int full_serialize<>(write_message_t *) {
+    return 0;
+}
+
 } // namespace indecorous
 
