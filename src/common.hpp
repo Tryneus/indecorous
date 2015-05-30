@@ -8,4 +8,10 @@
     #define DEBUG_ONLY(...) __VA_ARGS__
 #endif
 
+namespace indecorous {
+
+#define debugf(format, ...) printf("Thread %ld - " format, thread_t::self()->id().value(), ##__VA_ARGS__)
+
+} // namespace indecorous
+
 #endif // COMMON_HPP_

@@ -1,6 +1,7 @@
 #include "coro/events.hpp"
 
 #include <algorithm>
+#include <cstring>
 
 #include "sync/file_wait.hpp"
 #include "sync/timer.hpp"
@@ -38,6 +39,7 @@ void events_t::remove_timer(timer_callback_t *cb) {
 }
 
 void events_t::add_file_wait(file_callback_t *cb) {
+    assert(cb->event_mask() != 0);
     auto it = m_file_map.find(cb->fd());
     if (it == m_file_map.end()) {
         auto res = m_file_map.emplace(cb->fd(), file_info_t());
@@ -76,15 +78,19 @@ void events_t::wait(bool shutting_down) {
 }
 
 void events_t::update_epoll() {
+    struct epoll_event event;
+    memset(&event, 0, sizeof(event));
+
     for (int fd : m_epoll_changes) {
         auto it = m_file_map.find(fd);
         assert(it != m_file_map.end());
 
-        epoll_event event;
+        event.events = 0;
         event.data.fd = fd;
         file_callback_t *cb = it->second.callbacks.front();
         while (cb != nullptr) {
             event.events |= cb->event_mask();
+            assert(cb->event_mask() != 0);
             cb = it->second.callbacks.next(cb);
         }
 

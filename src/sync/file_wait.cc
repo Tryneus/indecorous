@@ -25,8 +25,9 @@ uint32_t file_callback_t::event_mask() const {
 }
 
 file_wait_t::file_wait_t(int _fd, uint32_t _event_mask) :
-    file_callback_t(_fd, _event_mask),
-    m_thread_events(thread_t::self()->events()) { }
+        file_callback_t(_fd, _event_mask),
+        m_thread_events(thread_t::self()->events()) {
+}
 
 file_wait_t::file_wait_t(file_wait_t &&other) :
         file_callback_t(std::move(other)),
@@ -34,8 +35,6 @@ file_wait_t::file_wait_t(file_wait_t &&other) :
         m_thread_events(other.m_thread_events) {
     other.m_thread_events = nullptr;
 }
-
-file_wait_t::~file_wait_t() { }
 
 file_wait_t file_wait_t::in(int fd) {
     return file_wait_t(fd, EPOLLIN);

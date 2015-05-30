@@ -75,6 +75,7 @@ dispatcher_t::dispatcher_t() :
 
     // Set up the rpc consumer coroutine
     makecontext(&m_rpc_consumer->m_context, coro_pull, 0);
+    m_run_queue.push_back(m_rpc_consumer);
 }
 
 dispatcher_t::~dispatcher_t() {
@@ -87,8 +88,10 @@ void dispatcher_t::run() {
     m_swap_count = 0;
 
     // Kick off the coroutines, they will give us back execution later
-    m_running = m_rpc_consumer;
-    swapcontext(&m_main_context, &m_running->m_context);
+    m_running = m_run_queue.pop_front();
+    if (m_running != nullptr) {
+        swapcontext(&m_main_context, &m_running->m_context);
+    }
 
     if (m_release != nullptr) {
         m_context_arena.release(m_release);

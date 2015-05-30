@@ -36,8 +36,6 @@ public:
     static file_wait_t pri(int fd);
     static file_wait_t rdhup(int fd);
 
-    ~file_wait_t();
-
     void wait();
 
 protected:

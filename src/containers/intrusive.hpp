@@ -57,6 +57,12 @@ public:
     intrusive_list_t(intrusive_list_t<T> &&other) :
             intrusive_node_t<T>(std::move(other)),
             m_size(other.m_size) {
+        if (this->next_node() == &other) {
+            assert(m_size == 0);
+            assert(this->prev_node() == &other);
+            this->set_prev_node(this);
+            this->set_next_node(this);
+        }
         other.set_next_node(&other);
         other.set_prev_node(&other);
         other.m_size = 0;
