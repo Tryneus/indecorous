@@ -25,8 +25,8 @@ public:
     dispatcher_t();
     ~dispatcher_t();
 
-    void run();
-    void set_rpc_consumer(coro_t *coro);
+    // Returns the delta in active local coroutines
+    int64_t run();
 
     void enqueue_release(coro_t *coro);
 
@@ -37,13 +37,13 @@ public:
     coro_t *m_release; // Recently-finished coro_t to be released
 
     size_t m_swap_count;
-    size_t m_active_contexts;
 
     ucontext_t m_main_context; // Used to store the thread's main context
 
     static size_t s_max_swaps_per_loop;
 private:
     coro_t *m_rpc_consumer;
+    uint64_t m_contexts_released;
 };
 
 class coro_t : public intrusive_node_t<coro_t> {

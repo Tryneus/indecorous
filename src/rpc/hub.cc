@@ -3,29 +3,21 @@
 #include <cassert>
 
 #include "rpc/handler.hpp"
+#include "rpc/hub_data.hpp"
 #include "rpc/target.hpp"
 
 #include "coro/thread.hpp"
 
 namespace indecorous {
 
-template <typename T>
-message_hub_t::membership_t<T>::membership_t(message_hub_t *_hub, T *_member) :
-        hub(_hub), member(_member) {
-    hub->add(member);
-}
-
-template <typename T>
-message_hub_t::membership_t<T>::~membership_t() {
-    hub->remove(member);
-}
-
-// Instantiations of membership for the supported types
-template class message_hub_t::membership_t<handler_callback_t>;
-template class message_hub_t::membership_t<target_t>;
-
 message_hub_t::message_hub_t() { }
 message_hub_t::~message_hub_t() { }
+
+uint64_t message_hub_t::local_sends_delta() {
+    uint64_t res = local_sends;
+    local_sends = 0;
+    return res;
+}
 
 bool message_hub_t::spawn(read_message_t msg) {
     assert(msg.buffer.has());
@@ -55,25 +47,6 @@ void message_hub_t::send_reply(target_id_t target_id, write_message_t &&msg) {
     } else {
         printf("Cannot find target (%lu) to send reply to.\n", target_id.value());
     }
-}
-
-void message_hub_t::add(handler_callback_t *callback) {
-    auto res = callbacks.insert(std::make_pair(callback->id(), callback));
-    assert(res.second);
-}
-void message_hub_t::remove(handler_callback_t *callback) {
-    size_t res = callbacks.erase(callback->id());
-    assert(res == 1);
-}
-
-void message_hub_t::add(target_t *_target) {
-    auto res = targets.insert(std::make_pair(_target->id(), _target));
-    assert(res.second);
-}
-
-void message_hub_t::remove(target_t *_target) {
-    size_t res = targets.erase(_target->id());
-    assert(res == 1);
 }
 
 } // namespace indecorous

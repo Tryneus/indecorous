@@ -35,13 +35,11 @@ private:
 
 class handler_id_t {
 public:
+    explicit handler_id_t(uint64_t _value);
     uint64_t value() const;
     static handler_id_t reply();
     bool operator ==(const handler_id_t &other) const;
 private:
-    friend class id_generator_t<handler_id_t>;
-    friend class read_message_t;
-    explicit handler_id_t(uint64_t _value);
     uint64_t value_;
 };
 

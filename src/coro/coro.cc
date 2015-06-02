@@ -63,7 +63,6 @@ dispatcher_t::dispatcher_t() :
         m_running(nullptr),
         m_release(nullptr),
         m_swap_count(0),
-        m_active_contexts(0),
         m_rpc_consumer(m_context_arena.get(this)) {
     // Save the currently running context
     int res = getcontext(&m_main_context);
@@ -79,9 +78,12 @@ dispatcher_t::~dispatcher_t() {
     m_context_arena.release(m_rpc_consumer);
 }
 
-void dispatcher_t::run() {
+int64_t dispatcher_t::run() {
+    message_hub_t *hub = thread_t::self()->hub();
     assert(m_running == nullptr);
     m_swap_count = 0;
+    m_contexts_released = 0;
+    
 
     // Kick off the coroutines, they will give us back execution later
     m_running = m_run_queue.pop_front();
@@ -95,12 +97,13 @@ void dispatcher_t::run() {
     }
 
     assert(m_running == nullptr);
+    return hub->local_sends_delta() - m_contexts_released;
 }
 
 void dispatcher_t::enqueue_release(coro_t *coro) {
     assert(m_release == nullptr);
     m_release = coro;
-    --m_active_contexts;
+    ++m_contexts_released;
 }
 
 coro_t::coro_t(dispatcher_t *dispatch) :

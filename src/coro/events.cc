@@ -57,15 +57,11 @@ void events_t::remove_file_wait(file_callback_t *cb) {
     m_epoll_changes.insert(cb->fd());
 }
 
-void events_t::wait(bool shutting_down) {
+void events_t::wait() {
     absolute_time_t start_time(0);
     int timeout = -1;
     if (!m_timer_list.empty()) {
         timeout = absolute_time_t::ms_diff(start_time, m_timer_list.front()->timeout());
-    }
-
-    if (shutting_down && (timeout == -1 || timeout > 10)) {
-        timeout = 10;
     }
 
     update_epoll();

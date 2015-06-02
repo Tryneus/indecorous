@@ -1,13 +1,12 @@
 #ifndef CORO_CORO_SCHED_HPP_
 #define CORO_CORO_SCHED_HPP_
 
-#include <unordered_set>
-#include <vector>
+#include <atomic>
+#include <list>
 
 #include "coro/barrier.hpp"
 #include "coro/shutdown.hpp"
-#include "rpc/hub.hpp"
-#include "rpc/id.hpp"
+#include "coro/thread.hpp"
 
 namespace indecorous {
 
@@ -21,24 +20,18 @@ public:
     explicit scheduler_t(size_t num_threads);
     ~scheduler_t();
 
+    std::list<thread_t> &threads();
+
     // This function will return based on the shutdown policy
     // shutdown_policy_t::Eager - return as soon as all coroutines complete
     // shutdown_policy_t::Kill - begin Eager shutdown after a SIGINT is received
     void run(shutdown_policy_t policy);
 
-    // TODO: get a more portable definition of target ids - these will change from node to node
-    // UUIDs?
-    const std::unordered_set<target_id_t> &all_threads() const;
-
-    message_hub_t *message_hub();
-
 private:
-    bool m_running;
-    size_t m_num_threads;
+    shutdown_t m_shutdown;
+    std::atomic<bool> m_exit_flag;
     thread_barrier_t m_barrier;
-    message_hub_t m_message_hub; // For passing messages between threads/processes
-    std::unordered_set<target_id_t> m_thread_ids;
-    thread_t **m_threads;
+    std::list<thread_t> m_threads;
 };
 
 } // namespace indecorous

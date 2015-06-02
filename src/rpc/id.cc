@@ -1,5 +1,7 @@
 #include "rpc/id.hpp"
 
+#include <limits>
+
 namespace indecorous {
 
 id_generator_t<target_id_t> target_id_t::generator;
@@ -31,7 +33,7 @@ bool handler_id_t::operator ==(const handler_id_t &other) const {
 }
 
 handler_id_t handler_id_t::reply() {
-    return handler_id_t(-1);
+    return handler_id_t(std::numeric_limits<uint64_t>::max());
 }
 
 request_id_t::request_id_t(uint64_t _value) :
@@ -46,7 +48,7 @@ bool request_id_t::operator ==(const request_id_t &other) const {
 }
 
 request_id_t request_id_t::noreply() {
-    return request_id_t(-1);
+    return request_id_t(std::numeric_limits<uint64_t>::max());
 }
 
 } // namespace indecorous

@@ -16,7 +16,7 @@ class thread_t;
 
 class target_t {
 public:
-    explicit target_t(message_hub_t *hub);
+    explicit target_t();
     virtual ~target_t();
 
     target_id_t id() const;
@@ -26,13 +26,13 @@ public:
         send_request<Callback>(request_id_t::noreply(), std::forward<Args>(args)...);
     }
 
-    template <typename Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>
+    template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
     result_t call(Args &&...args) {
         request_id_t request_id = send_request(request_gen.next(), std::forward<Args>(args)...);
         return parse_result<result_t>(get_response(request_id));
     }
 
-    template <typename Callback, typename result_t = typename handler_t<Callback>::result_t, typename... Args>
+    template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
     future_t<result_t> async_call(Args &&...args) {
         request_id_t request_id = send_request(request_gen.next(), std::forward<Args>(args)...);
         return coro_t::spawn(&target_t::parse_result<result_t>, get_response(request_id));
@@ -45,7 +45,6 @@ protected:
     virtual stream_t *stream() = 0;
 
     target_id_t target_id;
-    message_hub_t::membership_t<target_t> membership;
 
     std::unordered_map<request_id_t, promise_t<read_message_t> > request_map;
 
@@ -53,9 +52,9 @@ private:
     template <typename Callback, typename... Args>
     request_id_t send_request(request_id_t request_id, Args &&...args) {
         write_message_t msg =
-            handler_t<Callback>::handler_impl_t::make_write(id(),
-                                                            request_id,
-                                                            std::forward<Args>(args)...);
+            handler_wrapper_t<Callback>::handler_impl_t::make_write(id(),
+                                                                    request_id,
+                                                                    std::forward<Args>(args)...);
         stream()->write(std::move(msg));
         return request_id;
     }
@@ -71,7 +70,7 @@ private:
 
 class local_target_t : public target_t {
 public:
-    local_target_t(message_hub_t *hub, thread_t *owner);
+    local_target_t(thread_t *owner);
     bool handle(); // Returns true if a message was processed, false otherwise
 private:
     stream_t *stream();
@@ -81,7 +80,7 @@ private:
 // TODO: need to be able to address multiple targets in a remote process
 class remote_target_t : public target_t {
 public:
-    explicit remote_target_t(message_hub_t *hub);
+    explicit remote_target_t();
 
 private:
     stream_t *stream();

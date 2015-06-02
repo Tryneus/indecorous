@@ -9,12 +9,12 @@ namespace indecorous {
 
 class event_t : public wait_object_t {
 public:
-    event_t(bool autoReset, bool m_wakeAll);
+    event_t();
     ~event_t();
 
     bool triggered() const;
-    bool set();
-    bool reset();
+    void set();
+    void reset();
     void wait();
 
 protected:
@@ -22,8 +22,6 @@ protected:
     void removeWait(wait_callback_t* cb);
 
 private:
-    bool m_autoReset;
-    bool m_wakeAll;
     bool m_triggered;
     intrusive_list_t<wait_callback_t> m_waiters;
 };

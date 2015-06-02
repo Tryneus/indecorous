@@ -12,13 +12,17 @@ namespace indecorous {
 
 thread_local thread_t* thread_t::s_instance = nullptr;
 
-thread_t::thread_t(message_hub_t *hub,
-                   thread_barrier_t* barrier) :
-        m_barrier(barrier),
+thread_t::thread_t(shutdown_t *shutdown,
+                   thread_barrier_t *barrier,
+                   std::atomic<bool> *exit_flag) :
+        m_hub(),
         m_events(),
         m_dispatch(),
-        m_target(hub, this),
-        m_exit(false),
+        m_target(this),
+        m_shutdown(shutdown),
+        m_barrier(barrier),
+        m_exit_flag(exit_flag),
+        m_shutdown_event(),
         m_thread(&thread_t::main, this) {
     m_thread.detach();
 }
@@ -29,23 +33,11 @@ void thread_t::main() {
     m_barrier->wait(); // Barrier for the scheduler_t constructor, thread ready
     m_barrier->wait(); // Wait for run or ~scheduler_t
 
-    while (!m_exit.load()) {
-        bool stop = false;
-        bool stopping = false;
-
-        while (!stop) {
-            m_dispatch.run();
-
-            if (!stopping) {
-                stopping = m_shutdown_context.shutting_down();
-            }
-
-            if (stopping) {
-                stop = m_shutdown_context.update(m_dispatch.m_swap_count == 0 ||
-                                                 m_dispatch.m_active_contexts > 1);
-            }
-
-            m_events.wait(stopping);
+    while (!m_exit_flag->load()) {
+        int64_t active_delta = 0;
+        while (m_shutdown->update(active_delta)) {
+            active_delta = m_dispatch.run();
+            m_events.wait();
         }
 
         m_barrier->wait(); // Wait for other threads to finish
@@ -53,6 +45,11 @@ void thread_t::main() {
     }
 
     m_barrier->wait(); // Barrier for ~scheduler_t, safe to destruct
+    s_instance = nullptr;
+}
+
+message_hub_t *thread_t::hub() {
+    return &m_hub;
 }
 
 dispatcher_t *thread_t::dispatcher() {
@@ -67,12 +64,8 @@ events_t *thread_t::events() {
     return &m_events;
 }
 
-void thread_t::exit() {
-    m_exit.store(true);
-}
-
-void thread_t::set_shutdown_context(shutdown_t *shutdown) {
-    m_shutdown_context.reset(shutdown);
+wait_object_t *thread_t::shutdown_event() {
+    return &m_shutdown_event;
 }
 
 target_id_t thread_t::id() const {
@@ -82,6 +75,10 @@ target_id_t thread_t::id() const {
 thread_t *thread_t::self() {
     assert(s_instance != nullptr);
     return s_instance;
+}
+
+bool thread_t::operator ==(const thread_t &other) const {
+    return id() == other.id();
 }
 
 } // namespace indecorous

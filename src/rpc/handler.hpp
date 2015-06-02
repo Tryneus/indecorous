@@ -10,9 +10,6 @@
 
 namespace indecorous {
 
-class read_message_t;
-class message_hub_t;
-
 class handler_callback_t {
 public:
     virtual ~handler_callback_t();
@@ -21,21 +18,9 @@ public:
     virtual handler_id_t id() const = 0;
 };
 
-template <class T>
-class unique_handler_t {
-public:
-    static handler_id_t handler_id() {
-        return unique_id;
-    }
-private:
-    static const handler_id_t unique_id;
-};
-
 template <typename Callback>
-class handler_t : public unique_handler_t<Callback> {
+class handler_wrapper_t {
 public:
-    explicit handler_t(message_hub_t *hub) : membership(hub, &internal_handler) { }
-
     template <typename Res, typename... Args>
     class internal_handler_t : public handler_callback_t {
     public:
@@ -57,12 +42,12 @@ public:
         }
 
         handler_id_t id() const {
-            return handler_t<Callback>::handler_id();
+            return Callback::handler_id();
         }
 
         static write_message_t make_write(target_id_t target, request_id_t request_id, Args &&...args) {
             return write_message_t::create(target,
-                                           handler_t<Callback>::handler_id(),
+                                           Callback::handler_id(),
                                            request_id,
                                            std::forward<Args>(args)...);
         }
@@ -84,14 +69,12 @@ public:
 
     typedef decltype(dummy_translator(Callback::call)) handler_impl_t;
     handler_impl_t internal_handler;
-
-    message_hub_t::membership_t<handler_callback_t> membership;
 };
 
 // Specialization for handlers with a void return type
 template <typename Callback>
 template <typename... Args>
-class handler_t<Callback>::internal_handler_t<void, Args...> : public handler_callback_t {
+class handler_wrapper_t<Callback>::internal_handler_t<void, Args...> : public handler_callback_t {
 public:
     void handle(message_hub_t *hub, read_message_t msg) {
         assert(msg.buffer.has());
@@ -110,12 +93,12 @@ public:
     }
 
     handler_id_t id() const {
-        return handler_t<Callback>::handler_id();
+        return Callback::handler_id();
     }
 
     static write_message_t make_write(target_id_t target, request_id_t request_id, Args &&...args) {
         return write_message_t::create(target,
-                                       handler_t<Callback>::handler_id(),
+                                       Callback::handler_id(),
                                        request_id,
                                        std::forward<Args>(args)...);
     }

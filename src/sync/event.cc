@@ -5,12 +5,8 @@
 
 namespace indecorous {
 
-event_t::event_t(bool autoReset, bool wakeAll) :
-        m_autoReset(autoReset),
-        m_wakeAll(wakeAll),
-        m_triggered(false) {
-    assert(autoReset || wakeAll);
-}
+// TODO: consider adding auto-reset and/or wake-one modes or separate class(es)
+event_t::event_t() : m_triggered(false) { }
 
 event_t::~event_t() {
     // Fail any remaining waits
@@ -23,50 +19,25 @@ bool event_t::triggered() const {
     return m_triggered;
 }
 
-bool event_t::set() {
-    if (m_triggered)
-        return false;
-
-    if (m_waiters.empty()) {
-        m_triggered = true;
-    } else {
-        if (!m_autoReset)
-            m_triggered = true;
-
-        if (m_wakeAll) {
-            while (!m_waiters.empty()) {
-                m_waiters.pop_front()->wait_done(wait_result_t::Success);
-            }
-        } else if (!m_waiters.empty()) {
-            m_waiters.pop_front()->wait_done(wait_result_t::Success);
-        }
+void event_t::set() {
+    m_triggered = true;
+    while (!m_waiters.empty()) {
+        m_waiters.pop_front()->wait_done(wait_result_t::Success);
     }
-
-    return true;
 }
 
-bool event_t::reset() {
-    if (!m_triggered)
-        return false;
+void event_t::reset() {
     m_triggered = false;
-    return true;
 }
 
 void event_t::wait() {
-    if (m_triggered) {
-        assert(m_waiters.empty());
-        if (m_autoReset)
-            m_triggered = false;
-    } else {
+    if (!m_triggered) {
         coro_wait(&m_waiters);
     }
 }
 
 void event_t::addWait(wait_callback_t* cb) {
     if (m_triggered) {
-        assert(m_waiters.empty());
-        if (m_autoReset)
-            m_triggered = false;
         cb->wait_done(wait_result_t::Success);
     } else {
         m_waiters.push_back(cb);

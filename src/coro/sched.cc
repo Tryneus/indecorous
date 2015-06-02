@@ -1,74 +1,46 @@
 #include "coro/sched.hpp"
 
 #include "coro/coro.hpp"
+#include "coro/shutdown.hpp"
 #include "coro/thread.hpp"
 
 namespace indecorous {
 
 scheduler_t::scheduler_t(size_t num_threads) :
-        m_running(false),
-        m_num_threads(num_threads),
-        m_barrier(m_num_threads + 1) {
-    // Create thread_t objects for each thread
-    m_threads = new thread_t*[m_num_threads];
-    for (size_t i = 0; i < m_num_threads; ++i) {
-        m_threads[i] = new thread_t(&m_message_hub, &m_barrier);
-        m_thread_ids.insert(m_threads[i]->id());
+        m_exit_flag(false),
+        m_barrier(num_threads + 1) {
+    for (size_t i = 0; i < num_threads; ++i) {
+        m_threads.emplace_back(&m_shutdown, &m_barrier, &m_exit_flag);
     }
 
     m_barrier.wait(); // Wait for all threads to start up
 }
 
 scheduler_t::~scheduler_t() {
-    assert(!m_running);
-
-    for (size_t i = 0; i < m_num_threads; ++i) {
-        m_threads[i]->exit();
-    }
-
+    m_exit_flag.store(true);
     m_barrier.wait(); // Start the threads so they can exit
     m_barrier.wait(); // Wait for threads to exit
-
-    for (size_t i = 0; i < m_num_threads; ++i) {
-        delete m_threads[i];
-    }
-    delete [] m_threads;
 }
 
-const std::unordered_set<target_id_t> &scheduler_t::all_threads() const {
-    return m_thread_ids;
-}
-
-message_hub_t *scheduler_t::message_hub() {
-    return &m_message_hub;
+std::list<thread_t> &scheduler_t::threads() {
+    return m_threads;
 }
 
 void scheduler_t::run(shutdown_policy_t policy) {
-    assert(!m_running);
-
-    shutdown_t shutdown(m_num_threads); // Control when the threads stop
-    for (size_t i = 0; i < m_num_threads; ++i) {
-        m_threads[i]->set_shutdown_context(&shutdown);
-    }
-
-    m_running = true;
+    m_shutdown.reset();
     m_barrier.wait(); // Wait for all threads to get to their loop
 
     switch (policy) {
-    case shutdown_policy_t::Eager: break; // Shutdown immediately
+    case shutdown_policy_t::Eager:
+        // Shutdown immediately
+        break;
     case shutdown_policy_t::Kill:
-        // TODO: wait for SIGINT, then shutdown
+        // TODO: Shutdown after SIGINT
         break;
     }
 
-    shutdown.shutdown();
-
+    m_shutdown.shutdown(&m_threads);
     m_barrier.wait(); // Wait for all threads to finish all their coroutines
-    m_running = false;
-
-    for (size_t i = 0; i < m_num_threads; ++i) {
-        m_threads[i]->set_shutdown_context(nullptr);
-    }
 }
 
 } // namespace indecorous
