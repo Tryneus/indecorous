@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 
+#include "coro/thread.hpp"
 #include "rpc/handler.hpp"
 #include "rpc/hub.hpp"
 #include "rpc/id.hpp"
@@ -21,19 +22,24 @@ public:
 
     target_id_t id() const;
 
+    virtual bool is_local() const = 0;
+
     template <typename Callback, typename... Args>
     void noreply_call(Args &&...args) {
+        if (is_local()) { thread_t::self()->dispatcher()->note_send(); }
         send_request<Callback>(request_id_t::noreply(), std::forward<Args>(args)...);
     }
 
     template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
     result_t call(Args &&...args) {
+        if (is_local()) { thread_t::self()->dispatcher()->note_send(); }
         request_id_t request_id = send_request(request_gen.next(), std::forward<Args>(args)...);
         return parse_result<result_t>(get_response(request_id));
     }
 
     template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
     future_t<result_t> async_call(Args &&...args) {
+        if (is_local()) { thread_t::self()->dispatcher()->note_send(); }
         request_id_t request_id = send_request(request_gen.next(), std::forward<Args>(args)...);
         return coro_t::spawn(&target_t::parse_result<result_t>, get_response(request_id));
     }
@@ -72,6 +78,7 @@ class local_target_t : public target_t {
 public:
     local_target_t(thread_t *owner);
     bool handle(); // Returns true if a message was processed, false otherwise
+    bool is_local() const;
 private:
     stream_t *stream();
     local_stream_t m_stream;
@@ -81,7 +88,7 @@ private:
 class remote_target_t : public target_t {
 public:
     explicit remote_target_t();
-
+    bool is_local() const;
 private:
     stream_t *stream();
     tcp_stream_t m_stream;

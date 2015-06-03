@@ -28,6 +28,9 @@ public:
     // Returns the delta in active local coroutines
     int64_t run();
 
+    // Called when an rpc is sent from this thread
+    void note_send();
+
     void enqueue_release(coro_t *coro);
 
     arena_t<coro_t> m_context_arena; // arena used to cache context allocations
@@ -43,7 +46,7 @@ public:
     static size_t s_max_swaps_per_loop;
 private:
     coro_t *m_rpc_consumer;
-    uint64_t m_contexts_released;
+    int64_t m_coro_delta;
 };
 
 class coro_t : public intrusive_node_t<coro_t> {

@@ -40,7 +40,7 @@ IMPL_UNIQUE_HANDLER(wait_test_callback_t);
 TEST_CASE("coro/spawn", "Test basic coroutine spawning and running") {
     scheduler_t sched(num_threads);
     for (auto &&t : sched.threads()) {
-        t.target()->noreply_call<spawn_callback_t>("foo", "bar", 1);
+        t.hub()->self_target()->noreply_call<spawn_callback_t>("foo", "bar", 1);
     }
     sched.run(shutdown_policy_t::Eager);
 }

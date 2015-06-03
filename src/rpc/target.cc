@@ -31,11 +31,19 @@ stream_t *local_target_t::stream() {
     return &m_stream;
 }
 
+bool local_target_t::is_local() const {
+    return true;
+}
+
 remote_target_t::remote_target_t() :
     target_t(), m_stream(-1) { }
 
 stream_t *remote_target_t::stream() {
     return &m_stream;
+}
+
+bool remote_target_t::is_local() const {
+    return false;
 }
 
 } // namespace indecorous

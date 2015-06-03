@@ -9,19 +9,13 @@
 
 namespace indecorous {
 
-struct hub_data_t {
-    static std::unordered_map<handler_id_t, handler_callback_t *> s_handlers;
-
-    static void auto_register(handler_callback_t *cb) {
-        s_handlers.emplace(cb->id(), cb);
-    }
-};
+std::unordered_map<handler_id_t, handler_callback_t *> &register_handler(handler_callback_t *cb);
 
 template <typename T>
 struct hub_registration_t {
     hub_registration_t() {
         static handler_wrapper_t<T> handler = handler_wrapper_t<T>();
-        hub_data_t::auto_register(&handler.internal_handler);
+        register_handler(&handler.internal_handler);
     }
 };
 
@@ -39,13 +33,17 @@ private:
     static const handler_id_t s_unique_id;
 };
 
-#define STRINGIFY_INTERNAL(x) #x
-#define STRINGIFY(x) STRINGIFY_INTERNAL(x)
+#define INDECOROUS_STRINGIFY_INTERNAL(x) #x
+#define INDECOROUS_STRINGIFY(x) INDECOROUS_STRINGIFY_INTERNAL(x)
 
 // Note: this doesn't allow for templatized handler types
 #define IMPL_UNIQUE_HANDLER(Type) \
-    template <> const indecorous::handler_id_t handler_t<Type>::s_unique_id = handler_t<Type>::id_from_name(__FILE__ ":" STRINGIFY(__LINE__) ":" #Type); \
-    template <> const indecorous::hub_registration_t<Type> handler_t<Type>::s_hub_registration = indecorous::hub_registration_t<Type>()
+    template <> const indecorous::handler_id_t \
+        handler_t<Type>::s_unique_id = \
+            handler_t<Type>::id_from_name(__FILE__ ":" INDECOROUS_STRINGIFY(__LINE__) ":" #Type); \
+    template <> const indecorous::hub_registration_t<Type> \
+        handler_t<Type>::s_hub_registration = \
+            indecorous::hub_registration_t<Type>()
 
 } // namespace indecorous
 

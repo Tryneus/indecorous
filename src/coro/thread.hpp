@@ -4,10 +4,13 @@
 #include <atomic>
 #include <thread>
 
+#include "containers/intrusive.hpp"
 #include "coro/coro.hpp"
 #include "coro/events.hpp"
 #include "coro/shutdown.hpp"
-#include "rpc/target.hpp"
+#include "rpc/id.hpp"
+#include "rpc/hub.hpp"
+#include "sync/event.hpp"
 
 namespace indecorous {
 
@@ -17,36 +20,33 @@ class thread_barrier_t;
 
 class thread_t {
 public:
-    thread_t(shutdown_t *shutdown,
+    thread_t(size_t _id,
+             shutdown_t *shutdown,
              thread_barrier_t *barrier,
              std::atomic<bool> *exit_flag);
 
-    thread_t(thread_t &&other) = default;
-
     static thread_t *self();
 
-    target_id_t id() const;
+    size_t id() const;
 
     message_hub_t *hub();
     dispatcher_t *dispatcher();
-    local_target_t *target();
     events_t *events();
 
     wait_object_t *shutdown_event();
 
     void exit();
 
-    bool operator ==(const thread_t &other) const;
-
 private:
     friend class shutdown_handler_t; // For updating the shutdown cond
 
     void main();
 
+    size_t m_id;
+
     message_hub_t m_hub;
     events_t m_events;
     dispatcher_t m_dispatch;
-    local_target_t m_target;
 
     shutdown_t *m_shutdown;
     thread_barrier_t *m_barrier;
@@ -60,15 +60,5 @@ private:
 };
 
 } // namespace indecorous
-
-namespace std {
-
-template <> struct hash<indecorous::thread_t> {
-    size_t operator () (const indecorous::thread_t &thread) const {
-        return std::hash<indecorous::target_id_t>()(thread.id());
-    }
-};
-
-} // namespace std
 
 #endif // CORO_THREAD_HPP_

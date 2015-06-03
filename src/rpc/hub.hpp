@@ -9,8 +9,8 @@
 namespace indecorous {
 
 class target_t;
+class local_target_t;
 class handler_callback_t;
-class hub_data_t;
 class read_message_t;
 class write_message_t;
 
@@ -19,20 +19,16 @@ public:
     message_hub_t();
     ~message_hub_t();
 
-    void update(hub_data_t *data);
-
-    target_t *target(target_id_t id) const;
-
-    bool spawn(read_message_t msg);
+    local_target_t *self_target();
+    target_t *target(target_id_t id);
 
     void send_reply(target_id_t target_id, write_message_t &&msg);
 
-    uint64_t local_sends_delta();
-
 private:
-    uint64_t local_sends;
+    bool spawn(read_message_t msg);
+
     std::unordered_map<target_id_t, target_t *> targets;
-    std::unordered_map<handler_id_t, handler_callback_t *> callbacks;
+    std::unordered_map<handler_id_t, handler_callback_t *> handlers;
 };
 
 } // namespace indecorous

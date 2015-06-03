@@ -10,7 +10,7 @@ scheduler_t::scheduler_t(size_t num_threads) :
         m_exit_flag(false),
         m_barrier(num_threads + 1) {
     for (size_t i = 0; i < num_threads; ++i) {
-        m_threads.emplace_back(&m_shutdown, &m_barrier, &m_exit_flag);
+        m_threads.emplace_back(i, &m_shutdown, &m_barrier, &m_exit_flag);
     }
 
     m_barrier.wait(); // Wait for all threads to start up

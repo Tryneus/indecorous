@@ -10,23 +10,20 @@
 
 namespace indecorous {
 
-message_hub_t::message_hub_t() { }
-message_hub_t::~message_hub_t() { }
+// This constructor copies the statically-initialized set of handlers
+message_hub_t::message_hub_t() :
+    handlers(register_handler(nullptr)) { }
 
-uint64_t message_hub_t::local_sends_delta() {
-    uint64_t res = local_sends;
-    local_sends = 0;
-    return res;
-}
+message_hub_t::~message_hub_t() { }
 
 bool message_hub_t::spawn(read_message_t msg) {
     assert(msg.buffer.has());
 
-    auto cb_it = callbacks.find(msg.handler_id);
+    auto cb_it = handlers.find(msg.handler_id);
     if (msg.request_id == request_id_t::noreply()) {
         debugf("handling noreply rpc\n");
         coro_t::spawn(&handler_callback_t::handle_noreply, cb_it->second, std::move(msg));
-    } else if (cb_it != callbacks.end()) {
+    } else if (cb_it != handlers.end()) {
         debugf("handling reply rpc\n");
         coro_t::spawn(&handler_callback_t::handle, cb_it->second, this, std::move(msg));
     } else {
@@ -35,7 +32,11 @@ bool message_hub_t::spawn(read_message_t msg) {
     return true;
 }
 
-target_t *message_hub_t::target(target_id_t id) const {
+local_target_t *message_hub_t::self_target() {
+    return nullptr; // TODO: implement
+}
+
+target_t *message_hub_t::target(target_id_t id) {
     auto it = targets.find(id);
     return (it == targets.end()) ? nullptr : it->second;
 }

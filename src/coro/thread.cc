@@ -12,19 +12,24 @@ namespace indecorous {
 
 thread_local thread_t* thread_t::s_instance = nullptr;
 
-thread_t::thread_t(shutdown_t *shutdown,
+thread_t::thread_t(size_t _id,
+                   shutdown_t *shutdown,
                    thread_barrier_t *barrier,
                    std::atomic<bool> *exit_flag) :
+        m_id(_id),
         m_hub(),
         m_events(),
         m_dispatch(),
-        m_target(this),
         m_shutdown(shutdown),
         m_barrier(barrier),
         m_exit_flag(exit_flag),
         m_shutdown_event(),
         m_thread(&thread_t::main, this) {
     m_thread.detach();
+}
+
+size_t thread_t::id() const {
+    return m_id;
 }
 
 void thread_t::main() {
@@ -56,10 +61,6 @@ dispatcher_t *thread_t::dispatcher() {
     return &m_dispatch;
 }
 
-local_target_t *thread_t::target() {
-    return &m_target;
-}
-
 events_t *thread_t::events() {
     return &m_events;
 }
@@ -68,17 +69,9 @@ wait_object_t *thread_t::shutdown_event() {
     return &m_shutdown_event;
 }
 
-target_id_t thread_t::id() const {
-    return m_target.id();
-}
-
 thread_t *thread_t::self() {
     assert(s_instance != nullptr);
     return s_instance;
-}
-
-bool thread_t::operator ==(const thread_t &other) const {
-    return id() == other.id();
 }
 
 } // namespace indecorous

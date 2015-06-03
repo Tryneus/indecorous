@@ -7,6 +7,7 @@
 #include "sync/event.hpp"
 #include "coro/sched.hpp"
 #include "coro/thread.hpp"
+#include "rpc/target.hpp"
 #include "errors.hpp"
 
 namespace indecorous {
@@ -51,7 +52,7 @@ struct handover_params_t {
 thread_local handover_params_t handover_params;
 
 [[noreturn]] void coro_pull() {
-    local_target_t *target = thread_t::self()->target();
+    local_target_t *target = thread_t::self()->hub()->self_target();
     while (true) {
         while (target->handle()) { }
         target->wait();
@@ -79,10 +80,9 @@ dispatcher_t::~dispatcher_t() {
 }
 
 int64_t dispatcher_t::run() {
-    message_hub_t *hub = thread_t::self()->hub();
     assert(m_running == nullptr);
     m_swap_count = 0;
-    m_contexts_released = 0;
+    m_coro_delta = 0;
     
 
     // Kick off the coroutines, they will give us back execution later
@@ -97,13 +97,17 @@ int64_t dispatcher_t::run() {
     }
 
     assert(m_running == nullptr);
-    return hub->local_sends_delta() - m_contexts_released;
+    return m_coro_delta;
+}
+
+void dispatcher_t::note_send() {
+    m_coro_delta += 1;
 }
 
 void dispatcher_t::enqueue_release(coro_t *coro) {
     assert(m_release == nullptr);
     m_release = coro;
-    ++m_contexts_released;
+    --m_coro_delta;
 }
 
 coro_t::coro_t(dispatcher_t *dispatch) :

@@ -10,7 +10,7 @@
 
 namespace indecorous {
 
-#define debugf(format, ...) printf("Thread %ld - " format, thread_t::self()->id().value(), ##__VA_ARGS__)
+#define debugf(format, ...) printf("Thread %zu - " format, thread_t::self()->id(), ##__VA_ARGS__)
 
 } // namespace indecorous
 
