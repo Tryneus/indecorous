@@ -31,17 +31,6 @@ public:
         return (m_data != nullptr && !m_data->released());
     }
 
-    void wait() {
-        assert(m_data != nullptr);
-        if (m_data->released()) {
-            throw wait_object_lost_exc_t(); // TODO: streamline this logic with the stuff in coro_t
-        } else if (m_data->has()) {
-            return;
-        } else {
-            coro_wait(&m_waiters);
-        }
-    }
-
     T get_copy() {
         wait();
         return m_data->get();
@@ -61,7 +50,7 @@ private:
     friend class promise_data_t<T>;
     explicit future_t(promise_data_t<T> *data) : m_data(data) { }
 
-    void addWait(wait_callback_t *cb) {
+    void add_wait(wait_callback_t *cb) {
         assert(m_data != nullptr);
         if (m_data->released()) {
             cb->wait_done(wait_result_t::ObjectLost);
@@ -71,7 +60,7 @@ private:
             m_waiters.push_back(cb);
         }
     }
-    void removeWait(wait_callback_t *cb) {
+    void remove_wait(wait_callback_t *cb) {
         m_waiters.remove(cb);
     }
 
@@ -204,8 +193,8 @@ private:
     friend class promise_data_t<void>;
     explicit future_t(promise_data_t<void> *data);
 
-    void addWait(wait_callback_t *cb);
-    void removeWait(wait_callback_t *cb);
+    void add_wait(wait_callback_t *cb);
+    void remove_wait(wait_callback_t *cb);
 
     void notify(wait_result_t result);
 

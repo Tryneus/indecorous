@@ -20,23 +20,15 @@ future_t<void>::~future_t() {
 
 bool future_t<void>::valid() { return m_data != nullptr; }
 
-void future_t<void>::wait() {
+void future_t<void>::add_wait(wait_callback_t *cb) {
     assert(m_data != nullptr);
-    if (m_data->has()) {
-        return;
-    } else {
-        coro_wait(&m_waiters);
-    }
-}
-
-void future_t<void>::addWait(wait_callback_t *cb) {
     if (m_data->has()) {
         cb->wait_done(wait_result_t::Success);
     } else {
         m_waiters.push_back(cb);
     }
 }
-void future_t<void>::removeWait(wait_callback_t *cb) {
+void future_t<void>::remove_wait(wait_callback_t *cb) {
     m_waiters.remove(cb);
 }
 

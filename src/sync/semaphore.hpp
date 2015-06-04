@@ -12,12 +12,11 @@ public:
     semaphore_t(size_t initial, size_t max);
     ~semaphore_t();
 
-    void wait();
     void unlock(size_t count);
 
 private:
-    void addWait(wait_callback_t* cb);
-    void removeWait(wait_callback_t* cb);
+    void add_wait(wait_callback_t* cb);
+    void remove_wait(wait_callback_t* cb);
 
     const size_t m_max;
     size_t m_count;

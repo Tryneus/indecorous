@@ -14,14 +14,14 @@ multiple_waiter_t::multiple_waiter_t(multiple_waiter_t::wait_type_t type,
         m_needed(type == wait_type_t::ALL ? total : 1),
         m_error_result(wait_result_t::Success) {
     if (m_interruptor != nullptr) {
-        m_interruptor->addWait(this);
+        m_interruptor->add_wait(this);
     }
 }
 
 multiple_waiter_t::~multiple_waiter_t() {
     if (in_a_list()) {
         assert(m_interruptor != nullptr);
-        m_interruptor->removeWait(this);
+        m_interruptor->remove_wait(this);
     }
 }
 
@@ -71,12 +71,12 @@ void multiple_waiter_t::wait_done(wait_result_t result) {
 multiple_wait_callback_t::multiple_wait_callback_t(wait_object_t *obj,
                                                    multiple_waiter_t *waiter) :
     m_obj(obj), m_waiter(waiter) {
-        m_obj->addWait(this);
+        m_obj->add_wait(this);
     }
 
 multiple_wait_callback_t::~multiple_wait_callback_t() {
     if (in_a_list()) {
-        m_obj->removeWait(this);
+        m_obj->remove_wait(this);
     }
 }
 

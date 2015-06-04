@@ -1,6 +1,7 @@
 #include "sync/wait_object.hpp"
 
 #include "coro/coro.hpp"
+#include "coro/thread.hpp"
 
 namespace indecorous {
 
@@ -18,10 +19,21 @@ void check_wait_result(wait_result_t result) {
     }
 }
 
-void coro_wait(intrusive_list_t<wait_callback_t> *list) {
-    coro_t *self = coro_t::self();
-    list->push_back(self->wait_callback());
-    self->wait();
+void wait_object_t::wait() {
+    dispatcher_t *dispatch = thread_t::self()->dispatcher();
+    coro_t *self = dispatch->m_running_coroutine;
+    assert(!self->in_a_list());
+    add_wait(self->wait_callback());
+    if (self->in_a_list()) {
+        // The wait object was immediately ready, just unenqueue ourselves and continue
+        dispatch->m_run_queue.remove(self);
+	wait_result_t result = self->m_wait_result;
+        self->m_wait_result = wait_result_t::Success;
+        check_wait_result(result);
+    } else {
+        // We have to wait until the object is ready, after which we'll be reenqueued
+	self->wait();
+    }
 }
 
 } // namespace indecorous

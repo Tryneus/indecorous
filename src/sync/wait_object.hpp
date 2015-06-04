@@ -27,14 +27,10 @@ class wait_object_t {
 public:
     virtual ~wait_object_t() { }
 
-    virtual void wait() = 0;
-    virtual void addWait(wait_callback_t* waiter) = 0;
-    virtual void removeWait(wait_callback_t* waiter) = 0;
+    void wait();
+    virtual void add_wait(wait_callback_t* waiter) = 0;
+    virtual void remove_wait(wait_callback_t* waiter) = 0;
 };
-
-// Adds the current coroutine to the list and waits
-// This is useful to avoid circular dependencies with coro_t
-void coro_wait(intrusive_list_t<wait_callback_t> *list);
 
 } // namespace indecorous
 

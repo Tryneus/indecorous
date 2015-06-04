@@ -60,13 +60,6 @@ file_wait_t file_wait_t::rdhup(int fd) {
     return file_wait_t(fd, EPOLLRDHUP);
 }
 
-void file_wait_t::wait() {
-    if (m_waiters.empty()) {
-        m_thread_events->add_file_wait(this);
-    }
-    coro_wait(&m_waiters);
-}
-
 void file_wait_t::file_callback(wait_result_t result) {
     while (!m_waiters.empty()) {
         m_waiters.pop_front()->wait_done(result);
@@ -74,14 +67,14 @@ void file_wait_t::file_callback(wait_result_t result) {
     m_thread_events->remove_file_wait(this);
 }
 
-void file_wait_t::addWait(wait_callback_t* cb) {
+void file_wait_t::add_wait(wait_callback_t* cb) {
     if (m_waiters.empty()) {
         m_thread_events->add_file_wait(this);
     }
     m_waiters.push_back(cb);
 }
 
-void file_wait_t::removeWait(wait_callback_t* cb) {
+void file_wait_t::remove_wait(wait_callback_t* cb) {
     m_waiters.remove(cb);
     if (m_waiters.empty()) {
         m_thread_events->remove_file_wait(this);

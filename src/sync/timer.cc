@@ -93,14 +93,7 @@ void single_timer_t::stop() {
     }
 }
 
-void single_timer_t::wait() {
-    if (!m_triggered) {
-        assert(in_a_list()); // You cannot wait on a timer that is not running
-        coro_wait(&m_waiters);
-    }
-}
-
-void single_timer_t::addWait(wait_callback_t* cb) {
+void single_timer_t::add_wait(wait_callback_t* cb) {
     if (m_triggered) {
         cb->wait_done(wait_result_t::Success);
     } else {
@@ -109,7 +102,7 @@ void single_timer_t::addWait(wait_callback_t* cb) {
     }
 }
 
-void single_timer_t::removeWait(wait_callback_t* cb) {
+void single_timer_t::remove_wait(wait_callback_t* cb) {
     m_waiters.remove(cb);
 }
 
@@ -160,17 +153,12 @@ void periodic_timer_t::stop() {
     }
 }
 
-void periodic_timer_t::wait() {
-    assert(in_a_list()); // You cannot wait on a timer that is not running
-    coro_wait(&m_waiters);
-}
-
-void periodic_timer_t::addWait(wait_callback_t* cb) {
+void periodic_timer_t::add_wait(wait_callback_t* cb) {
     assert(in_a_list());
     m_waiters.push_back(cb);
 }
 
-void periodic_timer_t::removeWait(wait_callback_t* cb) {
+void periodic_timer_t::remove_wait(wait_callback_t* cb) {
     m_waiters.remove(cb);
 }
 

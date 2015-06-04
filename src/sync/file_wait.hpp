@@ -36,13 +36,10 @@ public:
     static file_wait_t pri(int fd);
     static file_wait_t rdhup(int fd);
 
-    void wait();
-
-protected:
-    void addWait(wait_callback_t* cb);
-    void removeWait(wait_callback_t* cb);
-
 private:
+    void add_wait(wait_callback_t* cb);
+    void remove_wait(wait_callback_t* cb);
+
     file_wait_t(int _fd, uint32_t _event_mask);
 
     void file_callback(wait_result_t result);

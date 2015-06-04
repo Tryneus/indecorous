@@ -45,11 +45,9 @@ public:
     void start(uint32_t timeout_ms);
     void stop();
 
-    void wait();
-
 private:
-    void addWait(wait_callback_t* cb);
-    void removeWait(wait_callback_t* cb);
+    void add_wait(wait_callback_t* cb);
+    void remove_wait(wait_callback_t* cb);
 
     void timer_callback(wait_result_t result);
 
@@ -67,11 +65,9 @@ public:
     void start(uint32_t timeout_ms);
     void stop();
 
-    void wait();
-
 private:
-    void addWait(wait_callback_t* cb);
-    void removeWait(wait_callback_t* cb);
+    void add_wait(wait_callback_t* cb);
+    void remove_wait(wait_callback_t* cb);
 
     void timer_callback(wait_result_t result);
 

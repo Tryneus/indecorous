@@ -30,13 +30,7 @@ void event_t::reset() {
     m_triggered = false;
 }
 
-void event_t::wait() {
-    if (!m_triggered) {
-        coro_wait(&m_waiters);
-    }
-}
-
-void event_t::addWait(wait_callback_t* cb) {
+void event_t::add_wait(wait_callback_t* cb) {
     if (m_triggered) {
         cb->wait_done(wait_result_t::Success);
     } else {
@@ -44,7 +38,7 @@ void event_t::addWait(wait_callback_t* cb) {
     }
 }
 
-void event_t::removeWait(wait_callback_t* cb) {
+void event_t::remove_wait(wait_callback_t* cb) {
     m_waiters.remove(cb);
 }
 
