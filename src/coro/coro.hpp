@@ -25,6 +25,11 @@ public:
     dispatcher_t();
     ~dispatcher_t();
 
+    // Used by synchronization primitives with callbacks to fail an assert if the callback attempts
+    // to swap coroutines;
+    void allow_swap();
+    void forbid_swap();
+
     // Returns the delta in active local coroutines
     int64_t run();
 
@@ -47,6 +52,7 @@ public:
 private:
     coro_t *m_rpc_consumer;
     int64_t m_coro_delta;
+    bool m_swap_permitted;
 };
 
 class coro_t : public intrusive_node_t<coro_t> {

@@ -22,6 +22,13 @@ public:
     local_target_t *self_target();
     target_t *target(target_id_t id);
 
+    template <typename Callback, typename... Args>
+    broadcast_local_noreply(Args &&...args) { }
+    template <typename Callback, typename... Args>
+    broadcast_local_async(Args &&...args) { }
+    template <typename Callback, typename... Args>
+    broadcast_local_sync(Args &&...args) { }
+
     void send_reply(target_id_t target_id, write_message_t &&msg);
 
 private:

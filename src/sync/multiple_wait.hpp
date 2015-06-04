@@ -51,6 +51,11 @@ void wait_any(Args &&...args) {
     waiter.wait();
 }
 
+template <typename It>
+void wait_any(const It &begin, const It &end) {
+    multiple_waiter_t waiter(multiple_waiter_t::wait_type_t::ANY, end - begin, nullptr);
+    
+
 template <typename... Args>
 void wait_any_interruptible(Args &&...args, wait_object_t *interruptor) {
     multiple_waiter_t waiter(multiple_waiter_t::wait_type_t::ANY, sizeof...(Args), interruptor);

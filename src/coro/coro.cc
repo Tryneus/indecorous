@@ -64,7 +64,9 @@ dispatcher_t::dispatcher_t() :
         m_running(nullptr),
         m_release(nullptr),
         m_swap_count(0),
-        m_rpc_consumer(m_context_arena.get(this)) {
+        m_rpc_consumer(m_context_arena.get(this)),
+        m_coro_delta(0),
+        m_swap_permitted(true) {
     // Save the currently running context
     int res = getcontext(&m_main_context);
     assert(res == 0);
@@ -77,6 +79,14 @@ dispatcher_t::dispatcher_t() :
 dispatcher_t::~dispatcher_t() {
     assert(m_running == nullptr);
     m_context_arena.release(m_rpc_consumer);
+}
+
+void dispatcher_t::forbid_swap() {
+    m_swap_permitted = false;
+}
+
+void dispatcher_t::allow_swap() {
+    m_swap_permitted = true;
 }
 
 int64_t dispatcher_t::run() {
@@ -174,6 +184,7 @@ void coro_t::end() {
 }
 
 void coro_t::swap(coro_t *next) {
+    assert(m_dispatch->m_swap_permitted);
     ++m_dispatch->m_swap_count;
 
     if (next != nullptr) {
