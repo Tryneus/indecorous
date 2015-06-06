@@ -12,7 +12,6 @@
 
 namespace indecorous {
 
-class thread_t;
 class write_message_t;
 class read_message_t;
 
@@ -26,13 +25,12 @@ public:
 
 class local_stream_t : public stream_t {
 public:
-    explicit local_stream_t(thread_t *_thread);
+    explicit local_stream_t();
     void write(write_message_t &&msg);
     read_message_t read();
     void wait();
 private:
     scoped_fd_t fd;
-    thread_t *thread;
     mpsc_queue_t<linkable_buffer_t> message_queue;
 };
 

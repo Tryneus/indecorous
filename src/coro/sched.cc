@@ -13,6 +13,11 @@ scheduler_t::scheduler_t(size_t num_threads) :
         m_threads.emplace_back(i, &m_shutdown, &m_barrier, &m_exit_flag);
     }
 
+    // Tell the message hubs of each thread about the others
+    for (auto &&t : m_threads) {
+        t.hub()->set_local_targets(&m_threads);
+    }
+
     m_barrier.wait(); // Wait for all threads to start up
 }
 

@@ -11,8 +11,6 @@
 
 namespace indecorous {
 
-class thread_t;
-
 class target_t {
 public:
     explicit target_t();
@@ -77,7 +75,7 @@ private:
 
 class local_target_t : public target_t {
 public:
-    local_target_t(thread_t *owner);
+    local_target_t();
     bool handle(); // Returns true if a message was processed, false otherwise
     bool is_local() const;
 private:

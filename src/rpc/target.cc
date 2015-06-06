@@ -28,8 +28,8 @@ void target_t::send_reply(write_message_t &&msg) {
     stream()->write(std::move(msg));
 }
 
-local_target_t::local_target_t(thread_t *thread) :
-    target_t(), m_stream(thread) { }
+local_target_t::local_target_t() :
+    target_t(), m_stream() { }
 
 bool local_target_t::handle() {
     read_message_t msg(m_stream.read());

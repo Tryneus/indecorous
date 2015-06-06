@@ -4,7 +4,6 @@
 
 #include <cassert>
 
-#include "coro/thread.hpp"
 #include "rpc/message.hpp"
 #include "sync/file_wait.hpp"
 
@@ -12,8 +11,8 @@ namespace indecorous {
 
 stream_t::~stream_t() { }
 
-local_stream_t::local_stream_t(thread_t *_thread) :
-        fd(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)), thread(_thread) {
+local_stream_t::local_stream_t() :
+        fd(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)) {
     assert(fd.valid());
 }
 
@@ -41,7 +40,6 @@ void local_stream_t::wait() {
 }
 
 read_message_t local_stream_t::read() {
-    assert(thread_t::self() == thread);
     buffer_owner_t buffer = buffer_owner_t::from_heap(message_queue.pop());
 
     if (buffer.has()) {

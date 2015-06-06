@@ -39,10 +39,10 @@ void thread_t::main() {
     m_barrier->wait(); // Wait for run or ~scheduler_t
 
     while (!m_exit_flag->load()) {
-        int64_t active_delta = 0;
+        int64_t active_delta = m_dispatch.run();
         while (m_shutdown->update(active_delta)) {
-            active_delta = m_dispatch.run();
             m_events.wait();
+            active_delta = m_dispatch.run();
         }
 
         m_barrier->wait(); // Wait for other threads to finish
