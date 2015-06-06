@@ -79,6 +79,7 @@ public:
     bool handle(); // Returns true if a message was processed, false otherwise
     bool is_local() const;
 private:
+    friend class scheduler_t; // To get the initial stream size
     stream_t *stream();
     local_stream_t m_stream;
 };

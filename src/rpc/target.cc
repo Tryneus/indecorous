@@ -19,7 +19,10 @@ void target_t::wait() {
 }
 
 void target_t::note_send() const {
-    thread_t::self()->dispatcher()->note_send(); 
+    thread_t *t = thread_t::self();
+    if (t != nullptr) {
+        t->dispatcher()->note_send(); 
+    }
 }
 
 void target_t::send_reply(write_message_t &&msg) {

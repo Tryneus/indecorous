@@ -70,7 +70,6 @@ wait_object_t *thread_t::shutdown_event() {
 }
 
 thread_t *thread_t::self() {
-    assert(s_instance != nullptr);
     return s_instance;
 }
 

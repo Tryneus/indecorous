@@ -14,7 +14,7 @@ public:
     shutdown_t();
     void shutdown(std::list<thread_t> *threads);
     bool update(int64_t active_delta);
-    void reset();
+    void reset(uint64_t initial_count);
 private:
     std::atomic<uint64_t> m_active_count;
 };

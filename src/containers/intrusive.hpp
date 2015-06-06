@@ -174,11 +174,7 @@ public:
     void push(T *item) {
         item->set_next_node(nullptr);
         intrusive_node_t<T> *prev = exchange_back(item);
-        if (prev == this) {
-            this->set_next_node(item);
-        } else {
-            prev->set_next_node(item);
-        }
+        prev->set_next_node(item);
     }
 
     T *pop() {
@@ -214,6 +210,15 @@ public:
         }
 
         return nullptr;
+    }
+
+    // This should not be called while other threads could be writing to the queue
+    size_t size() const {
+        size_t res = 0;
+        for (auto cursor = m_front; cursor != nullptr; cursor = cursor->next_node()) {
+            if (cursor != this) { ++res; }
+        }
+        return res;
     }
 
 private:

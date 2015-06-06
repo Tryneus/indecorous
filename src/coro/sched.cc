@@ -32,7 +32,12 @@ std::list<thread_t> &scheduler_t::threads() {
 }
 
 void scheduler_t::run(shutdown_policy_t policy) {
-    m_shutdown.reset();
+    // Count the number of initial calls into the threads
+    size_t initial_count = 0;
+    for (auto &&t : m_threads) {
+        initial_count += t.hub()->self_target()->m_stream.message_queue.size();
+    }
+    m_shutdown.reset(initial_count);
     m_barrier.wait(); // Wait for all threads to get to their loop
 
     switch (policy) {

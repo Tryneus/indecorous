@@ -30,6 +30,7 @@ public:
     read_message_t read();
     void wait();
 private:
+    friend class scheduler_t; // To get the initial queue size
     scoped_fd_t fd;
     mpsc_queue_t<linkable_buffer_t> message_queue;
 };

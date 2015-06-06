@@ -31,8 +31,9 @@ bool shutdown_t::update(int64_t active_delta) {
     return (res + active_delta) == 0;
 }
 
-void shutdown_t::reset() {
+void shutdown_t::reset(uint64_t initial_count) {
     assert(m_active_count.load() == 0);
+    m_active_count.store(initial_count);
 }
 
 } // namespace indecorous
