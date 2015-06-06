@@ -26,9 +26,8 @@ public:
     ~dispatcher_t();
 
     // Used by synchronization primitives with callbacks to fail an assert if the callback attempts
-    // to swap coroutines;
-    void allow_swap();
-    void forbid_swap();
+    // to swap coroutines
+    bool m_swap_permitted;
 
     // Returns the delta in active local coroutines
     int64_t run();
@@ -52,7 +51,6 @@ public:
 private:
     coro_t *m_rpc_consumer;
     int64_t m_coro_delta;
-    bool m_swap_permitted;
 };
 
 class coro_t : public intrusive_node_t<coro_t> {
@@ -93,6 +91,7 @@ private:
     friend class dispatcher_t;
     friend class arena_t<coro_t>; // To allow instantiation of this class
     friend void launch_coro();
+    friend class wait_object_t;
 
     template <typename Res, typename... Args>
     future_t<Res> spawn_internal(bool immediate, Res(*fn)(Args...), Args &&...args) {

@@ -3,7 +3,6 @@
 
 #include <unordered_map>
 
-#include "coro/thread.hpp"
 #include "rpc/handler.hpp"
 #include "rpc/id.hpp"
 #include "rpc/message.hpp"
@@ -42,6 +41,8 @@ public:
         request_id_t request_id = send_request(request_gen.next(), std::forward<Args>(args)...);
         return coro_t::spawn(&target_t::parse_result<result_t>, get_response(request_id));
     }
+
+    void send_reply(write_message_t &&msg);
 
     void wait();
 

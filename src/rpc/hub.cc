@@ -44,7 +44,7 @@ target_t *message_hub_t::target(target_id_t id) {
 void message_hub_t::send_reply(target_id_t target_id, write_message_t &&msg) {
     target_t *t = target(target_id);
     if (t != nullptr) {
-        t->stream()->write(std::move(msg));
+        t->send_reply(std::move(msg));
     } else {
         printf("Cannot find target (%lu) to send reply to.\n", target_id.value());
     }

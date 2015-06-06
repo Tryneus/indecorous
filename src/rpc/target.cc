@@ -1,5 +1,6 @@
 #include "rpc/target.hpp"
 
+#include "coro/thread.hpp"
 #include "rpc/hub.hpp"
 
 namespace indecorous {
@@ -19,6 +20,12 @@ void target_t::wait() {
 
 void target_t::note_send() const {
     thread_t::self()->dispatcher()->note_send(); 
+}
+
+void target_t::send_reply(write_message_t &&msg) {
+    // Replies do not have to note a send - there should already be a coroutine waiting
+    // to receive the reply - if not it gets discarded.
+    stream()->write(std::move(msg));
 }
 
 local_target_t::local_target_t(thread_t *thread) :

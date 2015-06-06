@@ -60,13 +60,13 @@ thread_local handover_params_t handover_params;
 }
 
 dispatcher_t::dispatcher_t() :
+        m_swap_permitted(true),
         m_context_arena(256),
         m_running(nullptr),
         m_release(nullptr),
         m_swap_count(0),
         m_rpc_consumer(m_context_arena.get(this)),
-        m_coro_delta(0),
-        m_swap_permitted(true) {
+        m_coro_delta(0) {
     // Save the currently running context
     int res = getcontext(&m_main_context);
     assert(res == 0);
@@ -79,14 +79,6 @@ dispatcher_t::dispatcher_t() :
 dispatcher_t::~dispatcher_t() {
     assert(m_running == nullptr);
     m_context_arena.release(m_rpc_consumer);
-}
-
-void dispatcher_t::forbid_swap() {
-    m_swap_permitted = false;
-}
-
-void dispatcher_t::allow_swap() {
-    m_swap_permitted = true;
 }
 
 int64_t dispatcher_t::run() {

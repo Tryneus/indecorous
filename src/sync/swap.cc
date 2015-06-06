@@ -1,11 +1,18 @@
 #include "sync/swap.hpp"
 
-assert_no_swap_t::assert_no_swap_t() {
-    // TODO: save previous swap state
-    thread_t::self()->dispatcher()->forbid_swap();
+#include "coro/thread.hpp"
+
+namespace indecorous {
+
+assert_no_swap_t::assert_no_swap_t() :
+        m_dispatch(thread_t::self()->dispatcher()),
+        m_old_swap_permitted(m_dispatch->m_swap_permitted) {
+    m_dispatch->m_swap_permitted = false;
 }
 
 assert_no_swap_t::~assert_no_swap_t() {
-    // TODO: restore previous swap state (so we can nest these objects)
-    thread_t::self()->dispatcher()->allow_swap();
+    assert(!m_dispatch->m_swap_permitted);
+    m_dispatch->m_swap_permitted = m_old_swap_permitted;
 }
+
+} // namespace indecorous

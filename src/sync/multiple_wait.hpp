@@ -1,6 +1,8 @@
 #ifndef SYNC_MULTIPLE_WAIT_HPP_
 #define SYNC_MULTIPLE_WAIT_HPP_
 
+#include <vector>
+
 #include "sync/wait_object.hpp"
 
 namespace indecorous {
@@ -47,7 +49,7 @@ private:
 };
 
 template <multiple_waiter_t::wait_type_t Type, typename... Args>
-void wait_generic(Args &&...args, wait_object_t *interruptor) {
+void wait_generic(wait_object_t *interruptor, Args &&...args) {
     multiple_waiter_t waiter(Type, sizeof...(Args), interruptor);
     multiple_wait_callback_t waits[] = { multiple_wait_callback_t(std::forward<Args>(args), &waiter)... };
     waiter.wait();
@@ -55,22 +57,22 @@ void wait_generic(Args &&...args, wait_object_t *interruptor) {
 
 template <typename... Args>
 void wait_any(Args &&...args) {
-    wait_generic<multiple_waiter_t::wait_type_t::ANY>(std::forward<Args>(args)..., nullptr);
+    wait_generic<multiple_waiter_t::wait_type_t::ANY>(nullptr, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 void wait_any_interruptible(Args &&...args, wait_object_t *interruptor) {
-    wait_generic<multiple_waiter_t::wait_type_t::ANY>(std::forward<Args>(args)..., interruptor);
+    wait_generic<multiple_waiter_t::wait_type_t::ANY>(interruptor, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 void wait_all(Args &&...args) {
-    wait_generic<multiple_waiter_t::wait_type_t::ALL>(std::forward<Args>(args)..., nullptr);
+    wait_generic<multiple_waiter_t::wait_type_t::ALL>(nullptr, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 void wait_all_interruptible(Args &&...args, wait_object_t *interruptor) {
-    wait_generic<multiple_waiter_t::wait_type_t::ALL>(std::forward<Args>(args)..., interruptor);
+    wait_generic<multiple_waiter_t::wait_type_t::ALL>(interruptor, std::forward<Args>(args)...);
 }
 
 template <multiple_waiter_t::wait_type_t Type, typename It>
