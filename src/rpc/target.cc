@@ -17,6 +17,10 @@ void target_t::wait() {
     stream()->wait();
 }
 
+void target_t::note_send() const {
+    thread_t::self()->dispatcher()->note_send(); 
+}
+
 local_target_t::local_target_t(thread_t *thread) :
     target_t(), m_stream(thread) { }
 

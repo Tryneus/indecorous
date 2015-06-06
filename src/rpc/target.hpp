@@ -5,7 +5,6 @@
 
 #include "coro/thread.hpp"
 #include "rpc/handler.hpp"
-#include "rpc/hub.hpp"
 #include "rpc/id.hpp"
 #include "rpc/message.hpp"
 #include "rpc/stream.hpp"
@@ -25,21 +24,21 @@ public:
     virtual bool is_local() const = 0;
 
     template <typename Callback, typename... Args>
-    void noreply_call(Args &&...args) {
-        if (is_local()) { thread_t::self()->dispatcher()->note_send(); }
+    void call_noreply(Args &&...args) {
+        if (is_local()) { note_send(); }
         send_request<Callback>(request_id_t::noreply(), std::forward<Args>(args)...);
     }
 
     template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
-    result_t call(Args &&...args) {
-        if (is_local()) { thread_t::self()->dispatcher()->note_send(); }
+    result_t call_sync(Args &&...args) {
+        if (is_local()) { note_send(); }
         request_id_t request_id = send_request(request_gen.next(), std::forward<Args>(args)...);
         return parse_result<result_t>(get_response(request_id));
     }
 
     template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
-    future_t<result_t> async_call(Args &&...args) {
-        if (is_local()) { thread_t::self()->dispatcher()->note_send(); }
+    future_t<result_t> call_async(Args &&...args) {
+        if (is_local()) { note_send(); }
         request_id_t request_id = send_request(request_gen.next(), std::forward<Args>(args)...);
         return coro_t::spawn(&target_t::parse_result<result_t>, get_response(request_id));
     }
@@ -47,7 +46,6 @@ public:
     void wait();
 
 protected:
-    friend class message_hub_t;
     virtual stream_t *stream() = 0;
 
     target_id_t target_id;
@@ -55,6 +53,8 @@ protected:
     std::unordered_map<request_id_t, promise_t<read_message_t> > request_map;
 
 private:
+    void note_send() const;
+
     template <typename Callback, typename... Args>
     request_id_t send_request(request_id_t request_id, Args &&...args) {
         write_message_t msg =

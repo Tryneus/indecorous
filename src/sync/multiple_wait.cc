@@ -70,9 +70,15 @@ void multiple_waiter_t::wait_done(wait_result_t result) {
 
 multiple_wait_callback_t::multiple_wait_callback_t(wait_object_t *obj,
                                                    multiple_waiter_t *waiter) :
-    m_obj(obj), m_waiter(waiter) {
-        m_obj->add_wait(this);
-    }
+        m_obj(obj), m_waiter(waiter) {
+    m_obj->add_wait(this);
+}
+
+multiple_wait_callback_t::multiple_wait_callback_t(wait_object_t &obj,
+                                                   multiple_waiter_t *waiter) :
+        m_obj(&obj), m_waiter(waiter) {
+    m_obj->add_wait(this);
+}
 
 multiple_wait_callback_t::~multiple_wait_callback_t() {
     if (in_a_list()) {

@@ -22,7 +22,7 @@ IMPL_UNIQUE_HANDLER(shutdown_handler_t);
 void shutdown_t::shutdown(std::list<thread_t> *threads) {
     // Iterate over threads, send RPC to trigger the shutdown cond
     for (auto &&t: *threads) {
-        t.hub()->self_target()->noreply_call<shutdown_handler_t>();
+        t.hub()->self_target()->call_noreply<shutdown_handler_t>();
     }
 }
 

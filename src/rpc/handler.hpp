@@ -4,11 +4,12 @@
 #include <tuple>
 #include <utility>
 
-#include "rpc/hub.hpp"
 #include "rpc/message.hpp"
 #include "rpc/serialize.hpp"
 
 namespace indecorous {
+
+class message_hub_t;
 
 class handler_callback_t {
 public:
@@ -17,6 +18,8 @@ public:
     virtual void handle_noreply(read_message_t msg) = 0;
     virtual handler_id_t id() const = 0;
 };
+
+void send_reply(message_hub_t *hub, target_id_t source_id, write_message_t msg);
 
 template <typename Callback>
 class handler_wrapper_t {
@@ -28,11 +31,11 @@ public:
             assert(msg.buffer.has());
             Res res = handle_internal(std::index_sequence_for<Args...>{},
                                       std::tuple<Args...>{serializer_t<Args>::read(&msg)...});
-            hub->send_reply(msg.source_id,
-                            write_message_t::create(msg.source_id,
-                                                    handler_id_t::reply(),
-                                                    msg.request_id,
-                                                    std::move(res)));
+            send_reply(hub, msg.source_id,
+                       write_message_t::create(msg.source_id,
+                           handler_id_t::reply(),
+                           msg.request_id,
+                           std::move(res)));
         }
 
         void handle_noreply(read_message_t msg) {
@@ -80,10 +83,10 @@ public:
         assert(msg.buffer.has());
         handle_internal(std::index_sequence_for<Args...>{},
                         std::tuple<Args...>{serializer_t<Args>::read(&msg)...});
-        hub->send_reply(msg.source_id,
-                        write_message_t::create(msg.source_id,
-                                                handler_id_t::reply(),
-                                                msg.request_id));
+        send_reply(hub, msg.source_id,
+                   write_message_t::create(msg.source_id,
+                       handler_id_t::reply(),
+                       msg.request_id));
     }
 
     void handle_noreply(read_message_t msg) {
