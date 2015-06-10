@@ -51,10 +51,10 @@ SERIALIZABLE_INTEGRAL(double);
 template <typename T>
 struct serializer_t<T *> {
     static size_t size(const T *item) {
-        return serializer_t<uint64_t>(static_cast<uint64_t>(item));
+        return serializer_t<uint64_t>::size(static_cast<uint64_t>(item));
     }
     static int write(write_message_t *msg, const T *item) {
-        return serializer_t<uint64_t>(msg, static_cast<uint64_t>(item));
+        return serializer_t<uint64_t>::write(msg, static_cast<uint64_t>(item));
     }
     static T *read(read_message_t *msg) {
         return static_cast<T *>(serializer_t<uint64_t>::read(msg));

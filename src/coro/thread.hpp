@@ -38,7 +38,7 @@ public:
     void exit();
 
 private:
-    friend class shutdown_handler_t; // For updating the shutdown event
+    friend struct shutdown_handler_t; // For updating the shutdown event
 
     void main();
 
