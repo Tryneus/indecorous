@@ -47,7 +47,14 @@ SRC_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_SOURCES))
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_TESTS))
 ALL_OBJS := $(SRC_OBJS) $(TEST_OBJS)
 
+.PHONY: all test val_test clean
 all: $(BIN_DIR)/$(BIN_NAME)
+
+test: $(BIN_DIR)/$(BIN_NAME)
+	$(BIN_DIR)/$(BIN_NAME)
+
+val_test: $(BIN_DIR)/$(BIN_NAME) .valgrind.supp
+	valgrind --suppressions=.valgrind.supp --leak-check=full --track-origins=yes $(BIN_DIR)/$(BIN_NAME)
 
 $(BIN_DIR)/$(BIN_NAME): $(ALL_OBJS) Makefile
 	mkdir -p $(dir $@)
