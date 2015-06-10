@@ -65,12 +65,15 @@ void coro_pull() {
         // pass
     }
     assert(dispatch->m_shutdown_event.triggered());
-    coro_t::self()->swap(nullptr);
+
+    coro_t *self = coro_t::self();
+    dispatch->enqueue_release(self);
+    self->swap(nullptr);
 }
 
 dispatcher_t::dispatcher_t() :
         m_swap_permitted(true),
-        m_context_arena(256),
+        m_context_arena(32),
         m_running(nullptr),
         m_release(nullptr),
         m_swap_count(0),
@@ -103,7 +106,6 @@ void dispatcher_t::shutdown() {
     swapcontext(&m_main_context, &m_rpc_consumer->m_context);
 
     assert(m_release == m_rpc_consumer);
-    debugf("Shutting down dispatcher - releasing rpc consumer\n");
     m_context_arena.release(m_rpc_consumer);
     m_rpc_consumer = nullptr;
 }

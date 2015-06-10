@@ -22,13 +22,11 @@ bool message_hub_t::spawn(read_message_t msg) {
 
     auto cb_it = m_handlers.find(msg.handler_id);
     if (msg.request_id == request_id_t::noreply()) {
-        debugf("handling noreply rpc\n");
         coro_t::spawn(&handler_callback_t::handle_noreply, cb_it->second, std::move(msg));
     } else if (cb_it != m_handlers.end()) {
-        debugf("handling reply rpc\n");
         coro_t::spawn(&handler_callback_t::handle, cb_it->second, this, std::move(msg));
     } else {
-        printf("No registered handler for handler_id (%lu).\n", msg.handler_id.value());
+        debugf("No registered handler for handler_id (%lu).\n", msg.handler_id.value());
     }
     return true;
 }
@@ -47,7 +45,7 @@ void message_hub_t::send_reply(target_id_t target_id, write_message_t &&msg) {
     if (t != nullptr) {
         t->send_reply(std::move(msg));
     } else {
-        printf("Cannot find target (%lu) to send reply to.\n", target_id.value());
+        debugf("Cannot find target (%lu) to send reply to.\n", target_id.value());
     }
 }
 

@@ -15,13 +15,13 @@
 #include "sync/timer.hpp"
 #include "sync/multiple_wait.hpp"
 
-const size_t num_threads = 1;
+const size_t num_threads = 8;
 
 using namespace indecorous;
 
 struct spawn_callback_t : public handler_t<spawn_callback_t> {
     static void call(std::string a, std::string b, int value) {
-        printf("Got called with %s, %s, %d\n", a.c_str(), b.c_str(), value);
+        debugf("Got called with %s, %s, %d\n", a.c_str(), b.c_str(), value);
     }
 };
 IMPL_UNIQUE_HANDLER(spawn_callback_t);

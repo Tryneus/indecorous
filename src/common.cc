@@ -4,10 +4,9 @@
 
 namespace indecorous {
 
-size_t thread_self_id() {
+int32_t thread_self_id() {
     thread_t *t = thread_t::self();
-    assert(t != nullptr);
-    return t->id();
+    return t == nullptr ? -1 : t->id();
 }
 
 } // namespace indecorous

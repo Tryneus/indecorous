@@ -83,7 +83,7 @@ TEST_CASE("mpsc_queue_t/multi_thread", "[containers][intrusive]") {
     thread_barrier_t barrier(producer_count + 1);
 
     std::vector<std::thread> threads;
-    for (size_t i = 0; i < 5; ++i) {
+    for (size_t i = 0; i < producer_count; ++i) {
         threads.emplace_back(mpsc_queue_producer, &queue, &barrier);
     }
     threads.emplace_back(mpsc_queue_consumer, &queue, &barrier);

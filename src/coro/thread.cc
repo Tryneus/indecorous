@@ -49,7 +49,6 @@ void thread_t::main() {
         m_barrier->wait(); // Wait for run or ~scheduler_t
     }
 
-    debugf("shutting down dispatch\n");
     m_dispatch.shutdown();
 
     m_barrier->wait(); // Barrier for ~scheduler_t, safe to destruct

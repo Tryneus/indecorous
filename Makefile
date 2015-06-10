@@ -37,6 +37,7 @@ endif
 # Hack because newton's version of gdb is older
 #CXX_FLAGS += -g
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
+CXX_FLAGS += -D__STDC_FORMAT_MACROS
 
 LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt
 BIN_NAME = coro_test
