@@ -60,6 +60,7 @@ private:
     friend class scheduler_t; // For initializing local targets
     void set_local_targets(std::list<thread_t> *threads);
 
+    friend class local_target_t; // For spawning handlers of messages
     bool spawn(read_message_t msg);
 
     local_target_t m_self_target;

@@ -57,7 +57,7 @@ TEST_CASE("mpsc_queue_t/single_thread", "[containers][intrusive]") {
 }
 
 const size_t produce_count = 100000;
-const size_t producer_count = 5;
+const size_t producer_count = 10;
 
 void mpsc_queue_producer(mpsc_queue_t<node_t> *queue, thread_barrier_t *barrier) {
     barrier->wait();

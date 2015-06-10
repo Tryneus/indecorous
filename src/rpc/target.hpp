@@ -79,7 +79,10 @@ private:
 class local_target_t : public target_t {
 public:
     local_target_t();
-    bool handle(); // Returns true if a message was processed, false otherwise
+
+    // Returns true if a message was processed, false otherwise
+    bool handle(message_hub_t *local_hub);
+
     bool is_local() const;
 private:
     friend class scheduler_t; // To get the initial stream size

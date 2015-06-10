@@ -47,7 +47,7 @@ public:
     coro_t *m_release; // Recently-finished coro_t to be released
 
     size_t m_swap_count;
-    event_t m_rpc_consumer_interruptor;
+    event_t m_shutdown_event;
 
     ucontext_t m_main_context; // Used to store the thread's main context
 
@@ -95,6 +95,7 @@ private:
     friend class dispatcher_t;
     friend class arena_t<coro_t>; // To allow instantiation of this class
     friend void launch_coro();
+    friend void coro_pull();
     friend class wait_object_t;
 
     template <typename Res, typename... Args>

@@ -34,10 +34,10 @@ void target_t::send_reply(write_message_t &&msg) {
 local_target_t::local_target_t() :
     target_t(), m_stream() { }
 
-bool local_target_t::handle() {
+bool local_target_t::handle(message_hub_t *local_hub) {
     read_message_t msg(m_stream.read());
     if (!msg.buffer.has()) { return false; }
-    // membership.hub->spawn(std::move(msg)); // TODO
+    local_hub->spawn(std::move(msg));
     return true;
 }
 

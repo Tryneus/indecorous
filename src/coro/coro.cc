@@ -52,16 +52,20 @@ struct handover_params_t {
 thread_local handover_params_t handover_params;
 
 void coro_pull() {
-    local_target_t *target = thread_t::self()->hub()->self_target();
-    dispatcher_t *dispatch = thread_t::self()->dispatcher();
+    thread_t *thread = thread_t::self();
+    dispatcher_t *dispatch = thread->dispatcher();
+    message_hub_t *hub = thread->hub();
+    local_target_t *target = hub->self_target();
     try {
         while (true) {
-            while (target->handle()) { }
-            target->wait(&dispatch->m_rpc_consumer_interruptor);
+            while (target->handle(hub)) { }
+            target->wait(&dispatch->m_shutdown_event);
         }
     } catch (const wait_interrupted_exc_t &ex) {
         // pass
     }
+    assert(dispatch->m_shutdown_event.triggered());
+    coro_t::self()->swap(nullptr);
 }
 
 dispatcher_t::dispatcher_t() :
@@ -91,7 +95,7 @@ void dispatcher_t::shutdown() {
     assert(m_running == nullptr);
     assert(m_run_queue.size() == 0);
 
-    m_rpc_consumer_interruptor.set();
+    m_shutdown_event.set();
     assert(m_run_queue.size() == 1);
     m_running = m_run_queue.pop_front();
     assert(m_running == m_rpc_consumer);
@@ -99,6 +103,7 @@ void dispatcher_t::shutdown() {
     swapcontext(&m_main_context, &m_rpc_consumer->m_context);
 
     assert(m_release == m_rpc_consumer);
+    debugf("Shutting down dispatcher - releasing rpc consumer\n");
     m_context_arena.release(m_rpc_consumer);
     m_rpc_consumer = nullptr;
 }

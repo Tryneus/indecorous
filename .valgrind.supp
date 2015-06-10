@@ -1,0 +1,31 @@
+{
+    <catch_make_parser>
+    Memcheck:Leak
+    ...
+    fun:_ZN5Catch21makeCommandLineParserEv
+    ...
+}
+
+{
+    <catch_auto_reg>
+    Memcheck:Leak
+    ...
+    fun:_ZN5Catch7AutoRegC1EPFvvERKNS_14SourceLineInfoERKNS_11NameAndDescE
+    ...
+}
+
+{
+    <catch_source_line_info>
+    Memcheck:Leak
+    ...
+    fun:_ZN5Catch14SourceLineInfoC1EPKcm
+    ...
+}
+
+{
+    <catch_source_line_info>
+    Memcheck:Leak
+    ...
+    fun:_ZN5Catch14TestSpecParser5parseERKSs
+    ...
+}
