@@ -13,6 +13,7 @@ enum class wait_result_t {
     ObjectLost,
 };
 
+const char *wait_result_str(wait_result_t res);
 void check_wait_result(wait_result_t result);
 
 class wait_callback_t : public intrusive_node_t<wait_callback_t> {

@@ -31,7 +31,7 @@ void local_stream_t::wait(wait_object_t *interruptor) {
     // TODO: this involves a TLS-lookup, but it's only used from a place that
     // already has the TLS value.
     file_wait_t in = file_wait_t::in(fd.get());
-    wait_any_interruptible(&in, interruptor);
+    wait_any_interruptible(interruptor, &in);
 
     // Clear the eventfd now - this may result in a spurious wakeup later, but
     // better than missing a message.

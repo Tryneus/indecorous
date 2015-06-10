@@ -5,6 +5,19 @@
 
 namespace indecorous {
 
+const char *wait_result_str(wait_result_t res) {
+    switch (res) {
+    case wait_result_t::Success:
+        return "Success";
+    case wait_result_t::Interrupted:
+        return "Interrupted";
+    case wait_result_t::ObjectLost:
+        return "ObjectLost";
+    default:
+        throw wait_error_exc_t("unrecognized error while waiting");
+    }
+}
+
 // If a wait failed, throw an appropriate exception so the user can handle it
 void check_wait_result(wait_result_t result) {
     switch (result) {
