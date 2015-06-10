@@ -51,11 +51,16 @@ struct handover_params_t {
 };
 thread_local handover_params_t handover_params;
 
-[[noreturn]] void coro_pull() {
+void coro_pull() {
     local_target_t *target = thread_t::self()->hub()->self_target();
-    while (true) {
-        while (target->handle()) { }
-        target->wait();
+    dispatcher_t *dispatch = thread_t::self()->dispatcher();
+    try {
+        while (true) {
+            while (target->handle()) { }
+            target->wait(&dispatch->m_rpc_consumer_interruptor);
+        }
+    } catch (const wait_interrupted_exc_t &ex) {
+        // pass
     }
 }
 
@@ -77,8 +82,25 @@ dispatcher_t::dispatcher_t() :
 }
 
 dispatcher_t::~dispatcher_t() {
+    // Shutdown should have been performed first
+    // TODO: make this happen in the destructor using RAII on the thread::main?
+    assert(m_rpc_consumer == nullptr);
+}
+
+void dispatcher_t::shutdown() {
     assert(m_running == nullptr);
+    assert(m_run_queue.size() == 0);
+
+    m_rpc_consumer_interruptor.set();
+    assert(m_run_queue.size() == 1);
+    m_running = m_run_queue.pop_front();
+    assert(m_running == m_rpc_consumer);
+
+    swapcontext(&m_main_context, &m_rpc_consumer->m_context);
+
+    assert(m_release == m_rpc_consumer);
     m_context_arena.release(m_rpc_consumer);
+    m_rpc_consumer = nullptr;
 }
 
 int64_t dispatcher_t::run() {
@@ -86,7 +108,6 @@ int64_t dispatcher_t::run() {
     m_swap_count = 0;
     m_coro_delta = 0;
     
-
     // Kick off the coroutines, they will give us back execution later
     m_running = m_run_queue.pop_front();
     if (m_running != nullptr) {

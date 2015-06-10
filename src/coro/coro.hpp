@@ -9,6 +9,7 @@
 
 #include "containers/arena.hpp"
 #include "containers/intrusive.hpp"
+#include "sync/event.hpp"
 #include "sync/promise.hpp"
 #include "sync/wait_object.hpp"
 
@@ -32,6 +33,8 @@ public:
     // Returns the delta in active local coroutines
     int64_t run();
 
+    void shutdown();
+
     // Called when an rpc is sent from this thread
     void note_send();
 
@@ -44,6 +47,7 @@ public:
     coro_t *m_release; // Recently-finished coro_t to be released
 
     size_t m_swap_count;
+    event_t m_rpc_consumer_interruptor;
 
     ucontext_t m_main_context; // Used to store the thread's main context
 

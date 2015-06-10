@@ -3,13 +3,16 @@
 
 #include <unordered_map>
 
+#include "coro/coro.hpp"
 #include "rpc/handler.hpp"
 #include "rpc/id.hpp"
 #include "rpc/message.hpp"
 #include "rpc/stream.hpp"
-#include "sync/event.hpp"
+#include "sync/promise.hpp"
 
 namespace indecorous {
+
+class wait_object_t;
 
 class target_t {
 public:
@@ -42,7 +45,7 @@ public:
 
     void send_reply(write_message_t &&msg);
 
-    void wait();
+    void wait(wait_object_t *interruptor);
 
 protected:
     virtual stream_t *stream() = 0;

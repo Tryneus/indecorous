@@ -6,6 +6,7 @@
 
 #include "rpc/message.hpp"
 #include "sync/file_wait.hpp"
+#include "sync/multiple_wait.hpp"
 
 namespace indecorous {
 
@@ -26,10 +27,11 @@ void local_stream_t::write(write_message_t &&msg) {
     assert(res == sizeof(value));
 }
 
-void local_stream_t::wait() {
+void local_stream_t::wait(wait_object_t *interruptor) {
     // TODO: this involves a TLS-lookup, but it's only used from a place that
     // already has the TLS value.
-    file_wait_t::in(fd.get()).wait();
+    file_wait_t in = file_wait_t::in(fd.get());
+    wait_any_interruptible(&in, interruptor);
 
     // Clear the eventfd now - this may result in a spurious wakeup later, but
     // better than missing a message.
@@ -60,7 +62,7 @@ void tcp_stream_t::write(write_message_t &&msg) {
     write_exactly(buffer.data(), buffer.capacity());
 }
 
-void tcp_stream_t::wait() {
+void tcp_stream_t::wait(wait_object_t *) {
     // TODO: implement;
 }
 

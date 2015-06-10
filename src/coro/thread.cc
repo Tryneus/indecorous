@@ -17,14 +17,14 @@ thread_t::thread_t(size_t _id,
                    thread_barrier_t *barrier,
                    std::atomic<bool> *exit_flag) :
         m_id(_id),
-        m_hub(),
-        m_events(),
-        m_dispatch(),
         m_shutdown(shutdown),
         m_barrier(barrier),
         m_exit_flag(exit_flag),
+        m_thread(&thread_t::main, this),
         m_shutdown_event(),
-        m_thread(&thread_t::main, this) {
+        m_hub(),
+        m_events(),
+        m_dispatch() {
     m_thread.detach();
 }
 
@@ -48,6 +48,8 @@ void thread_t::main() {
         m_barrier->wait(); // Wait for other threads to finish
         m_barrier->wait(); // Wait for run or ~scheduler_t
     }
+
+    m_dispatch.shutdown();
 
     m_barrier->wait(); // Barrier for ~scheduler_t, safe to destruct
     s_instance = nullptr;

@@ -61,7 +61,7 @@ void wait_any(Args &&...args) {
 }
 
 template <typename... Args>
-void wait_any_interruptible(Args &&...args, wait_object_t *interruptor) {
+void wait_any_interruptible(wait_object_t *interruptor, Args &&...args) {
     wait_generic<multiple_waiter_t::wait_type_t::ANY>(interruptor, std::forward<Args>(args)...);
 }
 
@@ -71,7 +71,7 @@ void wait_all(Args &&...args) {
 }
 
 template <typename... Args>
-void wait_all_interruptible(Args &&...args, wait_object_t *interruptor) {
+void wait_all_interruptible(wait_object_t *interruptor, Args &&...args) {
     wait_generic<multiple_waiter_t::wait_type_t::ALL>(interruptor, std::forward<Args>(args)...);
 }
 
