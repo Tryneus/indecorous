@@ -32,6 +32,7 @@ public:
     void wait(wait_object_t *interruptor);
 private:
     friend class scheduler_t; // To get the initial queue size
+    friend class thread_t; // To check empty at the end of a run
     scoped_fd_t fd;
     mpsc_queue_t<linkable_buffer_t> message_queue;
 };

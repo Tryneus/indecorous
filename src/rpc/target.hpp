@@ -86,6 +86,7 @@ public:
     bool is_local() const;
 private:
     friend class scheduler_t; // To get the initial stream size
+    friend class thread_t; // To check empty at the end of a run
     stream_t *stream();
     local_stream_t m_stream;
 };

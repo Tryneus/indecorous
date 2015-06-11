@@ -15,6 +15,7 @@ public:
     void update(int64_t active_delta);
     void reset(uint64_t initial_count);
 private:
+    std::atomic<bool> m_finish_sent;
     std::atomic<uint64_t> m_active_count;
 };
 

@@ -9,7 +9,7 @@
 namespace indecorous {
 
 shutdown_t::shutdown_t() :
-    m_active_count(0) { }
+    m_finish_sent(true), m_active_count(0) { }
 
 struct init_stop_t : public handler_t<init_stop_t> {
     static void call() {
@@ -35,13 +35,17 @@ void shutdown_t::update(int64_t active_delta) {
 
     bool done = ((res + active_delta) == 0);
     if (done && res != 0) {
-        thread_t::self()->hub()->broadcast_local_noreply<finish_stop_t>();
-        // This will cause `m_active_count` to go negative, but it isn't needed anymore
+        if (!m_finish_sent.load()) {
+            size_t calls = thread_t::self()->hub()->broadcast_local_noreply<finish_stop_t>();
+            m_finish_sent.store(true);
+            update(calls);
+        }
     }
 }
 
 void shutdown_t::reset(uint64_t initial_count) {
     // The extra 1 is a dummy task to prevent shutdown until `shutdown` is called
+    m_finish_sent.store(false);
     m_active_count.store(initial_count + 1);
 }
 

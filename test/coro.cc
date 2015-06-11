@@ -37,6 +37,16 @@ struct wait_test_callback_t : public handler_t<wait_test_callback_t> {
 };
 IMPL_UNIQUE_HANDLER(wait_test_callback_t);
 
+TEST_CASE("coro/empty", "Test empty environment creation/destruction") {
+    for (size_t i = 0; i < 16; ++i) {
+        scheduler_t sched(i);
+        sched.run(shutdown_policy_t::Eager);
+        sched.run(shutdown_policy_t::Eager);
+        sched.run(shutdown_policy_t::Eager);
+        sched.run(shutdown_policy_t::Eager);
+    }
+}
+
 TEST_CASE("coro/spawn", "Test basic coroutine spawning and running") {
     scheduler_t sched(num_threads);
     for (auto &&t : sched.threads()) {

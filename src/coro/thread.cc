@@ -45,6 +45,7 @@ void thread_t::main() {
             m_shutdown->update(m_dispatch.run());
         }
 
+        assert(m_hub.self_target()->m_stream.message_queue.size() == 0);
         m_barrier->wait(); // Wait for other threads to finish
         m_barrier->wait(); // Wait for run or ~scheduler_t
     }

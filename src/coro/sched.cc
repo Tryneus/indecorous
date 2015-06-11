@@ -49,7 +49,10 @@ void scheduler_t::run(shutdown_policy_t policy) {
         break;
     }
 
-    m_shutdown.shutdown(m_threads.begin()->hub());
+    if (m_threads.size() > 0) {
+        m_shutdown.shutdown(m_threads.begin()->hub());
+    }
+
     m_barrier.wait(); // Wait for all threads to finish all their coroutines
 }
 
