@@ -11,7 +11,7 @@
     #define DEBUG_ONLY(...) __VA_ARGS__
 #endif
 
-#define debugf(format, ...) printf("Thread %" PRIi32 " - " format, indecorous::thread_self_id(), ##__VA_ARGS__)
+#define debugf(format, ...) printf("Thread %" PRIi32 " - " format "\n", indecorous::thread_self_id(), ##__VA_ARGS__)
 
 namespace indecorous {
 

@@ -59,12 +59,12 @@ void coro_pull() {
     try {
         while (true) {
             while (target->handle(hub)) { }
-            target->wait(&dispatch->m_shutdown_event);
+            target->wait(&dispatch->m_close_event);
         }
     } catch (const wait_interrupted_exc_t &ex) {
         // pass
     }
-    assert(dispatch->m_shutdown_event.triggered());
+    assert(dispatch->m_close_event.triggered());
 
     coro_t *self = coro_t::self();
     dispatch->enqueue_release(self);
@@ -94,11 +94,11 @@ dispatcher_t::~dispatcher_t() {
     assert(m_rpc_consumer == nullptr);
 }
 
-void dispatcher_t::shutdown() {
+void dispatcher_t::close() {
     assert(m_running == nullptr);
     assert(m_run_queue.size() == 0);
 
-    m_shutdown_event.set();
+    m_close_event.set();
     assert(m_run_queue.size() == 1);
     m_running = m_run_queue.pop_front();
     assert(m_running == m_rpc_consumer);
@@ -131,6 +131,7 @@ int64_t dispatcher_t::run() {
 }
 
 void dispatcher_t::note_send() {
+    debugf("noting send");
     m_coro_delta += 1;
 }
 

@@ -33,7 +33,7 @@ public:
     // Returns the delta in active local coroutines
     int64_t run();
 
-    void shutdown();
+    void close();
 
     // Called when an rpc is sent from this thread
     void note_send();
@@ -47,7 +47,7 @@ public:
     coro_t *m_release; // Recently-finished coro_t to be released
 
     size_t m_swap_count;
-    event_t m_shutdown_event;
+    event_t m_close_event;
 
     ucontext_t m_main_context; // Used to store the thread's main context
 

@@ -11,12 +11,13 @@
 
 namespace indecorous {
 
+class shutdown_t;
 class timer_callback_t;
 class file_callback_t;
 
 class events_t {
 public:
-    events_t();
+    events_t(shutdown_t *shutdown);
     ~events_t();
 
     void add_timer(timer_callback_t *cb);

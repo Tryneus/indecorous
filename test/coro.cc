@@ -21,7 +21,7 @@ using namespace indecorous;
 
 struct spawn_callback_t : public handler_t<spawn_callback_t> {
     static void call(std::string a, std::string b, int value) {
-        debugf("Got called with %s, %s, %d\n", a.c_str(), b.c_str(), value);
+        debugf("Got called with %s, %s, %d", a.c_str(), b.c_str(), value);
     }
 };
 IMPL_UNIQUE_HANDLER(spawn_callback_t);

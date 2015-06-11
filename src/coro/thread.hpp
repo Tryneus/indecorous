@@ -23,7 +23,7 @@ public:
     thread_t(size_t _id,
              shutdown_t *shutdown,
              thread_barrier_t *barrier,
-             std::atomic<bool> *exit_flag);
+             std::atomic<bool> *close_flag);
 
     static thread_t *self();
 
@@ -46,7 +46,7 @@ private:
 
     shutdown_t *m_shutdown;
     thread_barrier_t *m_barrier;
-    std::atomic<bool> *m_exit_flag;
+    std::atomic<bool> *m_close_flag;
 
     std::thread m_thread;
 

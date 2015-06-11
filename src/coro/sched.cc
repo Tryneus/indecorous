@@ -7,10 +7,10 @@
 namespace indecorous {
 
 scheduler_t::scheduler_t(size_t num_threads) :
-        m_exit_flag(false),
+        m_close_flag(false),
         m_barrier(num_threads + 1) {
     for (size_t i = 0; i < num_threads; ++i) {
-        m_threads.emplace_back(i, &m_shutdown, &m_barrier, &m_exit_flag);
+        m_threads.emplace_back(i, &m_shutdown, &m_barrier, &m_close_flag);
     }
 
     // Tell the message hubs of each thread about the others
@@ -22,7 +22,7 @@ scheduler_t::scheduler_t(size_t num_threads) :
 }
 
 scheduler_t::~scheduler_t() {
-    m_exit_flag.store(true);
+    m_close_flag.store(true);
     m_barrier.wait(); // Start the threads so they can exit
     m_barrier.wait(); // Wait for threads to exit
 }

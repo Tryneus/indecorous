@@ -15,17 +15,21 @@ thread_local thread_t* thread_t::s_instance = nullptr;
 thread_t::thread_t(size_t _id,
                    shutdown_t *shutdown,
                    thread_barrier_t *barrier,
-                   std::atomic<bool> *exit_flag) :
+                   std::atomic<bool> *close_flag) :
         m_id(_id),
         m_shutdown(shutdown),
         m_barrier(barrier),
-        m_exit_flag(exit_flag),
+        m_close_flag(close_flag),
         m_thread(&thread_t::main, this),
-        m_shutdown_event(),
         m_hub(),
         m_events(),
         m_dispatch() {
     m_thread.detach();
+    m_events.add_file_wait(m_shutdown->get_file_event());
+}
+
+thread_t::~thread_t() {
+    m_events.remove_file_wait(m_shutdown->get_file_event());
 }
 
 size_t thread_t::id() const {
@@ -38,7 +42,7 @@ void thread_t::main() {
     m_barrier->wait(); // Barrier for the scheduler_t constructor, thread ready
     m_barrier->wait(); // Wait for run or ~scheduler_t
 
-    while (!m_exit_flag->load()) {
+    while (!m_close_flag->load()) {
         int64_t active_delta = m_dispatch.run();
         while (m_shutdown->update(active_delta)) {
             m_events.wait();
@@ -49,7 +53,7 @@ void thread_t::main() {
         m_barrier->wait(); // Wait for run or ~scheduler_t
     }
 
-    m_dispatch.shutdown();
+    m_dispatch.close();
 
     m_barrier->wait(); // Barrier for ~scheduler_t, safe to destruct
     s_instance = nullptr;
@@ -65,10 +69,6 @@ dispatcher_t *thread_t::dispatcher() {
 
 events_t *thread_t::events() {
     return &m_events;
-}
-
-wait_object_t *thread_t::shutdown_event() {
-    return &m_shutdown_event;
 }
 
 thread_t *thread_t::self() {

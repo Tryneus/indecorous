@@ -29,7 +29,7 @@ public:
 
 private:
     shutdown_t m_shutdown;
-    std::atomic<bool> m_exit_flag;
+    std::atomic<bool> m_close_flag;
     thread_barrier_t m_barrier;
     std::list<thread_t> m_threads;
 };
