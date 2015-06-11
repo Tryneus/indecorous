@@ -27,23 +27,20 @@ IMPL_UNIQUE_HANDLER(finish_stop_t);
 
 void shutdown_t::shutdown(message_hub_t *hub) {
     size_t calls = hub->broadcast_local_noreply<init_stop_t>();
-    // This is called outside the context of a thread_t, so update manually
-    update(calls - 1);
+    update(calls - 1); // This is called outside the context of a dispatch_t, so update manually
 }
 
 void shutdown_t::update(int64_t active_delta) {
     uint64_t res = m_active_count.fetch_add(active_delta);
-    debugf("shutdown_t updated with %" PRIi64 " to %" PRIu64, active_delta, res + active_delta);
 
     bool done = ((res + active_delta) == 0);
     if (done && res != 0) {
         thread_t::self()->hub()->broadcast_local_noreply<finish_stop_t>();
+        // This will cause `m_active_count` to go negative, but it isn't needed anymore
     }
 }
 
 void shutdown_t::reset(uint64_t initial_count) {
-    debugf("shutdown_t initialized with %" PRIu64, initial_count);
-    assert(m_active_count.load() == 0);
     // The extra 1 is a dummy task to prevent shutdown until `shutdown` is called
     m_active_count.store(initial_count + 1);
 }

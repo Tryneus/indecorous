@@ -131,7 +131,6 @@ int64_t dispatcher_t::run() {
 }
 
 void dispatcher_t::note_send() {
-    debugf("noting send");
     m_coro_delta += 1;
 }
 
