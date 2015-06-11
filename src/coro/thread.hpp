@@ -33,12 +33,13 @@ public:
     dispatcher_t *dispatcher();
     events_t *events();
 
-    wait_object_t *shutdown_event();
+    wait_object_t *stop_event();
 
     void exit();
 
 private:
-    friend struct shutdown_handler_t; // For updating the shutdown event
+    friend struct init_stop_t; // For updating the stop event
+    friend struct finish_stop_t; // For updating the stop flag
 
     void main();
 
@@ -50,7 +51,8 @@ private:
 
     std::thread m_thread;
 
-    event_t m_shutdown_event;
+    event_t m_stop_event;
+    bool m_stop_immediately;
 
     message_hub_t m_hub;
     events_t m_events;

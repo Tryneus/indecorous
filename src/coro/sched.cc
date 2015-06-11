@@ -1,5 +1,7 @@
 #include "coro/sched.hpp"
 
+#include <numeric>
+
 #include "coro/coro.hpp"
 #include "coro/shutdown.hpp"
 #include "coro/thread.hpp"
@@ -33,23 +35,21 @@ std::list<thread_t> &scheduler_t::threads() {
 
 void scheduler_t::run(shutdown_policy_t policy) {
     // Count the number of initial calls into the threads
-    size_t initial_count = 0;
-    for (auto &&t : m_threads) {
-        initial_count += t.hub()->self_target()->m_stream.message_queue.size();
-    }
-    m_shutdown.reset(initial_count);
+    m_shutdown.reset(std::accumulate(m_threads.begin(), m_threads.end(), size_t(0),
+        [] (size_t res, thread_t &t) -> size_t {
+            return res + t.hub()->self_target()->m_stream.message_queue.size();
+        }));
+
     m_barrier.wait(); // Wait for all threads to get to their loop
 
     switch (policy) {
-    case shutdown_policy_t::Eager:
-        // Shutdown immediately
+    case shutdown_policy_t::Eager: // Shutdown immediately
         break;
-    case shutdown_policy_t::Kill:
-        // TODO: Shutdown after SIGINT
+    case shutdown_policy_t::Kill:  // TODO: Shutdown after SIGINT
         break;
     }
 
-    m_shutdown.shutdown(&m_threads);
+    m_shutdown.shutdown(m_threads.begin()->hub());
     m_barrier.wait(); // Wait for all threads to finish all their coroutines
 }
 

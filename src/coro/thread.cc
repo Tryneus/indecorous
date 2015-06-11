@@ -25,11 +25,6 @@ thread_t::thread_t(size_t _id,
         m_events(),
         m_dispatch() {
     m_thread.detach();
-    m_events.add_file_wait(m_shutdown->get_file_event());
-}
-
-thread_t::~thread_t() {
-    m_events.remove_file_wait(m_shutdown->get_file_event());
 }
 
 size_t thread_t::id() const {
@@ -43,10 +38,10 @@ void thread_t::main() {
     m_barrier->wait(); // Wait for run or ~scheduler_t
 
     while (!m_close_flag->load()) {
-        int64_t active_delta = m_dispatch.run();
-        while (m_shutdown->update(active_delta)) {
+        m_stop_immediately = false;
+        while (!m_stop_immediately) {
             m_events.wait();
-            active_delta = m_dispatch.run();
+            m_shutdown->update(m_dispatch.run());
         }
 
         m_barrier->wait(); // Wait for other threads to finish

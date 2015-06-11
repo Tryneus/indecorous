@@ -17,7 +17,7 @@ class file_callback_t;
 
 class events_t {
 public:
-    events_t(shutdown_t *shutdown);
+    events_t();
     ~events_t();
 
     void add_timer(timer_callback_t *cb);

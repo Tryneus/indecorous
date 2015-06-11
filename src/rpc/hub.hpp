@@ -27,10 +27,11 @@ public:
     target_t *target(target_id_t id);
 
     template <typename Callback, typename... Args>
-    void broadcast_local_noreply(Args &&...args) {
+    size_t broadcast_local_noreply(Args &&...args) {
         for (auto &&t : m_local_targets) {
             t->call_noreply<Callback>(std::forward<Args>(args)...);
         }
+        return m_local_targets.size();
     }
 
     template <typename Callback, typename Res = typename handler_wrapper_t<Callback>::result_t, typename... Args>
