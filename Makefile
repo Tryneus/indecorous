@@ -29,9 +29,10 @@ else
   endif
 endif
 
-ifneq ($(DEBUG),1)
-  RT_CXXFLAGS += -O3 -DNDEBUG
-  #RT_CXXFLAGS += -fno-strict-aliasing
+ifeq ($(DEBUG),1)
+else
+  CXX_FLAGS += -O3
+  #CXX_FLAGS += -fno-strict-aliasing -DNDEBUG
 endif
 
 # Hack because newton's version of gdb is older
