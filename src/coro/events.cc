@@ -15,7 +15,7 @@ events_t::file_info_t::file_info_t(file_info_t &&other) :
     other.last_used_events = 0;
 }
 
-events_t::events_t() : m_epoll_set(epoll_create1(EPOLL_CLOEXEC)) {
+events_t::events_t() : m_epoll_set(::epoll_create1(EPOLL_CLOEXEC)) {
     assert(m_epoll_set.valid());
 }
 
@@ -99,7 +99,7 @@ void events_t::update_epoll() {
             task = it->second.last_used_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
             it->second.last_used_events = event.events;
         }
-        int res = epoll_ctl(m_epoll_set.get(), task, fd, &event);
+        int res = ::epoll_ctl(m_epoll_set.get(), task, fd, &event);
         assert(res == 0);
     }
     m_epoll_changes.clear();
@@ -108,10 +108,10 @@ void events_t::update_epoll() {
 void events_t::do_epoll_wait(int timeout) {
     size_t events_size = std::max<size_t>(m_file_map.size(), 1);
     std::unique_ptr<epoll_event[]> events(new epoll_event[events_size]);
-    int res = epoll_wait(m_epoll_set.get(), events.get(), events_size, timeout);
+    int res = ::epoll_wait(m_epoll_set.get(), events.get(), events_size, timeout);
     if (res <= 0) {
         // Ignore EINTR, just allow a spurious wakeup
-        assert(res == 0 || res == EINTR);
+        assert(res == 0 || errno == EINTR);
         return;
     }
 

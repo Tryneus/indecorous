@@ -39,10 +39,10 @@ void thread_t::main() {
 
     while (!m_close_flag->load()) {
         m_stop_immediately = false;
-        m_shutdown->update(m_dispatch.run());
+        m_shutdown->update(m_dispatch.run(), &m_hub);
         while (!m_stop_immediately) {
             m_events.wait();
-            m_shutdown->update(m_dispatch.run());
+            m_shutdown->update(m_dispatch.run(), &m_hub);
         }
 
         assert(m_hub.self_target()->m_stream.message_queue.size() == 0);

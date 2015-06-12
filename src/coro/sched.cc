@@ -9,6 +9,7 @@
 namespace indecorous {
 
 scheduler_t::scheduler_t(size_t num_threads) :
+        m_shutdown(num_threads),
         m_close_flag(false),
         m_barrier(num_threads + 1) {
     for (size_t i = 0; i < num_threads; ++i) {

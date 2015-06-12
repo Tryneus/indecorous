@@ -11,7 +11,7 @@ void thread_barrier_t::wait_internal(size_t *count, size_t *reset,
         *reset = 0;
         m_cond.notify_all();
     } else {
-        m_cond.wait(lock, [count, this] { return *count == m_total; });
+        m_cond.wait(lock, [&] { return *count == m_total; });
     }
 }
 
