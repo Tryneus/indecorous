@@ -81,7 +81,7 @@ public:
     promise_data_t() : m_state(state_t::unfulfilled), m_abandoned(false) { }
     ~promise_data_t() {
         if (m_state != state_t::unfulfilled) {
-            reinterpret_cast<T *>(m_buffer)->~T();
+            m_value.~T();
         }
     }
 
@@ -95,7 +95,7 @@ public:
 
     void assign(T &&value) {
         assert(m_state == state_t::unfulfilled);
-        new (m_buffer) T(std::move(value));
+        new (&m_value) T(std::move(value));
         m_state = state_t::fulfilled;
 
         for (future_t<T> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
@@ -105,13 +105,12 @@ public:
 
     T &get() {
         assert(m_state == state_t::fulfilled);
-        return *reinterpret_cast<T *>(m_buffer);
+        return m_value;
     }
 
     T release() {
-        T &value = get();
         m_state = state_t::released;
-        return std::move(value);
+        return std::move(m_value);
     }
 
     future_t<T> add_future() {
@@ -148,7 +147,11 @@ private:
 
     bool m_abandoned;
     intrusive_list_t<future_t<T> > m_futures;
-    alignas(T) char m_buffer[sizeof(T)];
+
+    union {
+        T m_value;
+        char m_buffer[sizeof(T)];
+    };
 };
 
 template <typename T>

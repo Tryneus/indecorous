@@ -38,6 +38,7 @@
 #    pragma GCC diagnostic push
 #    pragma GCC diagnostic ignored "-Wswitch-default"
 #    pragma GCC diagnostic ignored "-Wswitch-enum"
+#    pragma GCC diagnostic ignored "-Wsuggest-attribute=noreturn"
 #    pragma GCC diagnostic ignored "-Wshadow"
 #    pragma GCC diagnostic ignored "-Wpadded"
 #endif
