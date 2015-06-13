@@ -35,7 +35,7 @@ public:
 
     wait_object_t *stop_event();
 
-    void exit();
+    void join();
 
 private:
     friend struct init_stop_t; // For updating the stop event

@@ -28,6 +28,10 @@ scheduler_t::~scheduler_t() {
     m_close_flag.store(true);
     m_barrier.wait(); // Start the threads so they can exit
     m_barrier.wait(); // Wait for threads to exit
+
+    for (auto &&t : m_threads) {
+        t.join();
+    }
 }
 
 std::list<thread_t> &scheduler_t::threads() {

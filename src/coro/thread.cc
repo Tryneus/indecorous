@@ -23,12 +23,14 @@ thread_t::thread_t(size_t _id,
         m_thread(&thread_t::main, this),
         m_hub(),
         m_events(),
-        m_dispatch() {
-    m_thread.detach();
-}
+        m_dispatch() { }
 
 size_t thread_t::id() const {
     return m_id;
+}
+
+void thread_t::join() {
+    m_thread.join();
 }
 
 void thread_t::main() {
