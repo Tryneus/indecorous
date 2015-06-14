@@ -9,17 +9,13 @@ namespace indecorous {
 
 absolute_time_t::absolute_time_t() : sec(0), nsec(0) { }
 
-absolute_time_t::absolute_time_t(uint32_t delta_ms) {
+absolute_time_t::absolute_time_t(int64_t delta_ms) {
     struct timespec t;
     int res = clock_gettime(CLOCK_MONOTONIC, &t);
     assert(res == 0);
-    sec = t.tv_sec + (delta_ms / 1000);
-    nsec = t.tv_nsec + (delta_ms % 1000) * 1000000;
-    if (nsec > 1000000000) {
-        sec += 1;
-        nsec -= 1000000000;
-        assert(nsec < 1000000000);
-    }
+    sec = t.tv_sec;
+    nsec = t.tv_nsec;
+    add(delta_ms);
 }
 
 absolute_time_t::absolute_time_t(const absolute_time_t &other) :
@@ -31,10 +27,30 @@ absolute_time_t &absolute_time_t::operator = (const absolute_time_t &other) {
     return *this;
 }
 
+void absolute_time_t::update_periodic(int64_t delta_ms) {   
+    absolute_time_t now(0);
+
+    // TODO: this is slow for small delta_ms values, especially if a
+    // large amount of time has passed in-between
+    while (*this < now) {
+        add(delta_ms);
+    }
+}
+
+void absolute_time_t::add(int64_t delta_ms) {
+    sec = sec + (delta_ms / 1000);
+    nsec = nsec + (delta_ms % 1000) * 1000000;
+    if (nsec > 1000000000) {
+        sec += 1;
+        nsec -= 1000000000;
+        assert(nsec < 1000000000);
+    }
+}
+
 int64_t absolute_time_t::ms_diff(const absolute_time_t &a, const absolute_time_t &b) {
     int64_t s_diff = a.sec - b.sec;
     int64_t ns_diff = a.nsec - b.nsec;
-    return (s_diff * 1000) + (ns_diff / 1000);
+    return (s_diff * 1000) + (ns_diff / 1000000) + ((ns_diff % 1000000 > 0) ? 1 : 0);
 }
 
 bool absolute_time_t::operator < (const absolute_time_t &other) const {
@@ -46,10 +62,6 @@ timer_callback_t::timer_callback_t() { }
 timer_callback_t::timer_callback_t(timer_callback_t &&other) :
     intrusive_node_t<timer_callback_t>(std::move(other)),
     m_timeout(other.m_timeout) { }
-
-void timer_callback_t::update(uint32_t delta_ms) {
-    m_timeout = absolute_time_t(delta_ms);
-}
 
 const absolute_time_t &timer_callback_t::timeout() const {
     return m_timeout;
@@ -72,9 +84,9 @@ single_timer_t::~single_timer_t() {
     }
 }
 
-void single_timer_t::start(uint32_t timeout_ms) {
+void single_timer_t::start(int64_t timeout_ms) {
     m_triggered = false;
-    update(timeout_ms);
+    m_timeout = absolute_time_t(timeout_ms);
     if (in_a_list()) {
         // Re-`start`ing an already-running timer will update its timeout
         // without doing anything to current waiters
@@ -115,59 +127,77 @@ void single_timer_t::timer_callback(wait_result_t result) {
 
 periodic_timer_t::periodic_timer_t(bool wake_one) :
     m_wake_one(wake_one),
-    m_timeout_ms(0),
+    m_period_ms(0),
     m_thread_events(thread_t::self()->events()) { }
 
 periodic_timer_t::periodic_timer_t(periodic_timer_t &&other) :
         timer_callback_t(std::move(other)),
         m_wake_one(other.m_wake_one),
-        m_timeout_ms(other.m_timeout_ms),
+        m_period_ms(other.m_period_ms),
         m_waiters(std::move(other.m_waiters)),
         m_thread_events(other.m_thread_events) {
     other.m_thread_events = nullptr;
 }
 
 periodic_timer_t::~periodic_timer_t() {
+    stop_internal(wait_result_t::ObjectLost);
+}
+
+void periodic_timer_t::stop_internal(wait_result_t result) {
+    m_period_ms = -1;
     while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(wait_result_t::ObjectLost);   
+        m_waiters.pop_front()->wait_done(result);
+    }
+    if (in_a_list()) {
+        m_thread_events->remove_timer(this);
     }
 }
 
-void periodic_timer_t::start(uint32_t timeout_ms) {
-    m_timeout_ms = timeout_ms;
-    update(m_timeout_ms);
+void periodic_timer_t::start(int64_t period_ms) {
+    m_period_ms = period_ms;
+    m_timeout = absolute_time_t(m_period_ms);
+
     if (in_a_list()) {
         // Re-`start`ing an already-running timer will update its timeout
         // without doing anything to current waiters
+        assert(m_waiters.empty());
         m_thread_events->remove_timer(this);
     }
-    m_thread_events->add_timer(this);
+    if (!m_waiters.empty()) {
+        m_thread_events->add_timer(this);
+    }
 }
 
 void periodic_timer_t::stop() {
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(wait_result_t::Interrupted);   
-    }
-    if (in_a_list()) {
-        m_thread_events->remove_timer(this);
-    }
+    stop_internal(wait_result_t::Interrupted);
 }
 
 void periodic_timer_t::add_wait(wait_callback_t* cb) {
-    assert(in_a_list());
     m_waiters.push_back(cb);
+
+    if (m_period_ms != -1) {
+        if (!in_a_list()) {
+            absolute_time_t now(0);
+            m_timeout = absolute_time_t(m_period_ms);
+
+            m_timeout.update_periodic(m_period_ms);
+            m_thread_events->add_timer(this);
+        }
+    }
 }
 
 void periodic_timer_t::remove_wait(wait_callback_t* cb) {
     m_waiters.remove(cb);
+    if (m_waiters.empty() && in_a_list()) {
+        m_thread_events->remove_timer(this);
+    }
 }
 
 void periodic_timer_t::timer_callback(wait_result_t result) {
+    assert(m_period_ms != -1);
     while (!m_waiters.empty()) {
         m_waiters.pop_front()->wait_done(result);       
     }
-    update(m_timeout_ms);
-    m_thread_events->add_timer(this);
 }
 
 } // namespace indecorous

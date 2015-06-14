@@ -24,8 +24,11 @@ events_t::~events_t() {
 }
 
 void events_t::add_timer(timer_callback_t *cb) {
+    // TODO: make an intrusive tree and use binary search?
     timer_callback_t *cursor = m_timer_list.front();
-    while (cursor != nullptr && cursor->timeout() < cb->timeout()) { }
+    while (cursor != nullptr && cursor->timeout() < cb->timeout()) {
+        cursor = m_timer_list.next(cursor);
+    }
 
     if (cursor == nullptr) {
         m_timer_list.push_back(cb);
@@ -61,7 +64,11 @@ void events_t::wait() {
     absolute_time_t start_time(0);
     int timeout = -1;
     if (!m_timer_list.empty()) {
-        timeout = absolute_time_t::ms_diff(start_time, m_timer_list.front()->timeout());
+        timeout = absolute_time_t::ms_diff(m_timer_list.front()->timeout(), start_time);
+
+        if (timeout < 0) {
+            timeout = 0;
+        }
     }
 
     update_epoll();
@@ -69,7 +76,8 @@ void events_t::wait() {
     
     absolute_time_t end_time(0);
     while (!m_timer_list.empty() && m_timer_list.front()->timeout() < end_time) {
-        m_timer_list.pop_front()->timer_callback(wait_result_t::Success);
+        timer_callback_t *cb = m_timer_list.pop_front();
+        cb->timer_callback(wait_result_t::Success);
     }
 }
 

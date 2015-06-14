@@ -28,11 +28,12 @@ IMPL_UNIQUE_HANDLER(spawn_handler_t);
 
 struct wait_handler_t : public handler_t<wait_handler_t> {
     static void call() {
-        single_timer_t timer_a;
-        periodic_timer_t timer_b;
+        periodic_timer_t timer_a;
+        single_timer_t timer_b;
         timer_a.start(10);
         timer_b.start(100);
         wait_any(&timer_a, timer_b);
+        wait_all(timer_a, &timer_b);
     }
 };
 IMPL_UNIQUE_HANDLER(wait_handler_t);
