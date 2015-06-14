@@ -38,7 +38,49 @@ std::list<thread_t> &scheduler_t::threads() {
     return m_threads;
 }
 
+class scoped_signal_block_t {
+public:
+    scoped_signal_block_t(int _signum) : m_signum(_signum) {
+        int res = sigemptyset(&m_sigset);
+        assert(res == 0);
+        res = sigaddset(&m_sigset, m_signum);
+        assert(res == 0);
+
+        sigset_t old_sigset;
+        res = sigprocmask(SIG_BLOCK, sigset(), &old_sigset);
+        assert(res == 0);
+
+        // Make sure no one else is messing with signals - could lead to a race condition
+        assert(sigismember(&old_sigset, m_signum) == 0);
+    }
+
+    ~scoped_signal_block_t() {
+        int res = sigprocmask(SIG_UNBLOCK, sigset(), nullptr);
+        assert(res == 0);
+    }
+
+    int signum() const {
+        return m_signum;
+    }
+
+    const sigset_t *sigset() const {
+        return &m_sigset;
+    }
+
+private:
+    int m_signum;
+    sigset_t m_sigset;
+};
+
+void wait_for_signal(const scoped_signal_block_t &sigblock) {
+    int res = sigwaitinfo(sigblock.sigset(), nullptr);
+    assert(res == sigblock.signum());
+}
+
 void scheduler_t::run(shutdown_policy_t policy) {
+    // Block SIGINT from being handled normally
+    scoped_signal_block_t sigint_block(SIGINT);
+
     // Count the number of initial calls into the threads
     m_shutdown.reset(std::accumulate(m_threads.begin(), m_threads.end(), size_t(0),
         [] (size_t res, thread_t &t) -> size_t {
@@ -48,9 +90,11 @@ void scheduler_t::run(shutdown_policy_t policy) {
     m_barrier.wait(); // Wait for all threads to get to their loop
 
     switch (policy) {
-    case shutdown_policy_t::Eager: // Shutdown immediately
+    case shutdown_policy_t::Eager:
+        // Shutdown immediately
         break;
-    case shutdown_policy_t::Kill:  // TODO: Shutdown after SIGINT
+    case shutdown_policy_t::Kill:
+        wait_for_signal(sigint_block);
         break;
     }
 

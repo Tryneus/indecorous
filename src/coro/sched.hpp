@@ -11,7 +11,6 @@
 namespace indecorous {
 
 class dispatcher_t;
-class thread_t;
 
 enum class shutdown_policy_t { Eager, Kill };
 
@@ -22,9 +21,15 @@ public:
 
     std::list<thread_t> &threads();
 
+    // Broadcasts a given callback to all the threads with no replies
+    template <typename Callback, typename... Args>
+    size_t broadcast_local(Args &&...args) {
+        return m_threads.begin()->hub()->broadcast_local_noreply<Callback>(std::forward<Args>(args)...);
+    }
+
     // This function will return based on the shutdown policy
     // shutdown_policy_t::Eager - return as soon as all coroutines complete
-    // shutdown_policy_t::Kill - begin Eager shutdown after a SIGINT is received
+    // shutdown_policy_t::Kill - begin eager shutdown after a SIGINT is received
     void run(shutdown_policy_t policy);
 
 private:
