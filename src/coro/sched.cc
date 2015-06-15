@@ -36,7 +36,7 @@ scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
     }
 
     // Return SIGINT and SIGTERM to the previous state
-    res = pthread_sigmask(SIG_BLOCK, &old_sigset, nullptr);
+    res = pthread_sigmask(SIG_SETMASK, &old_sigset, nullptr);
     assert(res == 0);
 
     // Tell the message hubs of each thread about the others
@@ -125,14 +125,14 @@ void scheduler_t::run() {
             m_barrier.wait();
             m_shutdown.shutdown(m_threads.begin()->hub());
             m_barrier.wait();
-        }
+        } break;
     case shutdown_policy_t::Kill: {
             scoped_sigaction_t scoped_sigaction;
             m_barrier.wait();
             scoped_sigaction.wait();
             m_shutdown.shutdown(m_threads.begin()->hub());
             m_barrier.wait();
-        }
+        } break;
     }
 }
 

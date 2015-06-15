@@ -21,7 +21,7 @@ const size_t num_threads = 8;
 using namespace indecorous;
 
 TEST_CASE("coro/empty", "Test empty environment creation/destruction") {
-    for (size_t i = 0; i < 16; ++i) {
+    for (size_t i = 1; i < 16; ++i) {
         scheduler_t sched(i, shutdown_policy_t::Eager);
         sched.run();
         sched.run();
