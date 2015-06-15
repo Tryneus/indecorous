@@ -20,7 +20,7 @@ const size_t num_threads = 8;
 
 using namespace indecorous;
 
-TEST_CASE("coro/empty", "Test empty environment creation/destruction") {
+TEST_CASE("coro/empty", "[coro][shutdown]") {
     for (size_t i = 1; i < 16; ++i) {
         scheduler_t sched(i, shutdown_policy_t::Eager);
         sched.run();
@@ -37,7 +37,7 @@ struct spawn_handler_t : public handler_t<spawn_handler_t> {
 };
 IMPL_UNIQUE_HANDLER(spawn_handler_t);
 
-TEST_CASE("coro/spawn", "Test basic coroutine spawning and running") {
+TEST_CASE("coro/spawn", "[coro][shutdown]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Eager);
     sched.broadcast_local<spawn_handler_t>("foo", "bar", 1);
     sched.run();
@@ -58,7 +58,7 @@ struct wait_handler_t : public handler_t<wait_handler_t> {
 };
 IMPL_UNIQUE_HANDLER(wait_handler_t);
 
-TEST_CASE("coro/wait", "Test basic coroutine waiting") {
+TEST_CASE("coro/wait", "[coro][sync]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Eager);
     sched.broadcast_local<wait_handler_t>();
     sched.run();
@@ -74,7 +74,8 @@ struct suicide_handler_t : public handler_t<suicide_handler_t> {
 };
 IMPL_UNIQUE_HANDLER(suicide_handler_t);
 
-TEST_CASE("coro/sigint", "Test shutdown_policy_t::Kill") {
+// Disabled by default as it causes complications in a debugger
+TEST_CASE("coro/sigint", "[coro][shutdown][hide]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Kill);
     target_t *target = sched.threads().begin()->hub()->self_target();
 
