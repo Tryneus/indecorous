@@ -44,6 +44,7 @@ protected:
 class single_timer_t : public wait_object_t, private timer_callback_t {
 public:
     single_timer_t();
+    single_timer_t(int64_t timeout_ms); // Starts the timer immediately
     single_timer_t(single_timer_t &&other);
     ~single_timer_t();
 
@@ -63,7 +64,8 @@ private:
 
 class periodic_timer_t : public wait_object_t, private timer_callback_t {
 public:
-    periodic_timer_t(bool wake_one = false);
+    periodic_timer_t();
+    periodic_timer_t(int64_t period_ms); // Starts the timer immediately
     periodic_timer_t(periodic_timer_t &&other);
     ~periodic_timer_t();
 
@@ -77,7 +79,6 @@ private:
     void stop_internal(wait_result_t result);
     void timer_callback(wait_result_t result);
 
-    bool m_wake_one;
     int64_t m_period_ms;
     intrusive_list_t<wait_callback_t> m_waiters;
     events_t *m_thread_events;

@@ -68,8 +68,7 @@ scheduler_t::scoped_signal_block_t::scoped_signal_block_t(bool enabled) :
         res = sigaddset(&m_sigset, SIGTERM);
         assert(res == 0);
 
-        sigset_t old_sigset;
-        res = pthread_sigmask(SIG_BLOCK, &m_sigset, &old_sigset);
+        res = pthread_sigmask(SIG_BLOCK, &m_sigset, &m_old_sigset);
         assert(res == 0);
 
         // Make sure no one else is messing with signals - could lead to a race condition

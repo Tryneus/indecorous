@@ -70,6 +70,11 @@ const absolute_time_t &timer_callback_t::timeout() const {
 single_timer_t::single_timer_t() :
     m_thread_events(thread_t::self()->events()) { }
 
+single_timer_t::single_timer_t(int64_t timeout_ms) :
+        m_thread_events(thread_t::self()->events()) {
+    start(timeout_ms);
+}
+
 single_timer_t::single_timer_t(single_timer_t &&other) :
         timer_callback_t(std::move(other)),
         m_triggered(false),
@@ -125,14 +130,18 @@ void single_timer_t::timer_callback(wait_result_t result) {
     }
 }
 
-periodic_timer_t::periodic_timer_t(bool wake_one) :
-    m_wake_one(wake_one),
-    m_period_ms(0),
+periodic_timer_t::periodic_timer_t() :
+    m_period_ms(-1),
     m_thread_events(thread_t::self()->events()) { }
+
+periodic_timer_t::periodic_timer_t(int64_t period_ms) :
+        m_period_ms(-1),
+        m_thread_events(thread_t::self()->events()) {
+    start(period_ms);
+}
 
 periodic_timer_t::periodic_timer_t(periodic_timer_t &&other) :
         timer_callback_t(std::move(other)),
-        m_wake_one(other.m_wake_one),
         m_period_ms(other.m_period_ms),
         m_waiters(std::move(other.m_waiters)),
         m_thread_events(other.m_thread_events) {

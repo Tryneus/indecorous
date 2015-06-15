@@ -70,6 +70,7 @@ TEST_CASE("coro/wait", "Test basic coroutine waiting") {
 struct suicide_handler_t : public handler_t<suicide_handler_t> {
     static void call(pid_t parent_pid) {
         kill(parent_pid, SIGINT);
+        single_timer_t(10000).wait();
     }
 };
 IMPL_UNIQUE_HANDLER(suicide_handler_t);
