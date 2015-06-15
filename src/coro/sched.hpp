@@ -1,8 +1,6 @@
 #ifndef CORO_SCHED_HPP_
 #define CORO_SCHED_HPP_
 
-#include <signal.h>
-
 #include <atomic>
 #include <list>
 
@@ -20,7 +18,7 @@ enum class shutdown_policy_t { Eager, Kill };
 
 class scheduler_t {
 public:
-    explicit scheduler_t(size_t num_threads, shutdown_policy_t policy);
+    scheduler_t(size_t num_threads, shutdown_policy_t policy);
     ~scheduler_t();
 
     std::list<thread_t> &threads();
@@ -35,16 +33,7 @@ public:
     void run();
 
 private:
-    class scoped_signal_block_t {
-    public:
-        scoped_signal_block_t(bool enabled);
-        ~scoped_signal_block_t();
-        void wait() const;
-    private:
-        bool m_enabled;
-        sigset_t m_sigset;
-    } m_signal_block;
-
+    shutdown_policy_t m_shutdown_policy;
     shutdown_t m_shutdown;
     std::atomic<bool> m_close_flag;
     thread_barrier_t m_barrier;

@@ -1,5 +1,8 @@
 #include "coro/sched.hpp"
 
+#include <semaphore.h>
+
+#include <cstring>
 #include <numeric>
 
 #include "coro/coro.hpp"
@@ -9,13 +12,32 @@
 namespace indecorous {
 
 scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
-        m_signal_block(policy == shutdown_policy_t::Kill),
+        m_shutdown_policy(policy),
         m_shutdown(num_threads),
         m_close_flag(false),
         m_barrier(num_threads + 1) {
+    assert(num_threads > 0);
+
+    // Block SIGINT and SIGTERM on child threads (this will be inherited)
+    sigset_t sigset;
+    sigset_t old_sigset;
+    int res = sigemptyset(&sigset);
+    assert(res == 0);
+    res = sigaddset(&sigset, SIGINT);
+    assert(res == 0);
+    res = sigaddset(&sigset, SIGTERM);
+    assert(res == 0);
+
+    res = pthread_sigmask(SIG_BLOCK, &sigset, &old_sigset);
+    assert(res == 0);
+
     for (size_t i = 0; i < num_threads; ++i) {
         m_threads.emplace_back(i, &m_shutdown, &m_barrier, &m_close_flag);
     }
+
+    // Return SIGINT and SIGTERM to the previous state
+    res = pthread_sigmask(SIG_BLOCK, &old_sigset, nullptr);
+    assert(res == 0);
 
     // Tell the message hubs of each thread about the others
     for (auto &&t : m_threads) {
@@ -39,6 +61,58 @@ std::list<thread_t> &scheduler_t::threads() {
     return m_threads;
 }
 
+class scoped_sigaction_t {
+public:
+    scoped_sigaction_t() {
+        s_instance = this;
+
+        int res = sem_init(&m_semaphore, 0, 0);
+        assert(res == 0);
+
+        struct sigaction sigact;
+        memset(&sigact, 0, sizeof(sigact));
+        sigact.sa_flags = SA_SIGINFO;
+        sigact.sa_sigaction = &scoped_sigaction_t::callback;
+        sigemptyset(&sigact.sa_mask);
+
+        res = sigaction(SIGINT, &sigact, &m_old_sigint);
+        assert(res == 0);
+        res = sigaction(SIGTERM, &sigact, &m_old_sigterm);
+        assert(res == 0);
+    }
+
+    ~scoped_sigaction_t() {
+        int res = sem_destroy(&m_semaphore);
+        assert(res == 0);
+
+        res = sigaction(SIGINT, &m_old_sigint, nullptr);
+        assert(res == 0);
+        res = sigaction(SIGTERM, &m_old_sigterm, nullptr);
+        assert(res == 0);
+
+        s_instance = nullptr;
+    }
+
+    void wait() {
+        eintr_wrap([&]{ return sem_wait(&m_semaphore); });
+    }
+
+private:
+    static thread_local scoped_sigaction_t *s_instance;
+
+    static void callback(int, siginfo_t *, void *) {
+        int res = sem_post(&s_instance->m_semaphore);
+        assert(res == 0);
+    }
+
+    struct sigaction m_old_sigint;
+    struct sigaction m_old_sigterm;
+    sem_t m_semaphore;
+};
+
+thread_local scoped_sigaction_t *scoped_sigaction_t::s_instance = nullptr;
+
+
 void scheduler_t::run() {
     // Count the number of initial calls into the threads
     m_shutdown.reset(std::accumulate(m_threads.begin(), m_threads.end(), size_t(0),
@@ -46,48 +120,19 @@ void scheduler_t::run() {
             return res + t.hub()->self_target()->m_stream.message_queue.size();
         }));
 
-    m_barrier.wait(); // Wait for all threads to get to their loop
-
-    // This is a no-op if we are in Eager shutdown mode
-    m_signal_block.wait();
-
-    if (m_threads.size() > 0) {
-        m_shutdown.shutdown(m_threads.begin()->hub());
-    }
-
-    m_barrier.wait(); // Wait for all threads to finish all their coroutines
-}
-
-scheduler_t::scoped_signal_block_t::scoped_signal_block_t(bool enabled) :
-        m_enabled(enabled) {
-    if (m_enabled) {
-        int res = sigemptyset(&m_sigset);
-        assert(res == 0);
-        res = sigaddset(&m_sigset, SIGINT);
-        assert(res == 0);
-        res = sigaddset(&m_sigset, SIGTERM);
-        assert(res == 0);
-
-        res = pthread_sigmask(SIG_BLOCK, &m_sigset, &m_old_sigset);
-        assert(res == 0);
-
-        // Make sure no one else is messing with signals - could lead to a race condition
-        assert(sigismember(&old_sigset, SIGINT) == 0);
-        assert(sigismember(&old_sigset, SIGTERM) == 0);
-    }
-}
-
-scheduler_t::scoped_signal_block_t::~scoped_signal_block_t() {
-    if (m_enabled) {
-        int res = pthread_sigmask(SIG_UNBLOCK, &m_sigset, nullptr);
-        assert(res == 0);
-    }
-}
-
-void scheduler_t::scoped_signal_block_t::wait() const {
-    if (m_enabled) {
-        int res = sigwaitinfo(&m_sigset, nullptr);
-        assert(res == SIGINT || res == SIGTERM);
+    switch (m_shutdown_policy) {
+    case shutdown_policy_t::Eager: {
+            m_barrier.wait();
+            m_shutdown.shutdown(m_threads.begin()->hub());
+            m_barrier.wait();
+        }
+    case shutdown_policy_t::Kill: {
+            scoped_sigaction_t scoped_sigaction;
+            m_barrier.wait();
+            scoped_sigaction.wait();
+            m_shutdown.shutdown(m_threads.begin()->hub());
+            m_barrier.wait();
+        }
     }
 }
 

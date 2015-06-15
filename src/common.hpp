@@ -1,6 +1,9 @@
 #ifndef COMMON_HPP_
 #define COMMON_HPP_
 
+#include <errno.h>
+
+#include <cassert>
 #include <cstdint>
 #include <inttypes.h>
 
@@ -16,6 +19,15 @@
 namespace indecorous {
 
 int32_t thread_self_id();
+
+template <typename Callable>
+void eintr_wrap(Callable &&c) {
+    while (true) {
+        int res = c();
+        if (res == 0) { break; }
+        assert(errno == EINTR);
+    }
+}
 
 } // namespace indecorous
 

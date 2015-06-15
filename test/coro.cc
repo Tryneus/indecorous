@@ -68,20 +68,19 @@ TEST_CASE("coro/wait", "Test basic coroutine waiting") {
 }
 
 struct suicide_handler_t : public handler_t<suicide_handler_t> {
-    static void call(pid_t parent_pid) {
-        kill(parent_pid, SIGINT);
-        single_timer_t(10000).wait();
+    static void call(pid_t parent_pid, int signum) {
+        kill(parent_pid, signum);
     }
 };
 IMPL_UNIQUE_HANDLER(suicide_handler_t);
 
-TEST_CASE("coro/sigint", "Test shutdown policy 'kill'") {
+TEST_CASE("coro/sigint", "Test shutdown_policy_t::Kill") {
     scheduler_t sched(num_threads, shutdown_policy_t::Kill);
     target_t *target = sched.threads().begin()->hub()->self_target();
 
-    target->call_noreply<suicide_handler_t>(getpid());
+    target->call_noreply<suicide_handler_t>(getpid(), SIGINT);
     sched.run();
 
-    target->call_noreply<suicide_handler_t>(getpid());
+    target->call_noreply<suicide_handler_t>(getpid(), SIGTERM);
     sched.run();
 }
