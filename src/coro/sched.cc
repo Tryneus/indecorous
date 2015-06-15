@@ -8,7 +8,8 @@
 
 namespace indecorous {
 
-scheduler_t::scheduler_t(size_t num_threads) :
+scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
+        m_signal_block(policy == shutdown_policy_t::Kill),
         m_shutdown(num_threads),
         m_close_flag(false),
         m_barrier(num_threads + 1) {
@@ -38,49 +39,7 @@ std::list<thread_t> &scheduler_t::threads() {
     return m_threads;
 }
 
-class scoped_signal_block_t {
-public:
-    scoped_signal_block_t(int _signum) : m_signum(_signum) {
-        int res = sigemptyset(&m_sigset);
-        assert(res == 0);
-        res = sigaddset(&m_sigset, m_signum);
-        assert(res == 0);
-
-        sigset_t old_sigset;
-        res = sigprocmask(SIG_BLOCK, sigset(), &old_sigset);
-        assert(res == 0);
-
-        // Make sure no one else is messing with signals - could lead to a race condition
-        assert(sigismember(&old_sigset, m_signum) == 0);
-    }
-
-    ~scoped_signal_block_t() {
-        int res = sigprocmask(SIG_UNBLOCK, sigset(), nullptr);
-        assert(res == 0);
-    }
-
-    int signum() const {
-        return m_signum;
-    }
-
-    const sigset_t *sigset() const {
-        return &m_sigset;
-    }
-
-private:
-    int m_signum;
-    sigset_t m_sigset;
-};
-
-void wait_for_signal(const scoped_signal_block_t &sigblock) {
-    int res = sigwaitinfo(sigblock.sigset(), nullptr);
-    assert(res == sigblock.signum());
-}
-
-void scheduler_t::run(shutdown_policy_t policy) {
-    // Block SIGINT from being handled normally
-    scoped_signal_block_t sigint_block(SIGINT);
-
+void scheduler_t::run() {
     // Count the number of initial calls into the threads
     m_shutdown.reset(std::accumulate(m_threads.begin(), m_threads.end(), size_t(0),
         [] (size_t res, thread_t &t) -> size_t {
@@ -89,20 +48,48 @@ void scheduler_t::run(shutdown_policy_t policy) {
 
     m_barrier.wait(); // Wait for all threads to get to their loop
 
-    switch (policy) {
-    case shutdown_policy_t::Eager:
-        // Shutdown immediately
-        break;
-    case shutdown_policy_t::Kill:
-        wait_for_signal(sigint_block);
-        break;
-    }
+    // This is a no-op if we are in Eager shutdown mode
+    m_signal_block.wait();
 
     if (m_threads.size() > 0) {
         m_shutdown.shutdown(m_threads.begin()->hub());
     }
 
     m_barrier.wait(); // Wait for all threads to finish all their coroutines
+}
+
+scheduler_t::scoped_signal_block_t::scoped_signal_block_t(bool enabled) :
+        m_enabled(enabled) {
+    if (m_enabled) {
+        int res = sigemptyset(&m_sigset);
+        assert(res == 0);
+        res = sigaddset(&m_sigset, SIGINT);
+        assert(res == 0);
+        res = sigaddset(&m_sigset, SIGTERM);
+        assert(res == 0);
+
+        sigset_t old_sigset;
+        res = pthread_sigmask(SIG_BLOCK, &m_sigset, &old_sigset);
+        assert(res == 0);
+
+        // Make sure no one else is messing with signals - could lead to a race condition
+        assert(sigismember(&old_sigset, SIGINT) == 0);
+        assert(sigismember(&old_sigset, SIGTERM) == 0);
+    }
+}
+
+scheduler_t::scoped_signal_block_t::~scoped_signal_block_t() {
+    if (m_enabled) {
+        int res = pthread_sigmask(SIG_UNBLOCK, &m_sigset, nullptr);
+        assert(res == 0);
+    }
+}
+
+void scheduler_t::scoped_signal_block_t::wait() const {
+    if (m_enabled) {
+        int res = sigwaitinfo(&m_sigset, nullptr);
+        assert(res == SIGINT || res == SIGTERM);
+    }
 }
 
 } // namespace indecorous

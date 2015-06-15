@@ -22,11 +22,11 @@ using namespace indecorous;
 
 TEST_CASE("coro/empty", "Test empty environment creation/destruction") {
     for (size_t i = 0; i < 16; ++i) {
-        scheduler_t sched(i);
-        sched.run(shutdown_policy_t::Eager);
-        sched.run(shutdown_policy_t::Eager);
-        sched.run(shutdown_policy_t::Eager);
-        sched.run(shutdown_policy_t::Eager);
+        scheduler_t sched(i, shutdown_policy_t::Eager);
+        sched.run();
+        sched.run();
+        sched.run();
+        sched.run();
     }
 }
 
@@ -38,12 +38,12 @@ struct spawn_handler_t : public handler_t<spawn_handler_t> {
 IMPL_UNIQUE_HANDLER(spawn_handler_t);
 
 TEST_CASE("coro/spawn", "Test basic coroutine spawning and running") {
-    scheduler_t sched(num_threads);
+    scheduler_t sched(num_threads, shutdown_policy_t::Eager);
     sched.broadcast_local<spawn_handler_t>("foo", "bar", 1);
-    sched.run(shutdown_policy_t::Eager);
+    sched.run();
 
     sched.broadcast_local<spawn_handler_t>("", "-", false);
-    sched.run(shutdown_policy_t::Eager);
+    sched.run();
 }
 
 struct wait_handler_t : public handler_t<wait_handler_t> {
@@ -59,28 +59,28 @@ struct wait_handler_t : public handler_t<wait_handler_t> {
 IMPL_UNIQUE_HANDLER(wait_handler_t);
 
 TEST_CASE("coro/wait", "Test basic coroutine waiting") {
-    scheduler_t sched(num_threads);
+    scheduler_t sched(num_threads, shutdown_policy_t::Eager);
     sched.broadcast_local<wait_handler_t>();
-    sched.run(shutdown_policy_t::Eager);
+    sched.run();
 
     sched.broadcast_local<wait_handler_t>();
-    sched.run(shutdown_policy_t::Eager);
+    sched.run();
 }
 
-struct interrupt_handler_t : public handler_t<interrupt_handler_t> {
-    static void call() {
-        raise(SIGINT);
+struct suicide_handler_t : public handler_t<suicide_handler_t> {
+    static void call(pid_t parent_pid) {
+        kill(parent_pid, SIGINT);
     }
 };
-IMPL_UNIQUE_HANDLER(interrupt_handler_t);
+IMPL_UNIQUE_HANDLER(suicide_handler_t);
 
 TEST_CASE("coro/sigint", "Test shutdown policy 'kill'") {
-    scheduler_t sched(num_threads);
+    scheduler_t sched(num_threads, shutdown_policy_t::Kill);
     target_t *target = sched.threads().begin()->hub()->self_target();
 
-    target->call_noreply<interrupt_handler_t>();
-    sched.run(shutdown_policy_t::Kill);
+    target->call_noreply<suicide_handler_t>(getpid());
+    sched.run();
 
-    target->call_noreply<interrupt_handler_t>();
-    sched.run(shutdown_policy_t::Kill);
+    target->call_noreply<suicide_handler_t>(getpid());
+    sched.run();
 }
