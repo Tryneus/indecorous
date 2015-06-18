@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <inttypes.h>
 
+#include "sync/multiple_wait.hpp"
+
 // TODO: make sure these aren't exposed to users
 #ifdef NDEBUG
     #define DEBUG_ONLY(...)
@@ -21,10 +23,23 @@ namespace indecorous {
 int32_t thread_self_id();
 
 template <typename Callable>
-void eintr_wrap(Callable &&c) {
+auto eintr_wrap(Callable &&c) {
     while (true) {
-        int res = c();
-        if (res == 0) { break; }
+        auto res = c();
+        if (res != -1) { return res; }
+        assert(errno == EINTR);
+    }
+}
+
+// Same as above, except it handles EAGAIN by waiting on the specified wait object
+template <typename Callable>
+auto eintr_wrap(Callable &&c, wait_object_t *w, wait_object_t *interruptor) {
+    while (true) {
+        auto res = c();
+        if (res != -1) { return res; }
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            wait_all_interruptible(interruptor, w);
+        }
         assert(errno == EINTR);
     }
 }
