@@ -28,15 +28,15 @@ public:
 
     template <typename Callable>
     void apply_read(Callable &&c) const {
-	assert_no_swap_t no_swap;
-	c(m_buffer[m_current_read.load()]);
+        assert_no_swap_t no_swap;
+        c(m_buffer[m_current_read.load()]);
     }
 
     // TODO: use a throttling pool to combine multiple writes so we don't lag behind
     template <typename Callable>
     void apply_write(Callable &&c) {
         std::lock_guard<std::mutex> lock(m_mutex);
-	size_t new_offset = (m_current_read.load() + 1) % 2;
+        size_t new_offset = (m_current_read.load() + 1) % 2;
 
         {
             assert_no_swap_t no_swap;
@@ -50,7 +50,7 @@ public:
 
 private:
     std::mutex m_mutex;
-    std::atomic<size_t> m_current_read;
+    std::atomic<size_t> m_current_read; // TODO: this should be thread-local or sized by thread ids
     T m_buffer[2];
 };
 

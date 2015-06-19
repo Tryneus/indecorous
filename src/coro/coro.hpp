@@ -104,8 +104,8 @@ private:
         future_t<Res> res = promise.get_future();
         coro_t *context = coro_t::create();
         std::tuple<promise_t<Res>, Res(*)(Args...), Args...> params(
-            { std::move(promise), fn, std::forward<Args>(args)... });
-        context->begin(&coro_t::hook<Res, decltype(params), 2>, &params, this, immediate);
+            std::move(promise), fn, std::forward<Args>(args)... );
+        context->begin(&coro_t::hook<Res, decltype(params), 2>, this, &params, immediate);
         swap(context);
         return res;
     }

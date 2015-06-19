@@ -5,6 +5,12 @@
 
 namespace indecorous {
 
+event_t::event_t(event_t &&other) :
+        m_triggered(other.m_triggered),
+        m_waiters(std::move(other.m_waiters)) {
+    m_waiters.each([&] (wait_callback_t *w) { w->object_moved(this); });
+}
+
 // TODO: consider adding auto-reset and/or wake-one modes or separate class(es)
 event_t::event_t() : m_triggered(false) { }
 

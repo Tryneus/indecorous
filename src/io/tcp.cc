@@ -57,8 +57,9 @@ void tcp_conn_t::read(void *buffer, size_t count, wait_object_t *interruptor) {
         }
 
         if (count > s_read_buffer_size / 2) {
-            ssize_t res = eintr_wrap([&] { return ::read(m_socket.get(), buf, count); },
-                                     &m_in, interruptor);
+            ssize_t res = eintr_wrap([&] {
+                    return ::read(m_socket.get(), buf, count);
+                }, &m_in, interruptor);
             count -= res;
             buf += res;
         } else {
@@ -90,8 +91,9 @@ void tcp_conn_t::write(void *buffer, size_t count, wait_object_t *interruptor) {
     auto lock = m_write_mutex.lock();
 
     while (count > 0) {
-        ssize_t res = eintr_wrap([&] { return ::write(m_socket.get(), buf, count); },
-                                 &m_out, interruptor);
+        ssize_t res = eintr_wrap([&] {
+                return ::write(m_socket.get(), buf, count);
+            }, &m_out, interruptor);
         count -= res;
         buf += res;
     }
@@ -116,11 +118,39 @@ void tcp_conn_t::read_into_buffer(wait_object_t *interruptor) {
     m_read_buffer.resize(s_read_buffer_size);
                          
     while (res == 0) {
-        res = eintr_wrap([&] { return ::read(m_socket.get(),
-                                             &m_read_buffer[0], s_read_buffer_size); },
-                         &m_in, interruptor);
+        res = eintr_wrap([&] {
+                return ::read(m_socket.get(), &m_read_buffer[0], s_read_buffer_size);
+            }, &m_in, interruptor);
     }
     m_read_buffer.resize(res);
+}
+
+static void accept_loop(std::function<void (tcp_conn_t, drainer_lock_t)> on_connect,
+                        fd_t sock, drainer_lock_t drain) {
+    try {
+        file_wait_t in = file_wait_t::in(sock);
+        while (true) {
+            sockaddr_in6 sa;
+            socklen_t sa_len = sizeof(sa);
+            in.wait();       
+            on_connect(tcp_conn_t(::accept(sock, (sockaddr *)&sa, &sa_len)), drain);
+        }
+    } catch (const wait_interrupted_exc_t &ex) {
+        assert(drain.draining());
+    }
+}
+
+tcp_listener_t::tcp_listener_t(tcp_listener_t &&other) :
+        m_local_port(other.m_local_port),
+        m_socket(std::move(other.m_socket)),
+        m_drainer(std::move(other.m_drainer)) { }
+
+tcp_listener_t::tcp_listener_t(uint16_t _local_port,
+                               std::function<void (tcp_conn_t, drainer_lock_t)> on_connect) :
+        m_local_port(_local_port),
+        m_socket(init_socket()) {
+    coro_t::spawn(&accept_loop,
+                  std::move(on_connect), m_socket.get(), m_drainer.lock());
 }
 
 uint16_t tcp_listener_t::local_port() {
@@ -152,20 +182,6 @@ scoped_fd_t tcp_listener_t::init_socket() {
     assert(res == 0);
 
     return sock;
-}
-
-void tcp_listener_t::accept_loop(drainer_lock_t drain) {
-    try {
-        file_wait_t in = file_wait_t::in(m_socket.get());
-        while (true) {
-            sockaddr_in6 sa;
-            socklen_t sa_len = sizeof(sa);
-            in.wait();       
-            m_on_connect(tcp_conn_t(::accept(m_socket.get(), (sockaddr *)&sa, &sa_len)), drain);
-        }
-    } catch (const wait_interrupted_exc_t &ex) {
-        assert(drain.draining());
-    }
 }
 
 } // namespace indecorous

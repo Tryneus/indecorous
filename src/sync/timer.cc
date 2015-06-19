@@ -81,6 +81,7 @@ single_timer_t::single_timer_t(single_timer_t &&other) :
         m_waiters(std::move(other.m_waiters)),
         m_thread_events(other.m_thread_events) {
     other.m_thread_events = nullptr;
+    m_waiters.each([&] (wait_callback_t *w) { w->object_moved(this); });
 }
 
 single_timer_t::~single_timer_t() {
@@ -146,6 +147,7 @@ periodic_timer_t::periodic_timer_t(periodic_timer_t &&other) :
         m_waiters(std::move(other.m_waiters)),
         m_thread_events(other.m_thread_events) {
     other.m_thread_events = nullptr;
+    m_waiters.each([&] (wait_callback_t *w) { w->object_moved(this); });
 }
 
 periodic_timer_t::~periodic_timer_t() {

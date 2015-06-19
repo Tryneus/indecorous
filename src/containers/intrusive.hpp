@@ -88,6 +88,13 @@ public:
         }
     }
 
+    template <typename Callable>
+    void clear(Callable &&c) {
+        while (!empty()) {
+            c(pop_front());
+        }
+    }
+
     T* front() {
         return get_value(this->next_node());
     }

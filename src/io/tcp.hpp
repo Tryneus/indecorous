@@ -67,23 +67,16 @@ private:
 // TODO: specify 0 or 1 interface to listen on?  multiple?
 class tcp_listener_t {
 public:
-    template <typename Callable>
-    tcp_listener_t(uint16_t _local_port, Callable on_connect) :
-            m_local_port(_local_port),
-            m_socket(init_socket()),
-            m_on_connect(on_connect) {
-        coro_t::spawn(&tcp_listener_t::accept_loop, this, m_drainer.lock());
-    }
+    tcp_listener_t(uint16_t _local_port, std::function<void (tcp_conn_t, drainer_lock_t)> on_connect);
+    tcp_listener_t(tcp_listener_t &&other);
 
     uint16_t local_port();
 
 private:
     scoped_fd_t init_socket();
-    void accept_loop(drainer_lock_t drain);
 
     uint16_t m_local_port;
     scoped_fd_t m_socket;
-    std::function<void (tcp_conn_t, drainer_lock_t)> m_on_connect;
     drainer_t m_drainer;
 };
 

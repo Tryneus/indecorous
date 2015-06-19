@@ -19,7 +19,6 @@ public:
     void item_finished(wait_result_t result);
 
 private:
-
     void ready(wait_result_t result);
     void wait_done(wait_result_t result);
     void object_moved(wait_object_t *new_ptr);
