@@ -22,6 +22,7 @@ public:
     wait_callback_t(wait_callback_t &&other) = default;
 
     virtual void wait_done(wait_result_t result) = 0;
+    virtual void object_moved(wait_object_t *new_ptr) = 0;
 };
 
 class wait_object_t {

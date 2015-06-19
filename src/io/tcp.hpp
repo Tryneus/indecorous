@@ -1,6 +1,8 @@
 #ifndef IO_TCP_HPP_
 #define IO_TCP_HPP_
 
+#include <netinet/in.h>
+
 #include <cstddef>
 #include <functional>
 #include <vector>
@@ -17,25 +19,36 @@ namespace indecorous {
 class wait_object_t;
 
 class ip_address_t {
+public:
+    static ip_address_t localhost();
 
+private:
+    in6_addr addr;
+    uint32_t scope_id;
 };
 
 class ip_and_port_t {
+public:
+    static ip_and_port_t localhost(uint16_t port);
 
+    void to_sockaddr(sockaddr_in6 *out) const;
+private:
+    ip_address_t addr;
+    uint16_t port;
 };
 
 class tcp_conn_t : public read_stream_t, public write_stream_t {
 public:
     tcp_conn_t(fd_t sock);
-    tcp_conn_t(ip_and_port_t &host_port, wait_object_t *interruptor);
+    tcp_conn_t(const ip_and_port_t &host_port, wait_object_t *interruptor);
     tcp_conn_t(tcp_conn_t &&other);
 
-    void read(char *buf, size_t count, wait_object_t *interruptor);
-    size_t read_until(char delim, char *buf, size_t count, wait_object_t *interruptor);
-    void write(char *buf, size_t count, wait_object_t *interruptor);
+    void read(void *buf, size_t count, wait_object_t *interruptor);
+    size_t read_until(char delim, void *buf, size_t count, wait_object_t *interruptor);
+    void write(void *buf, size_t count, wait_object_t *interruptor);
 
 private:
-    scoped_fd_t init_socket(const ip_and_port_t &ip_port, wait_object_t *interruptor);
+    scoped_fd_t init_socket(const ip_and_port_t &ip_port);
     void read_into_buffer(wait_object_t *interruptor);
 
     scoped_fd_t m_socket;

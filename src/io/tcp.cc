@@ -7,6 +7,18 @@
 
 namespace indecorous {
 
+const size_t tcp_conn_t::s_read_buffer_size = 65536;
+
+// TODO: this probably isn't safe if someone has a read or write lock (or is acquiring one)
+tcp_conn_t::tcp_conn_t(tcp_conn_t &&other) :
+    m_socket(std::move(other.m_socket)),
+    m_in(std::move(other.m_in)),
+    m_out(std::move(other.m_out)),
+    m_read_mutex(std::move(other.m_read_mutex)),
+    m_write_mutex(std::move(other.m_write_mutex)),
+    m_read_buffer(std::move(other.m_read_buffer)),
+    m_read_buffer_offset(other.m_read_buffer_offset) { }
+
 tcp_conn_t::tcp_conn_t(fd_t sock) :
         m_socket(sock),
         m_in(file_wait_t::in(m_socket.get())),
@@ -15,16 +27,26 @@ tcp_conn_t::tcp_conn_t(fd_t sock) :
     m_read_buffer.reserve(s_read_buffer_size);
 }
 
-tcp_conn_t::tcp_conn_t(ip_and_port_t &ip_port, wait_object_t *interruptor) :
-        m_socket(init_socket(ip_port, interruptor)),
+tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, wait_object_t *interruptor) :
+        m_socket(init_socket(ip_port)),
         m_in(file_wait_t::in(m_socket.get())),
         m_out(file_wait_t::out(m_socket.get())),
         m_read_buffer_offset(0) {
     m_read_buffer.reserve(s_read_buffer_size);
+
+    // Wait for the socket to become writable and check the result
+    wait_all_interruptible(interruptor, m_in);
+
+    int err;
+    socklen_t err_size = sizeof(err);
+    int res = ::getsockopt(m_socket.get(), SOL_SOCKET, SO_ERROR, &err, &err_size);
+    assert(res == 0);
+    assert(err == 0); // TODO: exception
 }
 
-void tcp_conn_t::read(char *buf, size_t count, wait_object_t *interruptor) {
-    mutex_lock_t lock(&m_read_mutex);
+void tcp_conn_t::read(void *buffer, size_t count, wait_object_t *interruptor) {
+    char *buf = reinterpret_cast<char *>(buffer);
+    auto lock = m_read_mutex.lock();
 
     while (count > 0) {
         size_t bytes_to_copy =
@@ -45,8 +67,9 @@ void tcp_conn_t::read(char *buf, size_t count, wait_object_t *interruptor) {
     }
 }
 
-size_t tcp_conn_t::read_until(char delim, char *buf, size_t count, wait_object_t *interruptor) {
-    mutex_lock_t lock(&m_read_mutex);
+size_t tcp_conn_t::read_until(char delim, void *buffer, size_t count, wait_object_t *interruptor) {
+    char *buf = reinterpret_cast<char *>(buffer);
+    auto lock = m_read_mutex.lock();
     size_t original_count = count;
 
     while (count > 0) {
@@ -62,8 +85,9 @@ size_t tcp_conn_t::read_until(char delim, char *buf, size_t count, wait_object_t
     return original_count;
 }
 
-void tcp_conn_t::write(char *buf, size_t count, wait_object_t *interruptor) {
-    mutex_lock_t lock(&m_write_mutex);
+void tcp_conn_t::write(void *buffer, size_t count, wait_object_t *interruptor) {
+    char *buf = reinterpret_cast<char *>(buffer);
+    auto lock = m_write_mutex.lock();
 
     while (count > 0) {
         ssize_t res = eintr_wrap([&] { return ::write(m_socket.get(), buf, count); },
@@ -73,8 +97,16 @@ void tcp_conn_t::write(char *buf, size_t count, wait_object_t *interruptor) {
     }
 }
 
-scoped_fd_t tcp_conn_t::init_socket(const ip_and_port_t &, wait_object_t *) {
-    return scoped_fd_t(-1);
+scoped_fd_t tcp_conn_t::init_socket(const ip_and_port_t &ip_port) {
+    scoped_fd_t sock(::socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
+    assert(sock.valid());
+
+    sockaddr_in6 sa;
+    ip_port.to_sockaddr(&sa);
+    int res = ::connect(sock.get(), (sockaddr *)&sa, sizeof(sa));
+    assert(res == 0 || errno == EINPROGRESS);
+
+    return sock;
 }
 
 void tcp_conn_t::read_into_buffer(wait_object_t *interruptor) {

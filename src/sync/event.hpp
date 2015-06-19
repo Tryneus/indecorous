@@ -14,7 +14,6 @@ public:
     bool triggered() const;
     void set();
     void reset();
-    void wait();
 
 protected:
     void add_wait(wait_callback_t* cb);

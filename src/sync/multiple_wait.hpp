@@ -22,6 +22,7 @@ private:
 
     void ready(wait_result_t result);
     void wait_done(wait_result_t result);
+    void object_moved(wait_object_t *new_ptr);
 
     coro_t *m_owner_coro;
     wait_object_t *m_interruptor;
@@ -43,6 +44,7 @@ public:
 
 private:
     void wait_done(wait_result_t result);
+    void object_moved(wait_object_t *new_ptr);
 
     wait_object_t *m_obj;
     multiple_waiter_t *m_waiter;

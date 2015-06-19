@@ -172,6 +172,7 @@ private:
         coro_wait_callback_t(coro_t *parent);
     private:
         void wait_done(wait_result_t result);
+        void object_moved(wait_object_t *new_ptr);
         coro_t *m_parent;
     };
 

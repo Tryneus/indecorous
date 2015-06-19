@@ -68,6 +68,10 @@ void multiple_waiter_t::wait_done(wait_result_t result) {
     }
 }
 
+void multiple_waiter_t::object_moved(wait_object_t *new_ptr) {
+    m_interruptor = new_ptr;
+}
+
 multiple_wait_callback_t::multiple_wait_callback_t(wait_object_t *obj,
                                                    multiple_waiter_t *waiter) :
         m_obj(obj), m_waiter(waiter) {
@@ -88,6 +92,10 @@ multiple_wait_callback_t::~multiple_wait_callback_t() {
 
 void multiple_wait_callback_t::wait_done(wait_result_t result) {
     m_waiter->item_finished(result);
+}
+
+void multiple_wait_callback_t::object_moved(wait_object_t *new_ptr) {
+    m_obj = new_ptr;
 }
 
 } // namespace indecorous

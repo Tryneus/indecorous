@@ -79,6 +79,15 @@ public:
         return m_size;
     }
 
+    template <typename Callable>
+    void each(Callable &&c) {
+        T *item = front();
+        while (item != nullptr) {
+            c(item);
+            item = next(item);
+        }
+    }
+
     T* front() {
         return get_value(this->next_node());
     }

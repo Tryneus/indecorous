@@ -9,7 +9,7 @@ namespace indecorous {
 
 class drainer_t;
 
-class drainer_lock_t : public wait_object_t {
+class drainer_lock_t : public wait_object_t, public intrusive_node_t<drainer_lock_t> {
 public:
     drainer_lock_t(drainer_lock_t &&other);
     drainer_lock_t(const drainer_lock_t &other);
@@ -29,6 +29,7 @@ private:
 
 class drainer_t : public wait_object_t {
 public:
+    drainer_t(drainer_t &&other);
     drainer_t();
     ~drainer_t();
 
@@ -41,7 +42,8 @@ private:
     void remove_wait(wait_callback_t *cb);
 
     friend class drainer_lock_t;
-    size_t m_outstanding_locks;
+    // List of extant locks on the drainer, which will block draining
+    intrusive_list_t<drainer_lock_t> m_locks;
 
     // List of waiters waiting for the drainer to start draining
     intrusive_list_t<wait_callback_t> m_start_drain_waiters;

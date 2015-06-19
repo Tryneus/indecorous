@@ -6,28 +6,35 @@
 
 namespace indecorous {
 
-class mutex_t : public wait_object_t {
+class mutex_t;
+
+class mutex_lock_t : public intrusive_node_t<mutex_lock_t> {
 public:
+    mutex_lock_t(mutex_lock_t &&other);
+    ~mutex_lock_t();
+private:
+    friend class mutex_t;
+    mutex_lock_t(mutex_t *parent, wait_object_t *interruptor);
+
+    mutex_t *m_parent;
+    wait_callback_t *m_coro_cb;
+};
+
+// The mutex is not publicly implemented as a wait_object_t so you cannot
+// wait_all on them and unintentionally deadlock.
+class mutex_t {
+public:
+    mutex_t(mutex_t &&other);
     mutex_t();
     ~mutex_t();
 
-    // Successfully waiting on a mutex locks it
-    void unlock();
+    mutex_lock_t lock();
+    mutex_lock_t lock(wait_object_t *interruptor);
 
 private:
-    void add_wait(wait_callback_t* cb);
-    void remove_wait(wait_callback_t* cb);
-
-    bool m_locked;
-    intrusive_list_t<wait_callback_t> m_waiters;
-};
-
-class mutex_lock_t {
-public:
-    mutex_lock_t(mutex_t *parent);
-    ~mutex_lock_t();
-private:
-    mutex_t *m_parent;
+    friend class mutex_lock_t;
+    mutex_lock_t *m_lock;
+    intrusive_list_t<mutex_lock_t> m_pending_locks;
 };
 
 } // namespace indecorous
