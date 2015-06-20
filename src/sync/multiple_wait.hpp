@@ -9,6 +9,8 @@ namespace indecorous {
 
 class coro_t;
 
+// Be careful to avoid deadlock when using wait_all with semaphores
+
 class multiple_waiter_t : private wait_callback_t {
 public:
     enum class wait_type_t { ANY, ALL };

@@ -50,20 +50,13 @@ size_t semaphore_acq_t::pending() const {
 void semaphore_acq_t::combine(semaphore_acq_t &&other) {
     assert(m_parent != nullptr);
     assert(m_parent == other.m_parent);
-    bool move_to_waiting = (m_pending == 0) && (other.m_pending > 0);
+    assert(m_pending == 0);
+    assert(other.m_pending == 0);
 
     m_owned += other.m_owned;
-    m_pending += other.m_pending;
     other.m_parent = nullptr;
 
     other.m_waiters.clear([&] (wait_callback_t *cb) { m_waiters.push_back(cb); });
-
-    if (move_to_waiting) {
-        m_parent->m_acqs.remove(this);
-        m_parent->m_waiters.insert_before(&other, this);
-    }
-
-    assert(m_pending <= m_parent->m_max);
 }
 
 void semaphore_acq_t::release(size_t count) {
@@ -87,17 +80,17 @@ void semaphore_acq_t::remove_wait(wait_callback_t *cb) {
 }
 
 semaphore_t::semaphore_t(semaphore_t &&other) :
-        m_max(other.m_max),
+        m_capacity(other.m_capacity),
         m_available(other.m_available),
         m_acqs(std::move(other.m_acqs)),
         m_waiters(std::move(other.m_waiters)) {
-    other.m_max = 0;
+    other.m_capacity = 0;
     other.m_available = 0;
     m_acqs.each([&] (semaphore_acq_t *s) { s->m_parent = this; });
     m_waiters.each([&] (semaphore_acq_t *s) { s->m_parent = this; });
 }
 
-semaphore_t::semaphore_t(size_t max) : m_max(max), m_available(max) { }
+semaphore_t::semaphore_t(size_t _capacity) : m_capacity(_capacity), m_available(_capacity) { }
 
 semaphore_t::~semaphore_t() {
     m_waiters.clear([&] (semaphore_acq_t *s) {
@@ -106,8 +99,16 @@ semaphore_t::~semaphore_t() {
         });
 }
 
+size_t semaphore_t::capacity() const {
+    return m_capacity;
+}
+
+size_t semaphore_t::available() const {
+    return m_available;
+}
+
 void semaphore_t::extend(size_t count) {
-    m_max += count;
+    m_capacity += count;
     m_available += count;
     pump_waiters();
 }
@@ -118,14 +119,14 @@ void semaphore_t::remove(semaphore_acq_t &&destroy) {
         destroy.wait();
     }
 
-    m_max -= destroy.m_owned;
+    m_capacity -= destroy.m_owned;
     destroy.m_parent = nullptr;
 
     // Scan waiting acqs, make sure none of them want more than we now have
-    m_waiters.each([&] (semaphore_acq_t *s) { assert(m_max >= (s->m_owned + s->m_pending)); });
+    m_waiters.each([&] (semaphore_acq_t *s) { assert(m_capacity >= (s->m_owned + s->m_pending)); });
 }
 
-semaphore_acq_t semaphore_t::acquire(size_t count) {
+semaphore_acq_t semaphore_t::start_acq(size_t count) {
     return semaphore_acq_t(count, this);
 }
 

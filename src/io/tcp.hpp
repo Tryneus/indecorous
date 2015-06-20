@@ -10,6 +10,7 @@
 #include "containers/file.hpp"
 #include "coro/coro.hpp"
 #include "io/base.hpp"
+#include "io/net.hpp"
 #include "sync/drainer.hpp"
 #include "sync/file_wait.hpp"
 #include "sync/mutex.hpp"
@@ -17,25 +18,6 @@
 namespace indecorous {
 
 class wait_object_t;
-
-class ip_address_t {
-public:
-    static ip_address_t localhost();
-
-private:
-    in6_addr addr;
-    uint32_t scope_id;
-};
-
-class ip_and_port_t {
-public:
-    static ip_and_port_t localhost(uint16_t port);
-
-    void to_sockaddr(sockaddr_in6 *out) const;
-private:
-    ip_address_t addr;
-    uint16_t port;
-};
 
 class tcp_conn_t : public read_stream_t, public write_stream_t {
 public:

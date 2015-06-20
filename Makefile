@@ -2,6 +2,9 @@ SRC_DIR = ./src
 TEST_DIR = ./test
 OBJ_DIR = ./bin/obj
 BIN_DIR = ./bin
+EXT_DIR = ./external
+
+EXTERNALS = udns-0.4
 
 CXX ?= g++
 
@@ -14,6 +17,7 @@ else
 endif
 
 CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -Wall -Wextra -Werror
+CXX_FLAGS += $(addprefix -I$(EXT_DIR)/, $(EXTERNALS))
 CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
 CXX_FLAGS += -Wformat=2 -Wswitch-enum
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
