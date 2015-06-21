@@ -1,8 +1,9 @@
-SRC_DIR = ./src
-TEST_DIR = ./test
-OBJ_DIR = ./bin/obj
-BIN_DIR = ./bin
-EXT_DIR = ./external
+SRC_DIR = src
+TEST_DIR = test
+OBJ_DIR = bin/obj
+TEST_OBJ_DIR = bin/test_obj
+BIN_DIR = bin
+EXT_DIR = external
 
 UDNS_PATH = $(EXT_DIR)/udns-0.4
 UDNS_CONFIGURE = $(UDNS_PATH)/configure
@@ -20,7 +21,7 @@ else
 endif
 
 CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -Wall -Wextra -Werror
-CXX_FLAGS += $(addprefix -I, $(UDNS_PATH))
+CXX_FLAGS += $(addprefix -I,$(UDNS_PATH))
 CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
 CXX_FLAGS += -Wformat=2 -Wswitch-enum
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
@@ -47,13 +48,15 @@ endif
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
 CXX_FLAGS += -D__STDC_FORMAT_MACROS
 
-LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt $(EXTERNAL_INCLUDES)
+LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt
 BIN_NAME = coro_test
 
 ALL_SOURCES := $(shell find $(SRC_DIR) -name '*.cc' -not -name '\.*')
 ALL_TESTS := $(shell find $(TEST_DIR) -name '*.cc' -not -name '\.*')
 SRC_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_SOURCES))
-TEST_OBJS := $(patsubst $(TEST_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_TESTS))
+SRC_DEPS := $(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.d,$(ALL_SOURCES))
+TEST_OBJS := $(patsubst $(TEST_DIR)/%.cc,$(TEST_OBJ_DIR)/%.o,$(ALL_TESTS))
+TEST_DEPS := $(patsubst $(TEST_DIR)/%.cc,$(TEST_OBJ_DIR)/%.d,$(ALL_TESTS))
 EXTERNAL_OBJS := $(UDNS_LIB)
 ALL_OBJS := $(SRC_OBJS) $(TEST_OBJS) $(EXTERNAL_OBJS)
 
@@ -66,23 +69,38 @@ test: $(BIN_DIR)/$(BIN_NAME)
 val_test: $(BIN_DIR)/$(BIN_NAME) .valgrind.supp
 	valgrind --suppressions=.valgrind.supp --leak-check=full --track-origins=yes $(BIN_DIR)/$(BIN_NAME)
 
+clean:
+	rm -rf $(BIN_DIR)
+
+-include $(SRC_DEPS)
+-include $(TEST_DEPS)
+
+$(TEST_OBJ_DIR)/%.d: $(TEST_DIR)/%.cc
+	@mkdir -p $(dir $@)
+	@$(CXX) $(CXX_FLAGS) -MM -MT '$(patsubst $(TEST_DIR)/%.cc,$(TEST_OBJ_DIR)/%.o,$<)' $< -MF $@
+
+$(OBJ_DIR)/%.d: $(SRC_DIR)/%.cc
+	@mkdir -p $(dir $@)
+	@$(CXX) $(CXX_FLAGS) -MM -MT $(OBJ_DIR)/%.o $< -MF $@
+
 $(BIN_DIR)/$(BIN_NAME): $(ALL_OBJS) Makefile
-	mkdir -p $(dir $@)
-	$(CXX) $(ALL_OBJS) $(LD_FLAGS) -o $@
+	@echo "  $(CXX) $@"
+	@mkdir -p $(dir $@)
+	@$(CXX) $(ALL_OBJS) $(LD_FLAGS) -o $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cc $(ALL_SOURCES) Makefile
-	mkdir -p $(dir $@)
-	$(CXX) $(CXX_FLAGS) -c -o $@ $<
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cc $(OBJ_DIR)/%.d Makefile
+	@echo "  $(CXX) $@"
+	@mkdir -p $(dir $@)
+	@$(CXX) $(CXX_FLAGS) -c -o $@ $<
 
-$(OBJ_DIR)/%.o: $(TEST_DIR)/%.cc $(ALL_TESTS) Makefile
-	mkdir -p $(dir $@)
-	$(CXX) $(CXX_FLAGS) -c -o $@ $<
+$(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.cc $(TEST_OBJ_DIR)/%.d Makefile
+	@echo "  $(CXX) $@"
+	@mkdir -p $(dir $@)
+	@$(CXX) $(CXX_FLAGS) -c -o $@ $<
 
 $(UDNS_LIB): $(UDNS_MAKEFILE)
-	$(MAKE) -C $(UDNS_PATH)
+	@echo "  $(MAKE) $@"
+	@$(MAKE) -C $(UDNS_PATH)
 
 $(UDNS_MAKEFILE): $(UDNS_CONFIGURE)
 	$(UDNS_CONFIGURE)
-
-clean:
-	rm -rf $(BIN_DIR)
