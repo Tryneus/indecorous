@@ -9,6 +9,18 @@
 
 namespace indecorous {
 
+class static_udns_init_t {
+public:
+    static_udns_init_t() {
+        printf("initializing dns\n");
+        int res = dns_init(nullptr, false);
+        assert(res == 0);
+    }
+    static static_udns_init_t s_init;
+};
+
+static_udns_init_t s_init = static_udns_init_t();
+
 class udns_ctx_t {
     enum class result_t { Pending, Error, Success };
     struct resolve_data_t {
@@ -18,8 +30,7 @@ class udns_ctx_t {
 public:
     udns_ctx_t() :
             m_ctx(dns_new(nullptr)) {
-        int res = dns_init(m_ctx, true);
-        assert(res == 0);
+        dns_open(m_ctx);
         assert(dns_sock(m_ctx) != -1);
     }
 
@@ -46,6 +57,8 @@ public:
             assert(timeout != -1);
             timer.start(timeout * 1000);
             dns_ioevent(m_ctx, current_time);
+
+            if (data.result != result_t::Pending) break; // TODO: simplify loop
             
             wait_any(timer, in);
         }
@@ -60,10 +73,24 @@ public:
 private:
     static void resolve_callback(dns_ctx *ctx, dns_rr_a6 *result, void *param) {
         resolve_data_t *out = reinterpret_cast<resolve_data_t *>(param);
-        for (int i = 0; i < result->dnsa6_nrr; ++i) {
-            out->addrs.push_back(ip_address_t(result->dnsa6_addr[i], 0));
+        if (result == nullptr) {
+            switch(dns_status(ctx)) {
+            case DNS_E_TEMPFAIL: debugf("DNS_E_TEMPFAIL"); break;
+            case DNS_E_PROTOCOL: debugf("DNS_E_PROTOCOL"); break;
+            case DNS_E_NXDOMAIN: debugf("DNS_E_NXDOMAIN"); break;
+            case DNS_E_NODATA: debugf("DNS_E_NODATA"); break;
+            case DNS_E_NOMEM: debugf("DNS_E_NOMEM"); break;
+            case DNS_E_BADQUERY: debugf("DNS_E_BADQUERY"); break;
+            default: debugf("DNS_E_UNKNOWN"); break;
+            }
+            out->result = result_t::Error;
+        } else {
+            assert(dns_status(ctx) == 0);
+            for (int i = 0; i < result->dnsa6_nrr; ++i) {
+                out->addrs.push_back(ip_address_t(result->dnsa6_addr[i], 0));
+            }
+            out->result = result_t::Success;
         }
-        out->result = dns_status(ctx) == 0 ? result_t::Success : result_t::Error;
     }
 
     dns_ctx *m_ctx;

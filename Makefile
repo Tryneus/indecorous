@@ -44,7 +44,8 @@ endif
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
 CXX_FLAGS += -D__STDC_FORMAT_MACROS
 
-LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt
+EXTERNAL_LIBS = $(EXT_DIR)/udns-0.4/libudns.a
+LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt $(EXTERNAL_LIBS)
 BIN_NAME = coro_test
 
 ALL_SOURCES := $(shell find $(SRC_DIR) -name '*.cc' -not -name '\.*')
