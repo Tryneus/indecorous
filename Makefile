@@ -1,15 +1,3 @@
-SRC_DIR = src
-TEST_DIR = test
-OBJ_DIR = bin/obj
-TEST_OBJ_DIR = bin/test_obj
-BIN_DIR = bin
-EXT_DIR = external
-
-UDNS_PATH = $(EXT_DIR)/udns-0.4
-UDNS_CONFIGURE = $(UDNS_PATH)/configure
-UDNS_MAKEFILE = $(UDNS_PATH)/Makefile
-UDNS_LIB = $(UDNS_PATH)/libudns.a
-
 CXX ?= g++
 
 ifeq ($(CXX),gcc)
@@ -20,36 +8,48 @@ else
   endif
 endif
 
-CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -Wall -Wextra -Werror
-CXX_FLAGS += $(addprefix -I,$(UDNS_PATH))
-CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
-CXX_FLAGS += -Wformat=2 -Wswitch-enum
-CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
-
 # We use c++14 extensions, so force us to use a compiler version with support
 # TODO: make this more portable
 ifeq ($(CXX),g++)
   override CXX = g++-4.9
+  CXX_FLAGS =
+  COMPILER_SUFFIX = gcc4.9
 else
   ifeq ($(CXX),clang++)
     override CXX = clang++-3.5
-    CXX_FLAGS += -Wconditional-uninitialized -Wused-but-marked-unused
+    CXX_FLAGS = -Wconditional-uninitialized -Wused-but-marked-unused
+    COMPILER_SUFFIX = clang3.5
   endif
 endif
 
 ifeq ($(DEBUG),1)
 else
-  CXX_FLAGS += -O3
-  #CXX_FLAGS += -fno-strict-aliasing -DNDEBUG
+  CXX_FLAGS += -O3 -DNDEBUG
 endif
 
-# Hack because newton's version of gdb is older
-#CXX_FLAGS += -g
+SRC_DIR = src
+TEST_DIR = test
+OBJ_DIR = bin/obj_$(COMPILER_SUFFIX)
+TEST_OBJ_DIR = bin/test_obj_$(COMPILER_SUFFIX)
+BIN_DIR = bin
+EXT_DIR = external
+
+UDNS_PATH = $(EXT_DIR)/udns-0.4
+UDNS_CONFIGURE = $(UDNS_PATH)/configure
+UDNS_MAKEFILE = $(UDNS_PATH)/Makefile
+UDNS_LIB_FILENAME = libudns.a
+UDNS_LIB = $(UDNS_PATH)/$(UDNS_LIB_FILENAME)
+
+CXX_FLAGS += -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -Wall -Wextra -Werror
+CXX_FLAGS += $(addprefix -I,$(UDNS_PATH))
+CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
+CXX_FLAGS += -Wformat=2 -Wswitch-enum
+CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
 CXX_FLAGS += -D__STDC_FORMAT_MACROS
 
 LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt
-BIN_NAME = coro_test
+BIN_NAME = coro_test_$(COMPILER_SUFFIX)
 
 ALL_SOURCES := $(shell find $(SRC_DIR) -name '*.cc' -not -name '\.*')
 ALL_TESTS := $(shell find $(TEST_DIR) -name '*.cc' -not -name '\.*')
@@ -71,6 +71,7 @@ val_test: $(BIN_DIR)/$(BIN_NAME) .valgrind.supp
 
 clean:
 	rm -rf $(BIN_DIR)
+	@$(MAKE) -C $(UDNS_PATH) clean
 
 -include $(SRC_DEPS)
 -include $(TEST_DEPS)
@@ -100,7 +101,7 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.cc $(TEST_OBJ_DIR)/%.d Makefile
 
 $(UDNS_LIB): $(UDNS_MAKEFILE)
 	@echo "  $(MAKE) $@"
-	@$(MAKE) -C $(UDNS_PATH)
+	@$(MAKE) -C $(UDNS_PATH) $(UDNS_LIB_FILENAME)
 
 $(UDNS_MAKEFILE): $(UDNS_CONFIGURE)
 	$(UDNS_CONFIGURE)
