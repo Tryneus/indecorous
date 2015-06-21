@@ -4,7 +4,10 @@ OBJ_DIR = ./bin/obj
 BIN_DIR = ./bin
 EXT_DIR = ./external
 
-EXTERNALS = udns-0.4
+UDNS_PATH = $(EXT_DIR)/udns-0.4
+UDNS_CONFIGURE = $(UDNS_PATH)/configure
+UDNS_MAKEFILE = $(UDNS_PATH)/Makefile
+UDNS_LIB = $(UDNS_PATH)/libudns.a
 
 CXX ?= g++
 
@@ -17,7 +20,7 @@ else
 endif
 
 CXX_FLAGS = -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -Wall -Wextra -Werror
-CXX_FLAGS += $(addprefix -I$(EXT_DIR)/, $(EXTERNALS))
+CXX_FLAGS += $(addprefix -I, $(UDNS_PATH))
 CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
 CXX_FLAGS += -Wformat=2 -Wswitch-enum
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
@@ -44,15 +47,15 @@ endif
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
 CXX_FLAGS += -D__STDC_FORMAT_MACROS
 
-EXTERNAL_LIBS = $(EXT_DIR)/udns-0.4/libudns.a
-LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt $(EXTERNAL_LIBS)
+LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt $(EXTERNAL_INCLUDES)
 BIN_NAME = coro_test
 
 ALL_SOURCES := $(shell find $(SRC_DIR) -name '*.cc' -not -name '\.*')
 ALL_TESTS := $(shell find $(TEST_DIR) -name '*.cc' -not -name '\.*')
 SRC_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_SOURCES))
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_TESTS))
-ALL_OBJS := $(SRC_OBJS) $(TEST_OBJS)
+EXTERNAL_OBJS := $(UDNS_LIB)
+ALL_OBJS := $(SRC_OBJS) $(TEST_OBJS) $(EXTERNAL_OBJS)
 
 .PHONY: all test val_test clean
 all: $(BIN_DIR)/$(BIN_NAME)
@@ -74,6 +77,12 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cc $(ALL_SOURCES) Makefile
 $(OBJ_DIR)/%.o: $(TEST_DIR)/%.cc $(ALL_TESTS) Makefile
 	mkdir -p $(dir $@)
 	$(CXX) $(CXX_FLAGS) -c -o $@ $<
+
+$(UDNS_LIB): $(UDNS_MAKEFILE)
+	$(MAKE) -C $(UDNS_PATH)
+
+$(UDNS_MAKEFILE): $(UDNS_CONFIGURE)
+	$(UDNS_CONFIGURE)
 
 clean:
 	rm -rf $(BIN_DIR)

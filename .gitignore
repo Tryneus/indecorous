@@ -1,2 +1,11 @@
 /bin
+/external/*/*.o
+/external/*/*.a
+/external/udns-0.4/Makefile
+/external/udns-0.4/config.h
+/external/udns-0.4/config.log
+/external/udns-0.4/config.status
+/external/udns-0.4/dnsget
+/external/udns-0.4/ex-rdns
+/external/udns-0.4/rblcheck
 *.swp
