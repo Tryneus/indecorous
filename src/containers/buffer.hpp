@@ -3,6 +3,7 @@
 
 #include <cstddef>
 
+#include "common.hpp"
 #include "containers/intrusive.hpp"
 
 namespace indecorous {
@@ -68,7 +69,7 @@ public:
     // Creates a linkable_buffer_t inside an existing data array.  It will be
     // destructed when ownership ceases, but will not be deallocated as the
     // allocation's lifetime depends on the lifetime of the surrounding data array.
-    static buffer_owner_t from_array(char *buffer, size_t buffer_size,
+    static buffer_owner_t from_array(char *buffer, DEBUG_VAR size_t buffer_size,
                                      size_t cap) {
         assert(buffer_size >= sizeof(linkable_buffer_t) + cap);
         return buffer_owner_t(new (buffer) linkable_buffer_t(cap), alloc_info_t::ARRAY);

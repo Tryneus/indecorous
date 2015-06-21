@@ -9,17 +9,10 @@
 
 namespace indecorous {
 
-class static_udns_init_t {
-public:
-    static_udns_init_t() {
-        printf("initializing dns\n");
-        int res = dns_init(nullptr, false);
-        assert(res == 0);
-    }
-    static static_udns_init_t s_init;
-};
-
-static_udns_init_t s_init = static_udns_init_t();
+__attribute__((constructor)) 
+void udns_init() {
+    GUARANTEE(dns_init(nullptr, false) == 0);
+}
 
 class udns_ctx_t {
     enum class result_t { Pending, Error, Success };
@@ -43,9 +36,8 @@ public:
         drainer_lock_t drain = m_drainer.lock();
         resolve_data_t data;
         data.result = result_t::Pending;
-        dns_query *q = dns_submit_a6(m_ctx, host.c_str(), 0,
-                                     &udns_ctx_t::resolve_callback, &data);
-        assert(q != nullptr);
+        GUARANTEE(dns_submit_a6(m_ctx, host.c_str(), 0,
+                                &udns_ctx_t::resolve_callback, &data) != nullptr);
 
         // Only one coroutine should be calling into these functions at a time
         mutex_lock_t lock = m_mutex.lock();

@@ -39,8 +39,7 @@ tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, wait_object_t *interruptor)
 
     int err;
     socklen_t err_size = sizeof(err);
-    int res = ::getsockopt(m_socket.get(), SOL_SOCKET, SO_ERROR, &err, &err_size);
-    assert(res == 0);
+    GUARANTEE(::getsockopt(m_socket.get(), SOL_SOCKET, SO_ERROR, &err, &err_size) == 0);
     assert(err == 0); // TODO: exception
 }
 
@@ -105,9 +104,7 @@ scoped_fd_t tcp_conn_t::init_socket(const ip_and_port_t &ip_port) {
 
     sockaddr_in6 sa;
     ip_port.to_sockaddr(&sa);
-    int res = ::connect(sock.get(), (sockaddr *)&sa, sizeof(sa));
-    assert(res == 0 || errno == EINPROGRESS);
-
+    GUARANTEE(::connect(sock.get(), (sockaddr *)&sa, sizeof(sa)) == 0 || errno == EINPROGRESS);
     return sock;
 }
 
@@ -156,9 +153,9 @@ tcp_listener_t::tcp_listener_t(uint16_t _local_port,
 uint16_t tcp_listener_t::local_port() {
     if (m_local_port == 0) {
         sockaddr_in6 sa;
+        memset(&sa, 0, sizeof(sa));
         socklen_t sa_len = sizeof(sa);
-        int res = getsockname(m_socket.get(), (sockaddr *)&sa, &sa_len);
-        assert(res == 0);
+        GUARANTEE(::getsockname(m_socket.get(), (sockaddr *)&sa, &sa_len) == 0);
         assert(sa.sin6_family == AF_INET6);
         assert(sa.sin6_port != 0);
         m_local_port = sa.sin6_port;
@@ -175,11 +172,8 @@ scoped_fd_t tcp_listener_t::init_socket() {
     sa.sin6_family = AF_INET6;
     sa.sin6_port = m_local_port;
     sa.sin6_addr = in6addr_any;
-    int res = ::bind(sock.get(), (sockaddr *)&sa, sizeof(sa));
-    assert(res == 0);
-
-    res = ::listen(sock.get(), 10);
-    assert(res == 0);
+    GUARANTEE(::bind(sock.get(), (sockaddr *)&sa, sizeof(sa)) == 0);
+    GUARANTEE(::listen(sock.get(), 10) == 0);
 
     return sock;
 }

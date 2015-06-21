@@ -12,8 +12,12 @@
 // TODO: make sure these aren't exposed to users
 #ifdef NDEBUG
     #define DEBUG_ONLY(...)
+    #define DEBUG_VAR __attribute__((unused))
+    #define GUARANTEE(x) do { if (!(x)) abort(); } while (0)
 #else
     #define DEBUG_ONLY(...) __VA_ARGS__
+    #define DEBUG_VAR
+    #define GUARANTEE(x) do { assert(x == y); } while (0)
 #endif
 
 #define debugf(format, ...) printf("Thread %" PRIi32 " - " format "\n", indecorous::thread_self_id(), ##__VA_ARGS__)

@@ -1,5 +1,6 @@
 #include "coro/coro.hpp"
 
+#include <stdlib.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
 #include <valgrind/valgrind.h>
@@ -80,8 +81,7 @@ dispatcher_t::dispatcher_t() :
         m_rpc_consumer(m_context_arena.get(this)),
         m_coro_delta(0) {
     // Save the currently running context
-    int res = getcontext(&m_main_context);
-    assert(res == 0);
+    GUARANTEE(getcontext(&m_main_context) == 0);
 
     // Set up the rpc consumer coroutine
     makecontext(&m_rpc_consumer->m_context, coro_pull, 0);
@@ -145,8 +145,7 @@ coro_t::coro_t(dispatcher_t *dispatch) :
         m_valgrindStackId(VALGRIND_STACK_REGISTER(m_stack, m_stack + sizeof(m_stack))),
         m_wait_callback(this),
         m_wait_result(wait_result_t::Success) {
-    int res = getcontext(&m_context);
-    assert(res == 0);
+    GUARANTEE(getcontext(&m_context) == 0);
 
     m_context.uc_stack.ss_sp = m_stack;
     m_context.uc_stack.ss_size = s_stackSize;
@@ -170,7 +169,7 @@ void launch_coro() {
     // Reset the handover parameters for the next coroutine to be spawned
     handover_params.clear();
     (self->*fn)(parent, params, immediate);
-    assert(false);
+    ::abort();
 }
 
 void coro_t::begin(coro_t::hook_fn_t fn, coro_t *parent, void *params, bool immediate) {
@@ -200,7 +199,7 @@ coro_t *coro_t::create() {
 void coro_t::end() {
     m_dispatch->enqueue_release(this);
     swap(nullptr);
-    assert(false);
+    ::abort();
 }
 
 void coro_t::swap(coro_t *next) {

@@ -123,7 +123,9 @@ void semaphore_t::remove(semaphore_acq_t &&destroy) {
     destroy.m_parent = nullptr;
 
     // Scan waiting acqs, make sure none of them want more than we now have
-    m_waiters.each([&] (semaphore_acq_t *s) { assert(m_capacity >= (s->m_owned + s->m_pending)); });
+    DEBUG_ONLY(m_waiters.each([&] (semaphore_acq_t *s) {
+            assert(m_capacity >= (s->m_owned + s->m_pending));
+        }));
 }
 
 semaphore_acq_t semaphore_t::start_acq(size_t count) {

@@ -21,23 +21,18 @@ scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
     // Block SIGINT and SIGTERM on child threads (this will be inherited)
     sigset_t sigset;
     sigset_t old_sigset;
-    int res = sigemptyset(&sigset);
-    assert(res == 0);
-    res = sigaddset(&sigset, SIGINT);
-    assert(res == 0);
-    res = sigaddset(&sigset, SIGTERM);
-    assert(res == 0);
+    GUARANTEE(sigemptyset(&sigset) == 0);
+    GUARANTEE(sigaddset(&sigset, SIGINT) == 0);
+    GUARANTEE(sigaddset(&sigset, SIGTERM) == 0);
 
-    res = pthread_sigmask(SIG_BLOCK, &sigset, &old_sigset);
-    assert(res == 0);
+    GUARANTEE(pthread_sigmask(SIG_BLOCK, &sigset, &old_sigset) == 0);
 
     for (size_t i = 0; i < num_threads; ++i) {
         m_threads.emplace_back(i, &m_shutdown, &m_barrier, &m_close_flag);
     }
 
     // Return SIGINT and SIGTERM to the previous state
-    res = pthread_sigmask(SIG_SETMASK, &old_sigset, nullptr);
-    assert(res == 0);
+    GUARANTEE(pthread_sigmask(SIG_SETMASK, &old_sigset, nullptr) == 0);
 
     // Tell the message hubs of each thread about the others
     for (auto &&t : m_threads) {
@@ -66,30 +61,21 @@ public:
     scoped_sigaction_t() {
         s_instance = this;
 
-        int res = sem_init(&m_semaphore, 0, 0);
-        assert(res == 0);
-
         struct sigaction sigact;
         memset(&sigact, 0, sizeof(sigact));
         sigact.sa_flags = SA_SIGINFO;
         sigact.sa_sigaction = &scoped_sigaction_t::callback;
         sigemptyset(&sigact.sa_mask);
 
-        res = sigaction(SIGINT, &sigact, &m_old_sigint);
-        assert(res == 0);
-        res = sigaction(SIGTERM, &sigact, &m_old_sigterm);
-        assert(res == 0);
+        GUARANTEE(sigaction(SIGINT, &sigact, &m_old_sigint) == 0);
+        GUARANTEE(sigaction(SIGTERM, &sigact, &m_old_sigterm) == 0);
+        GUARANTEE(sem_init(&m_semaphore, 0, 0) == 0);
     }
 
     ~scoped_sigaction_t() {
-        int res = sem_destroy(&m_semaphore);
-        assert(res == 0);
-
-        res = sigaction(SIGINT, &m_old_sigint, nullptr);
-        assert(res == 0);
-        res = sigaction(SIGTERM, &m_old_sigterm, nullptr);
-        assert(res == 0);
-
+        GUARANTEE(sem_destroy(&m_semaphore) == 0);
+        GUARANTEE(sigaction(SIGINT, &m_old_sigint, nullptr) == 0);
+        GUARANTEE(sigaction(SIGTERM, &m_old_sigterm, nullptr) == 0);
         s_instance = nullptr;
     }
 
@@ -101,8 +87,7 @@ private:
     static thread_local scoped_sigaction_t *s_instance;
 
     static void callback(int, siginfo_t *, void *) {
-        int res = sem_post(&s_instance->m_semaphore);
-        assert(res == 0);
+        GUARANTEE(sem_post(&s_instance->m_semaphore) == 0);
     }
 
     struct sigaction m_old_sigint;
@@ -111,7 +96,6 @@ private:
 };
 
 thread_local scoped_sigaction_t *scoped_sigaction_t::s_instance = nullptr;
-
 
 void scheduler_t::run() {
     // Count the number of initial calls into the threads

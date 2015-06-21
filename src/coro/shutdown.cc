@@ -27,8 +27,7 @@ IMPL_UNIQUE_HANDLER(finish_stop_t);
 
 void shutdown_t::shutdown(message_hub_t *hub) {
     update(m_thread_count - 1, hub); // This is called outside the context of a dispatch_t, so update manually
-    size_t calls = hub->broadcast_local_noreply<init_stop_t>();
-    assert(calls == m_thread_count);
+    GUARANTEE(hub->broadcast_local_noreply<init_stop_t>() == m_thread_count);
 }
 
 void shutdown_t::update(int64_t active_delta, message_hub_t *hub) {
@@ -39,8 +38,7 @@ void shutdown_t::update(int64_t active_delta, message_hub_t *hub) {
         if (!m_finish_sent.load()) {
             m_active_count.fetch_add(m_thread_count);
             m_finish_sent.store(true);
-            size_t calls = hub->broadcast_local_noreply<finish_stop_t>();
-            assert(calls == m_thread_count);
+            GUARANTEE(hub->broadcast_local_noreply<finish_stop_t>() == m_thread_count);
         }
     }
 }

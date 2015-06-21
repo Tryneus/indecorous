@@ -107,8 +107,7 @@ void events_t::update_epoll() {
             task = it->second.last_used_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
             it->second.last_used_events = event.events;
         }
-        int res = ::epoll_ctl(m_epoll_set.get(), task, fd, &event);
-        assert(res == 0);
+        GUARANTEE(::epoll_ctl(m_epoll_set.get(), task, fd, &event) == 0);
     }
     m_epoll_changes.clear();
 }
