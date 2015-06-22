@@ -84,9 +84,10 @@ single_timer_t::single_timer_t(single_timer_t &&other) :
 }
 
 single_timer_t::~single_timer_t() {
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(wait_result_t::ObjectLost);   
+    if (in_a_list()) {
+        m_thread_events->remove_timer(this);
     }
+    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(wait_result_t::ObjectLost); });
 }
 
 void single_timer_t::start(int64_t timeout_ms) {
@@ -102,12 +103,10 @@ void single_timer_t::start(int64_t timeout_ms) {
 
 void single_timer_t::stop() {
     m_triggered = false;
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(wait_result_t::Interrupted);   
-    }
     if (in_a_list()) {
         m_thread_events->remove_timer(this);
     }
+    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(wait_result_t::Interrupted); });
 }
 
 void single_timer_t::add_wait(wait_callback_t* cb) {
@@ -125,9 +124,7 @@ void single_timer_t::remove_wait(wait_callback_t* cb) {
 
 void single_timer_t::timer_callback(wait_result_t result) {
     m_triggered = true;
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(result);       
-    }
+    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
 }
 
 periodic_timer_t::periodic_timer_t() :
@@ -155,9 +152,7 @@ periodic_timer_t::~periodic_timer_t() {
 
 void periodic_timer_t::stop_internal(wait_result_t result) {
     m_period_ms = -1;
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(result);
-    }
+    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
     if (in_a_list()) {
         m_thread_events->remove_timer(this);
     }
@@ -205,9 +200,7 @@ void periodic_timer_t::remove_wait(wait_callback_t* cb) {
 
 void periodic_timer_t::timer_callback(wait_result_t result) {
     assert(m_period_ms != -1);
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(result);       
-    }
+    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
 }
 
 } // namespace indecorous

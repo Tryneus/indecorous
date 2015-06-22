@@ -53,7 +53,7 @@ TEST_CASE("tcp/basic", "[tcp]") {
 
 struct resolve_t : public handler_t<resolve_t> {
     static void call() {
-        std::vector<ip_address_t> addrs = resolve_hostname("localhost");
+        std::vector<ip_address_t> addrs = resolve_hostname("www.google.com");
     }
 };
 IMPL_UNIQUE_HANDLER(resolve_t);

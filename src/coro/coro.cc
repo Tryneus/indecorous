@@ -265,6 +265,9 @@ coro_t::coro_wait_callback_t::coro_wait_callback_t(coro_t *parent) :
 
 void coro_t::coro_wait_callback_t::wait_done(wait_result_t result) {
     assert(!in_a_list());
+#ifdef INDECOROUS_STRICT
+    GUARANTEE(result != wait_result_t::ObjectLost);
+#endif
     m_parent->notify(result);
 }
 

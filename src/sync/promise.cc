@@ -33,9 +33,7 @@ void future_t<void>::remove_wait(wait_callback_t *cb) {
 }
 
 void future_t<void>::notify(wait_result_t result) {
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(result);
-    }
+    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
 }
 
 promise_data_t<void>::promise_data_t() : m_fulfilled(false), m_abandoned(false) { }

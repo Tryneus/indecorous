@@ -46,7 +46,7 @@ CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
 CXX_FLAGS += -Wformat=2 -Wswitch-enum
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
-CXX_FLAGS += -D__STDC_FORMAT_MACROS
+CXX_FLAGS += -D__STDC_FORMAT_MACROS -DINDECOROUS_STRICT
 
 LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt
 BIN_NAME = coro_test_$(COMPILER_SUFFIX)

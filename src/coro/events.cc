@@ -131,15 +131,19 @@ void events_t::do_epoll_wait(int timeout) {
         auto it = m_file_map.find(fd);
         assert(it != m_file_map.end());
 
-        file_callback_t *cursor = it->second.callbacks.front();
+        intrusive_list_t<file_callback_t> *cbs = &it->second.callbacks;
+        file_callback_t *cursor = cbs->front();
 
         while (cursor != nullptr) {
+            file_callback_t *next = cbs->next(cursor);
             if (event_mask & EPOLLERR) {
                 cursor->file_callback(wait_result_t::ObjectLost); // TODO: better error type for this?
+                cbs->remove(cursor);
             } else if ((cursor->event_mask() & event_mask) != 0) {
                 cursor->file_callback(wait_result_t::Success);
+                cbs->remove(cursor);
             }
-            cursor = it->second.callbacks.next(cursor);
+            cursor = next;
         }
     }
 }

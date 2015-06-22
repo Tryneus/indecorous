@@ -65,9 +65,7 @@ private:
     }
 
     void notify(wait_result_t result) {
-        while (!m_waiters.empty()) {
-            m_waiters.pop_front()->wait_done(result);
-        }
+        m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
     }
 
     promise_data_t<T> *m_data;

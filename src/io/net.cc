@@ -37,7 +37,7 @@ public:
         resolve_data_t data;
         data.result = result_t::Pending;
         GUARANTEE(dns_submit_a6(m_ctx, host.c_str(), 0,
-                                &udns_ctx_t::resolve_callback, &data) != nullptr);
+                                &udns_ctx_t::resolve_callback_ipv6, &data) != nullptr);
 
         // Only one coroutine should be calling into these functions at a time
         mutex_lock_t lock = m_mutex.lock();
@@ -63,7 +63,7 @@ public:
     }
 
 private:
-    static void resolve_callback(dns_ctx *ctx, dns_rr_a6 *result, void *param) {
+    static void resolve_callback_ipv4(dns_ctx *ctx, dns_rr_a4 *result, void *param) {
         resolve_data_t *out = reinterpret_cast<resolve_data_t *>(param);
         if (result == nullptr) {
             switch(dns_status(ctx)) {
@@ -78,6 +78,27 @@ private:
             out->result = result_t::Error;
         } else {
             assert(dns_status(ctx) == 0);
+            debugf("Got %d IPv4 addresses", result->dnsa4_nrr);
+            out->result = result_t::Success;
+        }
+    }
+
+    static void resolve_callback_ipv6(dns_ctx *ctx, dns_rr_a6 *result, void *param) {
+        resolve_data_t *out = reinterpret_cast<resolve_data_t *>(param);
+        if (result == nullptr) {
+            switch(dns_status(ctx)) {
+            case DNS_E_TEMPFAIL: debugf("DNS_E_TEMPFAIL"); break;
+            case DNS_E_PROTOCOL: debugf("DNS_E_PROTOCOL"); break;
+            case DNS_E_NXDOMAIN: debugf("DNS_E_NXDOMAIN"); break;
+            case DNS_E_NODATA: debugf("DNS_E_NODATA"); break;
+            case DNS_E_NOMEM: debugf("DNS_E_NOMEM"); break;
+            case DNS_E_BADQUERY: debugf("DNS_E_BADQUERY"); break;
+            default: debugf("DNS_E_UNKNOWN"); break;
+            }
+            out->result = result_t::Error;
+        } else {
+            assert(dns_status(ctx) == 0);
+            debugf("Got %d IPv6 addresses", result->dnsa6_nrr);
             for (int i = 0; i < result->dnsa6_nrr; ++i) {
                 out->addrs.push_back(ip_address_t(result->dnsa6_addr[i], 0));
             }

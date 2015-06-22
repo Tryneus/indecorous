@@ -14,9 +14,7 @@ mutex_t::mutex_t(mutex_t &&other) :
 }
 
 mutex_t::~mutex_t() {
-    while (!m_pending_locks.empty()) {
-        m_pending_locks.pop_front()->m_coro_cb->wait_done(wait_result_t::ObjectLost);
-    }
+    m_pending_locks.clear([&] (mutex_lock_t *l) { l->m_coro_cb->wait_done(wait_result_t::ObjectLost); });
 }
 
 mutex_lock_t mutex_t::lock() {
@@ -28,11 +26,15 @@ mutex_lock_t mutex_t::lock(wait_object_t *interruptor) {
 }
 
 mutex_lock_t::mutex_lock_t(mutex_t *parent, wait_object_t *) :
-        m_parent(parent), m_coro_cb(coro_t::self()->wait_callback()) {
+        m_parent(parent), m_coro_cb(nullptr) {
     if (m_parent->m_lock == nullptr) {
         m_parent->m_lock = this;
+    } else {
+        coro_t *self = coro_t::self();
+        m_coro_cb = self->wait_callback();
+        m_parent->m_pending_locks.push_back(this);
+        self->wait();
     }
-    // TODO: wait and interruption
 }
 
 mutex_lock_t::mutex_lock_t(mutex_lock_t &&other) :

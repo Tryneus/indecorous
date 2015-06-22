@@ -26,8 +26,7 @@ uint32_t file_callback_t::event_mask() const {
 
 file_wait_t::file_wait_t(int _fd, uint32_t _event_mask) :
         file_callback_t(_fd, _event_mask),
-        m_thread_events(thread_t::self()->events()) {
-}
+        m_thread_events(thread_t::self()->events()) { }
 
 file_wait_t::file_wait_t(file_wait_t &&other) :
         file_callback_t(std::move(other)),
@@ -61,10 +60,7 @@ file_wait_t file_wait_t::rdhup(int fd) {
 }
 
 void file_wait_t::file_callback(wait_result_t result) {
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(result);
-    }
-    m_thread_events->remove_file_wait(this);
+    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
 }
 
 void file_wait_t::add_wait(wait_callback_t* cb) {

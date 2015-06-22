@@ -15,10 +15,7 @@ event_t::event_t(event_t &&other) :
 event_t::event_t() : m_triggered(false) { }
 
 event_t::~event_t() {
-    // Fail any remaining waits
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(wait_result_t::ObjectLost);
-    }
+    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(wait_result_t::ObjectLost); });
 }
 
 bool event_t::triggered() const {
@@ -27,9 +24,7 @@ bool event_t::triggered() const {
 
 void event_t::set() {
     m_triggered = true;
-    while (!m_waiters.empty()) {
-        m_waiters.pop_front()->wait_done(wait_result_t::Success);
-    }
+    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(wait_result_t::Success); });
 }
 
 void event_t::reset() {
