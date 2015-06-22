@@ -141,6 +141,8 @@ ip_address_t ip_address_t::from_sockaddr(sockaddr_in6 *sa) {
 }
 
 void ip_address_t::to_sockaddr(sockaddr_in6 *sa) const {
+    sa->sin6_family = AF_INET6;
+    sa->sin6_flowinfo = 0;
     sa->sin6_addr = m_addr;
     sa->sin6_scope_id = m_scope_id;
 }

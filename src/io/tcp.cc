@@ -103,6 +103,7 @@ scoped_fd_t tcp_conn_t::init_socket(const ip_and_port_t &ip_port) {
     assert(sock.valid());
 
     sockaddr_in6 sa;
+    memset(&sa, 0, sizeof(sa));
     ip_port.to_sockaddr(&sa);
     GUARANTEE_ERR(::connect(sock.get(), (sockaddr *)&sa, sizeof(sa)) == 0 || errno == EINPROGRESS);
     return sock;
