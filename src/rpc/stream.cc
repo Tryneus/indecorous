@@ -23,7 +23,7 @@ void local_stream_t::write(write_message_t &&msg) {
     // TODO: would be nice to batch these, reduce system call overhead
     // don't want to increase latency, though =(
     uint64_t value = 1;
-    GUARANTEE(::write(fd.get(), &value, sizeof(value)) == sizeof(value));
+    GUARANTEE_ERR(::write(fd.get(), &value, sizeof(value)) == sizeof(value));
 }
 
 void local_stream_t::wait(wait_object_t *interruptor) {
@@ -35,7 +35,7 @@ void local_stream_t::wait(wait_object_t *interruptor) {
     // Clear the eventfd now - this may result in a spurious wakeup later, but
     // better than missing a message.
     uint64_t value;
-    GUARANTEE(::read(fd.get(), &value, sizeof(value)) == sizeof(value));
+    GUARANTEE_ERR(::read(fd.get(), &value, sizeof(value)) == sizeof(value));
     assert(value > 0);
 }
 

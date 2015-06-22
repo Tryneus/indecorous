@@ -21,9 +21,9 @@ scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
     // Block SIGINT and SIGTERM on child threads (this will be inherited)
     sigset_t sigset;
     sigset_t old_sigset;
-    GUARANTEE(sigemptyset(&sigset) == 0);
-    GUARANTEE(sigaddset(&sigset, SIGINT) == 0);
-    GUARANTEE(sigaddset(&sigset, SIGTERM) == 0);
+    GUARANTEE_ERR(sigemptyset(&sigset) == 0);
+    GUARANTEE_ERR(sigaddset(&sigset, SIGINT) == 0);
+    GUARANTEE_ERR(sigaddset(&sigset, SIGTERM) == 0);
 
     GUARANTEE(pthread_sigmask(SIG_BLOCK, &sigset, &old_sigset) == 0);
 
@@ -67,15 +67,15 @@ public:
         sigact.sa_sigaction = &scoped_sigaction_t::callback;
         sigemptyset(&sigact.sa_mask);
 
-        GUARANTEE(sigaction(SIGINT, &sigact, &m_old_sigint) == 0);
-        GUARANTEE(sigaction(SIGTERM, &sigact, &m_old_sigterm) == 0);
-        GUARANTEE(sem_init(&m_semaphore, 0, 0) == 0);
+        GUARANTEE_ERR(sigaction(SIGINT, &sigact, &m_old_sigint) == 0);
+        GUARANTEE_ERR(sigaction(SIGTERM, &sigact, &m_old_sigterm) == 0);
+        GUARANTEE_ERR(sem_init(&m_semaphore, 0, 0) == 0);
     }
 
     ~scoped_sigaction_t() {
-        GUARANTEE(sem_destroy(&m_semaphore) == 0);
-        GUARANTEE(sigaction(SIGINT, &m_old_sigint, nullptr) == 0);
-        GUARANTEE(sigaction(SIGTERM, &m_old_sigterm, nullptr) == 0);
+        GUARANTEE_ERR(sem_destroy(&m_semaphore) == 0);
+        GUARANTEE_ERR(sigaction(SIGINT, &m_old_sigint, nullptr) == 0);
+        GUARANTEE_ERR(sigaction(SIGTERM, &m_old_sigterm, nullptr) == 0);
         s_instance = nullptr;
     }
 

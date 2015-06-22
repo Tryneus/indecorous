@@ -11,7 +11,7 @@ absolute_time_t::absolute_time_t() : sec(0), nsec(0) { }
 
 absolute_time_t::absolute_time_t(int64_t delta_ms) {
     struct timespec t;
-    GUARANTEE(clock_gettime(CLOCK_MONOTONIC, &t) == 0);
+    GUARANTEE_ERR(clock_gettime(CLOCK_MONOTONIC, &t) == 0);
     sec = t.tv_sec;
     nsec = t.tv_nsec;
     add(delta_ms);

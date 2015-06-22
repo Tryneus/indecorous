@@ -82,7 +82,7 @@ $(TEST_OBJ_DIR)/%.d: $(TEST_DIR)/%.cc
 
 $(OBJ_DIR)/%.d: $(SRC_DIR)/%.cc
 	@mkdir -p $(dir $@)
-	@$(CXX) $(CXX_FLAGS) -MM -MT $(OBJ_DIR)/%.o $< -MF $@
+	@$(CXX) $(CXX_FLAGS) -MM -MT '$(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.o,$<)' $< -MF $@
 
 $(BIN_DIR)/$(BIN_NAME): $(ALL_OBJS) Makefile
 	@echo "  $(CXX) $@"

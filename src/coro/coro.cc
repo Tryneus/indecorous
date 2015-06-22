@@ -81,7 +81,7 @@ dispatcher_t::dispatcher_t() :
         m_rpc_consumer(m_context_arena.get(this)),
         m_coro_delta(0) {
     // Save the currently running context
-    GUARANTEE(getcontext(&m_main_context) == 0);
+    GUARANTEE_ERR(getcontext(&m_main_context) == 0);
 
     // Set up the rpc consumer coroutine
     makecontext(&m_rpc_consumer->m_context, coro_pull, 0);
@@ -145,7 +145,7 @@ coro_t::coro_t(dispatcher_t *dispatch) :
         m_valgrindStackId(VALGRIND_STACK_REGISTER(m_stack, m_stack + sizeof(m_stack))),
         m_wait_callback(this),
         m_wait_result(wait_result_t::Success) {
-    GUARANTEE(getcontext(&m_context) == 0);
+    GUARANTEE_ERR(getcontext(&m_context) == 0);
 
     m_context.uc_stack.ss_sp = m_stack;
     m_context.uc_stack.ss_size = s_stackSize;
