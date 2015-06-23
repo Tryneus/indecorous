@@ -40,7 +40,7 @@ public:
     future_t<result_t> call_async(Args &&...args) {
         if (is_local()) { note_send(); }
         request_id_t request_id = send_request<Callback>(request_gen.next(), std::forward<Args>(args)...);
-        return get_response(request_id).then_release(serializer_t<result_t>::read);
+        return get_response(request_id).then_release(&target_t::parse_result<result_t>);
     }
 
     void send_reply(write_message_t &&msg);
@@ -67,10 +67,17 @@ private:
         return request_id;
     }
 
+    template <typename result_t>
+    static result_t parse_result(read_message_t msg) {
+        return serializer_t<result_t>::read(std::move(msg));
+    }
+
     future_t<read_message_t> get_response(request_id_t request_id);
 
     id_generator_t<request_id_t> request_gen;
 };
+
+template <> void target_t::parse_result(read_message_t data);
 
 class local_target_t : public target_t {
 public:

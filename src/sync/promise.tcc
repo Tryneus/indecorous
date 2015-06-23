@@ -42,6 +42,18 @@ const T &future_t<T>::get_ref() {
 }
 
 template <typename T>
+template <typename Callable, typename Res>
+future_t<Res> future_t<T>::then(Callable cb) {
+    return m_data->template add_chain<Callable, Res>(std::move(cb), false);
+}
+
+template <typename T>
+template <typename Callable, typename Res>
+future_t<Res> future_t<T>::then_release(Callable cb) {
+    return m_data->template add_chain<Callable, Res>(std::move(cb), true);
+}
+
+template <typename T>
 future_t<T>::future_t(promise_data_t<T> *data) : m_data(data) { }
 
 template <typename T>
@@ -68,7 +80,10 @@ void future_t<T>::notify(wait_result_t result) {
 
 // Only to be instantiated by a promise_t
 template <typename T>
-promise_data_t<T>::promise_data_t() : m_state(state_t::unfulfilled), m_abandoned(false) { }
+promise_data_t<T>::promise_data_t() :
+    m_state(state_t::unfulfilled),
+    m_abandoned(false),
+    m_release_chain(nullptr) { }
 
 template <typename T>
 promise_data_t<T>::~promise_data_t() {
@@ -93,8 +108,16 @@ void promise_data_t<T>::assign(T &&value) {
     new (&m_value) T(std::move(value));
     m_state = state_t::fulfilled;
 
+    // TODO: improve handling when a waiter wants to release the data but
+    // a chain wants it as well - right now they'll be woken with success, then
+    // fail when they try to get the data.
     for (future_t<T> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
         f->notify(wait_result_t::Success);
+    }
+
+    m_chains.each([&] (promise_chain_t<T> *c) { c->handle(value); });
+    if (m_release_chain != nullptr) {
+        m_release_chain->handle(release());
     }
 }
 
@@ -145,6 +168,82 @@ bool promise_data_t<T>::abandon() {
 }
 
 template <typename T>
+template <typename Callable, typename Res>
+future_t<Res> promise_data_t<T>::add_chain(Callable cb, bool do_release) {
+    auto *chain = new promise_chain_impl_t<T, Callable, Res>(std::move(cb));
+    if (do_release) {
+        GUARANTEE(m_release_chain == nullptr);
+        m_release_chain = chain;
+    } else {
+        m_chains.push_back(chain);
+    }
+    return chain->get_future();
+}
+
+template <typename T>
+promise_chain_t<T>::promise_chain_t() { }
+
+template <typename T>
+promise_chain_t<T>::~promise_chain_t() { }
+
+template <typename T, typename Callable, typename Res>
+promise_chain_impl_t<T, Callable, Res>::promise_chain_impl_t(Callable cb) :
+        m_callback(std::move(cb)) { }
+
+template <typename T, typename Callable, typename Res>
+void promise_chain_impl_t<T, Callable, Res>::handle(const T &value) {
+    m_promise.fulfill(m_callback(value));
+}
+
+template <typename T, typename Callable, typename Res>
+future_t<Res> promise_chain_impl_t<T, Callable, Res>::get_future() {
+    return m_promise.get_future();
+}
+
+template <typename T, typename Callable>
+promise_chain_impl_t<T, Callable, void>::promise_chain_impl_t(Callable cb) :
+        m_callback(std::move(cb)) { }
+
+template <typename T, typename Callable>
+void promise_chain_impl_t<T, Callable, void>::handle(const T &value) {
+    m_callback(value);
+    m_promise.fulfill();
+}
+
+template <typename T, typename Callable>
+future_t<void> promise_chain_impl_t<T, Callable, void>::get_future() {
+    return m_promise.get_future();
+}
+
+template <typename Callable, typename Res>
+promise_chain_impl_t<void, Callable, Res>::promise_chain_impl_t(Callable cb) :
+    m_callback(std::move(cb)) { }
+
+template <typename Callable, typename Res>
+void promise_chain_impl_t<void, Callable, Res>::handle() {
+    m_promise.fulfill(m_callback());
+}
+
+template <typename Callable, typename Res>
+future_t<Res> promise_chain_impl_t<void, Callable, Res>::get_future() {
+    return m_promise.get_future();
+}
+
+template <typename Callable>
+promise_chain_impl_t<void, Callable, void>::promise_chain_impl_t(Callable cb) :
+    m_callback(std::move(cb)) { }
+
+template <typename Callable>
+void promise_chain_impl_t<void, Callable, void>::handle() {
+    m_promise.fulfill(m_callback());
+}
+
+template <typename Callable>
+future_t<void> promise_chain_impl_t<void, Callable, void>::get_future() {
+    return m_promise.get_future();
+}
+
+template <typename T>
 promise_t<T>::promise_t() : m_data(new promise_data_t<T>()) { }
 
 template <typename T>
@@ -160,7 +259,7 @@ promise_t<T>::~promise_t() {
 }
 
 template <typename T>
-void promise_t<T>::fulfill(T &&value) {
+void promise_t<T>::fulfill(T value) {
     assert(m_data != nullptr);
     m_data->assign(std::move(value));
 }
