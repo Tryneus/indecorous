@@ -18,7 +18,9 @@ future_t<void>::~future_t() {
     }
 }
 
-bool future_t<void>::valid() { return m_data != nullptr; }
+bool future_t<void>::valid() const {
+    return m_data != nullptr;
+}
 
 void future_t<void>::add_wait(wait_callback_t *cb) {
     assert(m_data != nullptr);

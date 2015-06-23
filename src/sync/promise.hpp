@@ -15,58 +15,23 @@ template <typename T> class promise_data_t;
 template <typename T>
 class future_t : public intrusive_node_t<future_t<T> >, public wait_object_t {
 public:
-    future_t(future_t<T> &&other) :
-            intrusive_node_t<future_t<T> >(std::move(other)),
-            m_data(other.m_data),
-            m_waiters(std::move(other.m_waiters)) {
-        other.m_data = nullptr;
-    }
-    ~future_t() {
-        if (m_data->remove_future(this)) {
-            delete m_data;
-        }
-    }
+    future_t(future_t<T> &&other);
+    ~future_t();
 
-    bool valid() {
-        return (m_data != nullptr && !m_data->released());
-    }
+    bool valid() const;
 
-    T get_copy() {
-        wait();
-        return m_data->get();
-    }
-
-    T release() {
-        wait();
-        return m_data->release();
-    }
-
-    const T &get_ref() {
-        wait();
-        return m_data->get();
-    }
+    T copy() const;
+    T release();
+    const T &get_ref();
 
 private:
     friend class promise_data_t<T>;
-    explicit future_t(promise_data_t<T> *data) : m_data(data) { }
+    explicit future_t(promise_data_t<T> *data);
 
-    void add_wait(wait_callback_t *cb) {
-        assert(m_data != nullptr);
-        if (m_data->released()) {
-            cb->wait_done(wait_result_t::ObjectLost);
-        } else if (m_data->has()) {
-            cb->wait_done(wait_result_t::Success);
-        } else {
-            m_waiters.push_back(cb);
-        }
-    }
-    void remove_wait(wait_callback_t *cb) {
-        m_waiters.remove(cb);
-    }
+    void add_wait(wait_callback_t *cb);
+    void remove_wait(wait_callback_t *cb);
 
-    void notify(wait_result_t result) {
-        m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
-    }
+    void notify(wait_result_t result);
 
     promise_data_t<T> *m_data;
     intrusive_list_t<wait_callback_t> m_waiters;
@@ -76,65 +41,23 @@ private:
 template <typename T>
 class promise_data_t {
 public:
-    promise_data_t() : m_state(state_t::unfulfilled), m_abandoned(false) { }
-    ~promise_data_t() {
-        if (m_state != state_t::unfulfilled) {
-            m_value.~T();
-        }
-    }
+    promise_data_t();
+    ~promise_data_t();
 
-    bool has() const {
-        return m_state == state_t::fulfilled;
-    }
+    bool has() const;
+    bool released() const;
 
-    bool released() const {
-        return m_state == state_t::released;
-    }
+    void assign(T &&value);
 
-    void assign(T &&value) {
-        assert(m_state == state_t::unfulfilled);
-        new (&m_value) T(std::move(value));
-        m_state = state_t::fulfilled;
+    T &get();
+    const T &get() const;
+    T release();
 
-        for (future_t<T> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
-            f->notify(wait_result_t::Success);
-        }
-    }
+    future_t<T> add_future();
 
-    T &get() {
-        assert(m_state == state_t::fulfilled);
-        return m_value;
-    }
-
-    T release() {
-        m_state = state_t::released;
-        return std::move(m_value);
-    }
-
-    future_t<T> add_future() {
-        future_t<T> res(this);
-        m_futures.push_back(&res);
-        return res;
-    }
-
-    // Returns true if it is safe to delete this promise_data_t
-    bool remove_future(future_t<T> *f) {
-        m_futures.remove(f);
-        return m_abandoned && m_futures.empty();
-    }
-
-    // Returns true if it is safe to delete this promise_data_t
-    bool abandon() {
-        assert(!m_abandoned);
-        m_abandoned = true;
-        if (m_state == state_t::unfulfilled) {
-            for (future_t<T> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
-                f->m_data = nullptr;
-                f->notify(wait_result_t::ObjectLost);
-            }
-        }
-        return m_futures.empty();
-    }
+    // These return true if it is safe to delete this promise_data_t
+    bool remove_future(future_t<T> *f);
+    bool abandon();
 
 private:
     enum class state_t {
@@ -155,23 +78,12 @@ private:
 template <typename T>
 class promise_t {
 public:
-    promise_t() : m_data(new promise_data_t<T>()) { }
-    promise_t(promise_t &&other) : m_data(other.m_data) { other.m_data = nullptr; }
-    ~promise_t() {
-        if (m_data != nullptr && m_data->abandon()) {
-            delete m_data;
-        }
-    }
+    promise_t(promise_t &&other);
+    promise_t();
+    ~promise_t();
 
-    void fulfill(T &&value) {
-        assert(m_data != nullptr);
-        m_data->assign(std::move(value));
-    }
-
-    future_t<T> get_future() {
-        assert(m_data != nullptr);
-        return m_data->add_future();
-    }
+    void fulfill(T &&value);
+    future_t<T> get_future();
 
 private:
     promise_data_t<T> *m_data;
@@ -186,8 +98,7 @@ public:
     future_t(future_t<void> &&other);
     ~future_t();
 
-    bool valid();
-
+    bool valid() const;
     void wait();
 
 private:
@@ -237,5 +148,7 @@ private:
 };
 
 } // namespace indecorous
+
+#include "sync/promise.tcc"
 
 #endif // CORO_CORO_PROMISE_HPP_
