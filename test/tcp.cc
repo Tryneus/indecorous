@@ -15,32 +15,28 @@ using namespace indecorous;
 
 struct client_t : public handler_t<client_t> {
     static void call(uint16_t server_port) {
-        debugf("client_t");
         tcp_conn_t conn(ip_and_port_t::loopback(server_port), nullptr);
         uint64_t val = 142;
         conn.write(&val, sizeof(val), nullptr);
-        debugf("client wrote val: %" PRIu64, val);
     }
 };
 IMPL_UNIQUE_HANDLER(client_t);
 
 struct server_t : public handler_t<server_t> {
     static void call() {
-        debugf("server_t");
         event_t done_event;
         tcp_listener_t listener(0,
             [&] (tcp_conn_t conn, drainer_lock_t) {
                 handle_conn(std::move(conn), &done_event);
             });
         
-        thread_t::self()->hub()->broadcast_local_noreply<client_t>(listener.local_port());
+        thread_t::self()->hub()->broadcast_local_sync<client_t>(listener.local_port());
         done_event.wait();
     }
 
     static void handle_conn(tcp_conn_t conn, event_t *done_event) {
         uint64_t val;
         conn.read(&val, sizeof(val), done_event);
-        debugf("server got val: %" PRIu64, val);
     }
 };
 IMPL_UNIQUE_HANDLER(server_t);

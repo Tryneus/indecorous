@@ -19,8 +19,8 @@ tcp_conn_t::tcp_conn_t(tcp_conn_t &&other) :
     m_read_buffer(std::move(other.m_read_buffer)),
     m_read_buffer_offset(other.m_read_buffer_offset) { }
 
-tcp_conn_t::tcp_conn_t(fd_t sock) :
-        m_socket(sock),
+tcp_conn_t::tcp_conn_t(scoped_fd_t sock) :
+        m_socket(std::move(sock)),
         m_in(file_wait_t::in(m_socket.get())),
         m_out(file_wait_t::out(m_socket.get())),
         m_read_buffer_offset(0) {
@@ -35,7 +35,7 @@ tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, wait_object_t *interruptor)
     m_read_buffer.reserve(s_read_buffer_size);
 
     // Wait for the socket to become writable and check the result
-    wait_all_interruptible(interruptor, m_in);
+    wait_all_interruptible(interruptor, m_out);
 
     int err;
     socklen_t err_size = sizeof(err);
@@ -50,19 +50,22 @@ void tcp_conn_t::read(void *buffer, size_t count, wait_object_t *interruptor) {
     while (count > 0) {
         size_t bytes_to_copy =
             std::min<size_t>(count, m_read_buffer.size() - m_read_buffer_offset);
+        count -= bytes_to_copy;
         while (bytes_to_copy > 0) {
-            --count;
+            --bytes_to_copy;
             *buf++ = m_read_buffer[m_read_buffer_offset++];
         }
 
-        if (count > s_read_buffer_size / 2) {
-            ssize_t res = eintr_wrap([&] {
-                    return ::read(m_socket.get(), buf, count);
-                }, &m_in, interruptor);
-            count -= res;
-            buf += res;
-        } else {
-            read_into_buffer(interruptor);
+        if (count > 0) {
+            if (count > s_read_buffer_size / 2) {
+                ssize_t res = eintr_wrap([&] {
+                        return ::read(m_socket.get(), buf, count);
+                    }, &m_in, interruptor);
+                count -= res;
+                buf += res;
+            } else {
+                read_into_buffer(interruptor);
+            }
         }
     }
 }
@@ -131,7 +134,9 @@ static void accept_loop(std::function<void (tcp_conn_t, drainer_lock_t)> on_conn
             sockaddr_in6 sa;
             socklen_t sa_len = sizeof(sa);
             in.wait();       
-            on_connect(tcp_conn_t(::accept(sock, (sockaddr *)&sa, &sa_len)), drain);
+            scoped_fd_t new_sock = ::accept(sock, (sockaddr *)&sa, &sa_len);
+            GUARANTEE_ERR(new_sock.valid());
+            on_connect(tcp_conn_t(std::move(new_sock)), drain);
         }
     } catch (const wait_interrupted_exc_t &ex) {
         assert(drain.draining());
@@ -165,14 +170,12 @@ uint16_t tcp_listener_t::local_port() {
 }
 
 scoped_fd_t tcp_listener_t::init_socket() {
-    scoped_fd_t sock(::socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
-    assert(sock.valid());
+    scoped_fd_t sock = ::socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+    GUARANTEE_ERR(sock.valid());
 
     sockaddr_in6 sa;
     memset(&sa, 0, sizeof(sa));
-    sa.sin6_family = AF_INET6;
-    sa.sin6_port = m_local_port;
-    sa.sin6_addr = in6addr_any;
+    ip_and_port_t::any(m_local_port).to_sockaddr(&sa);
     GUARANTEE_ERR(::bind(sock.get(), (sockaddr *)&sa, sizeof(sa)) == 0);
     GUARANTEE_ERR(::listen(sock.get(), 10) == 0);
 

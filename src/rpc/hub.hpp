@@ -37,15 +37,22 @@ public:
     template <typename Callback, typename Res = typename handler_wrapper_t<Callback>::result_t, typename... Args>
     std::vector<future_t<Res> > broadcast_local_async(Args &&...args) {
         std::vector<future_t<Res> > futures;
+        futures.reserve(m_local_targets.size());
         for (auto &&t : m_local_targets) {
-            futures.emplace_back(t->call_async(std::forward<Args>(args)...));
+            futures.emplace_back(t->call_async<Callback>(std::forward<Args>(args)...));
         }
         return futures;
     }
 
     template <typename Callback, typename Res = typename handler_wrapper_t<Callback>::result_t, typename... Args>
-    std::vector<Res> broadcast_local_sync(Args &&...args) {
-        std::vector<future_t<Res> > futures = broadcast_local_async(std::forward<Args>(args)...);
+    typename std::enable_if<std::is_void<Res>::value, void>::type broadcast_local_sync(Args &&...args) {
+        std::vector<future_t<Res> > futures = broadcast_local_async<Callback>(std::forward<Args>(args)...);
+        wait_all_it(futures);
+    }
+
+    template <typename Callback, typename Res = typename handler_wrapper_t<Callback>::result_t, typename... Args>
+    typename std::enable_if<!std::is_void<Res>::value, std::vector<Res> >::type broadcast_local_sync(Args &&...args) {
+        std::vector<future_t<Res> > futures = broadcast_local_async<Callback>(std::forward<Args>(args)...);
         std::vector<Res> res;
         res.reserve(futures.size());
         wait_all(futures.begin(), futures.end());

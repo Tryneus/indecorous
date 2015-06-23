@@ -163,8 +163,7 @@ ip_and_port_t ip_and_port_t::from_sockaddr(sockaddr_in6 *sa) {
 }
 
 void ip_and_port_t::to_sockaddr(sockaddr_in6 *sa) const {
-    sa->sin6_addr = m_addr.m_addr;
-    sa->sin6_scope_id = m_addr.m_scope_id;
+    m_addr.to_sockaddr(sa);
     sa->sin6_port = m_port;
 }
 

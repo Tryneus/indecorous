@@ -3,6 +3,7 @@
 
 #include <tuple>
 #include <utility>
+#include <type_traits>
 
 #include "rpc/message.hpp"
 #include "rpc/serialize.hpp"
@@ -27,6 +28,7 @@ public:
     template <typename Res, typename... Args>
     class internal_handler_t : public handler_callback_t {
     public:
+        typedef Res result_t;
         void handle(message_hub_t *hub, read_message_t msg) {
             assert(msg.buffer.has());
             Res res = handle_internal(std::index_sequence_for<Args...>{},
@@ -72,6 +74,7 @@ public:
 
     typedef decltype(dummy_translator(Callback::call)) handler_impl_t;
     handler_impl_t internal_handler;
+    typedef typename handler_impl_t::result_t result_t;
 };
 
 // Specialization for handlers with a void return type
@@ -79,6 +82,7 @@ template <typename Callback>
 template <typename... Args>
 class handler_wrapper_t<Callback>::internal_handler_t<void, Args...> : public handler_callback_t {
 public:
+    typedef void result_t;
     void handle(message_hub_t *hub, read_message_t msg) {
         assert(msg.buffer.has());
         handle_internal(std::index_sequence_for<Args...>{},

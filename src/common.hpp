@@ -1,8 +1,10 @@
 #ifndef COMMON_HPP_
 #define COMMON_HPP_
 
+#include <cstdio>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <cassert>
 #include <cstdint>
@@ -24,7 +26,7 @@
 #define GUARANTEE(x) do { \
     if (!(x)) { \
         debugf("Guarantee failed [" #x "] " __FILE__ ":%d", __LINE__); \
-        abort(); \
+        ::abort(); \
     } } while (0)
 #define GUARANTEE_ERR(x) do { \
     if (!(x)) { \
@@ -32,7 +34,7 @@
         char *err_str = strerror_r(errno, errno_buffer, sizeof(errno_buffer)); \
         debugf("Guarantee failed [" #x "] errno = %d (%s) " __FILE__ ":%d", \
                errno, err_str, __LINE__); \
-        abort(); \
+        ::abort(); \
     } } while (0)
 
 #define debugf(format, ...) printf("Thread %" PRIi32 " - " format "\n", indecorous::thread_self_id(), ##__VA_ARGS__)
@@ -46,7 +48,7 @@ auto eintr_wrap(Callable &&c) {
     while (true) {
         auto res = c();
         if (res != -1) { return res; }
-        assert(errno == EINTR);
+        GUARANTEE_ERR(errno == EINTR);
     }
 }
 
@@ -56,10 +58,8 @@ auto eintr_wrap(Callable &&c, wait_object_t *w, wait_object_t *interruptor) {
     while (true) {
         auto res = c();
         if (res != -1) { return res; }
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            wait_all_interruptible(interruptor, w);
-        }
-        assert(errno == EINTR);
+        GUARANTEE_ERR(errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK);
+        wait_all_interruptible(interruptor, w);
     }
 }
 

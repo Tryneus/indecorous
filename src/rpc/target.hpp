@@ -32,14 +32,16 @@ public:
     template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
     result_t call_sync(Args &&...args) {
         if (is_local()) { note_send(); }
-        request_id_t request_id = send_request(request_gen.next(), std::forward<Args>(args)...);
+        request_id_t request_id = send_request<Callback>(request_gen.next(), std::forward<Args>(args)...);
         return parse_result<result_t>(get_response(request_id));
     }
 
     template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
     future_t<result_t> call_async(Args &&...args) {
         if (is_local()) { note_send(); }
-        request_id_t request_id = send_request(request_gen.next(), std::forward<Args>(args)...);
+        request_id_t request_id = send_request<Callback>(request_gen.next(), std::forward<Args>(args)...);
+        // TODO: promise chaining with then, i.e.
+        // return get_response(request_id).then(target_t::parse_result<result_t>);
         return coro_t::spawn(&target_t::parse_result<result_t>, get_response(request_id));
     }
 
@@ -68,13 +70,16 @@ private:
     }
 
     template <typename result_t>
-    result_t parse_result(future_t<read_message_t> data) {
+    static result_t parse_result(future_t<read_message_t> data) {
         return serializer_t<result_t>::read(data.release());
     }
 
-    future_t<read_message_t> get_response(request_id_t request_id); // TODO: implement
+    future_t<read_message_t> get_response(request_id_t request_id);
+
     id_generator_t<request_id_t> request_gen;
 };
+
+template <> void target_t::parse_result(future_t<read_message_t> data);
 
 class local_target_t : public target_t {
 public:

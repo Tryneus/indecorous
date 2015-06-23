@@ -18,12 +18,13 @@ scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
         m_barrier(num_threads + 1) {
     assert(num_threads > 0);
 
-    // Block SIGINT and SIGTERM on child threads (this will be inherited)
+    // Block signals on child threads (this will be inherited)
     sigset_t sigset;
     sigset_t old_sigset;
     GUARANTEE_ERR(sigemptyset(&sigset) == 0);
     GUARANTEE_ERR(sigaddset(&sigset, SIGINT) == 0);
     GUARANTEE_ERR(sigaddset(&sigset, SIGTERM) == 0);
+    GUARANTEE_ERR(sigaddset(&sigset, SIGPIPE) == 0);
 
     GUARANTEE(pthread_sigmask(SIG_BLOCK, &sigset, &old_sigset) == 0);
 
@@ -69,6 +70,11 @@ public:
 
         GUARANTEE_ERR(sigaction(SIGINT, &sigact, &m_old_sigint) == 0);
         GUARANTEE_ERR(sigaction(SIGTERM, &sigact, &m_old_sigterm) == 0);
+
+        sigact.sa_handler = SIG_IGN;
+        sigact.sa_flags = 0;
+        GUARANTEE_ERR(sigaction(SIGPIPE, &sigact, &m_old_sigpipe) == 0);
+
         GUARANTEE_ERR(sem_init(&m_semaphore, 0, 0) == 0);
     }
 
@@ -76,6 +82,7 @@ public:
         GUARANTEE_ERR(sem_destroy(&m_semaphore) == 0);
         GUARANTEE_ERR(sigaction(SIGINT, &m_old_sigint, nullptr) == 0);
         GUARANTEE_ERR(sigaction(SIGTERM, &m_old_sigterm, nullptr) == 0);
+        GUARANTEE_ERR(sigaction(SIGPIPE, &m_old_sigpipe, nullptr) == 0);
         s_instance = nullptr;
     }
 
@@ -92,6 +99,7 @@ private:
 
     struct sigaction m_old_sigint;
     struct sigaction m_old_sigterm;
+    struct sigaction m_old_sigpipe;
     sem_t m_semaphore;
 };
 

@@ -136,7 +136,7 @@ void events_t::do_epoll_wait(int timeout) {
 
         while (cursor != nullptr) {
             file_callback_t *next = cbs->next(cursor);
-            if (event_mask & EPOLLERR) {
+            if (event_mask & (EPOLLERR | EPOLLHUP)) {
                 cursor->file_callback(wait_result_t::ObjectLost); // TODO: better error type for this?
                 cbs->remove(cursor);
             } else if ((cursor->event_mask() & event_mask) != 0) {

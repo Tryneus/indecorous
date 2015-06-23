@@ -23,14 +23,16 @@ else
 endif
 
 ifeq ($(DEBUG),1)
+  BUILD_TYPE = $(join $(COMPILER_SUFFIX),_debug)
 else
+  BUILD_TYPE = $(join $(COMPILER_SUFFIX),_release)
   CXX_FLAGS += -O3 -DNDEBUG
 endif
 
 SRC_DIR = src
 TEST_DIR = test
-OBJ_DIR = bin/obj_$(COMPILER_SUFFIX)
-TEST_OBJ_DIR = bin/test_obj_$(COMPILER_SUFFIX)
+OBJ_DIR = bin/obj_$(BUILD_TYPE)
+TEST_OBJ_DIR = bin/test_obj_$(BUILD_TYPE)
 BIN_DIR = bin
 EXT_DIR = external
 
@@ -46,10 +48,11 @@ CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
 CXX_FLAGS += -Wformat=2 -Wswitch-enum
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
-CXX_FLAGS += -D__STDC_FORMAT_MACROS -DINDECOROUS_STRICT
+CXX_FLAGS += -D__STDC_FORMAT_MACROS
+#CXX_FLAGS += -DINDECOROUS_STRICT
 
 LD_FLAGS = -lstdc++ -Wl,--gc-sections -lpthread -lrt
-BIN_NAME = coro_test_$(COMPILER_SUFFIX)
+BIN_NAME = coro_test_$(BUILD_TYPE)
 
 ALL_SOURCES := $(shell find $(SRC_DIR) -name '*.cc' -not -name '\.*')
 ALL_TESTS := $(shell find $(TEST_DIR) -name '*.cc' -not -name '\.*')
