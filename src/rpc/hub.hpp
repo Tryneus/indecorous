@@ -71,10 +71,14 @@ private:
     friend class local_target_t; // For spawning handlers of messages
     bool spawn(read_message_t msg);
 
+    friend class target_t; // For getting request responses
+    future_t<read_message_t> get_response(request_id_t id);
+
     local_target_t m_self_target;
     std::vector<local_target_t *> m_local_targets;
     std::unordered_map<target_id_t, target_t *> m_targets;
     std::unordered_map<handler_id_t, handler_callback_t *> m_handlers;
+    std::unordered_map<request_id_t, promise_t<read_message_t> > m_replies;
 };
 
 } // namespace indecorous

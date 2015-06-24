@@ -32,10 +32,10 @@ void target_t::send_reply(write_message_t &&msg) {
 }
 
 future_t<read_message_t> target_t::get_response(request_id_t request_id) {
-    // TODO: this without TLS lookup
+    return thread_t::self()->hub()->get_response(request_id);
 }
 
-template <> void target_t::parse_result(read_message_t data) { }
+template <> void target_t::parse_result(read_message_t) { }
 
 local_target_t::local_target_t() :
     target_t(), m_stream() { }

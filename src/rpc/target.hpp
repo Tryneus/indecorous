@@ -52,8 +52,6 @@ protected:
 
     target_id_t target_id;
 
-    std::unordered_map<request_id_t, promise_t<read_message_t> > request_map;
-
 private:
     void note_send() const;
 
