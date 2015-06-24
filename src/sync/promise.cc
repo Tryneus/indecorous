@@ -61,7 +61,7 @@ void promise_data_t<void>::assign() {
     for (future_t<void> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
         f->notify(wait_result_t::Success);
     }
-    m_chains.each([&] (promise_chain_t<void> *c) { c->handle(); });
+    m_chains.each([&] (promise_chain_t *c) { c->handle(); });
 }
 
 future_t<void> promise_data_t<void>::add_future() {

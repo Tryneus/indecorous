@@ -88,7 +88,14 @@ public:
     promise_t();
     ~promise_t();
 
-    void fulfill(T value);
+    template <typename U = T>
+    typename std::enable_if<std::is_copy_constructible<U>::value, void>::type
+    fulfill(const T &value);
+
+    template <typename U = T>
+    typename std::enable_if<std::is_move_constructible<U>::value, void>::type
+    fulfill(T &&value);
+
     future_t<T> get_future();
 
 private:
@@ -108,103 +115,6 @@ private:
     promise_data_t<void> *m_data;
 };
 
-// This class is used internally to chain promises together without using extra coroutines
-template <typename T, typename Enable = void>
-class promise_chain_t : public intrusive_node_t<promise_chain_t<T> > {
-public:
-    promise_chain_t();
-    virtual ~promise_chain_t();
-    virtual void handle(const T &value) = 0;
-};
-
-// Specialization for classes with move semantics
-template <typename T>
-class promise_chain_t<T, typename std::enable_if<std::is_move_constructible<T>::value>::type> :
-        public intrusive_node_t<promise_chain_t<T> > {
-public:
-    promise_chain_t();
-    virtual ~promise_chain_t();
-    virtual void handle(const T &value) = 0;
-    virtual void handle_move(T value) = 0;
-}
-
-template <> class promise_chain_t<void> : public intrusive_node_t<promise_chain_t<void> > {
-public:
-    promise_chain_t();
-    virtual ~promise_chain_t();
-    virtual void handle() = 0;
-};
-
-template <typename T, typename Callable, typename Res, typename Move = void>
-class promise_chain_impl_t : public promise_chain_t<T> {
-public:
-    promise_chain_impl_t(Callable cb);
-    void handle(const T &value);
-    future_t<Res> get_future();
-private:
-    Callable m_callback;
-    promise_t<Res> m_promise;
-};
-
-template <typename T, typename Callable, typename Res>
-class promise_chain_impl_t<T, Callback, Res, std::enable_if<std::is_move_constructible<T>::value>::type> :
-        public promise_chain_t<T> {
-public:
-    promise_chain_impl_t(Callable cb);
-    void handle(const T &value);
-    void handle_move(T value);
-    future_t<Res> get_future();
-private:
-    Callable m_callback;
-    promise_t<Res> m_promise;
-};
-
-template <typename T, typename Callable>
-class promise_chain_impl_t<T, Callable, void, void> : public promise_chain_t<T> {
-public:
-    promise_chain_impl_t(Callable cb);
-    void handle(const T &value);
-    future_t<void> get_future();
-private:
-    Callable m_callback;
-    promise_t<void> m_promise;
-};
-
-template <typename T, typename Callable>
-class promise_chain_impl_t<T, Callback, void, std::enable_if<std::is_move_constructible<T>::value>::type> :
-        public promise_chain_t<T> {
-public:
-    promise_chain_impl_t(Callable cb);
-    void handle(const T &value);
-    void handle_move(T value);
-    future_t<void> get_future();
-private:
-    Callable m_callback;
-    promise_t<void> m_promise;
-};
-
-template <typename Callable, typename Res>
-class promise_chain_impl_t<void, Callable, Res, void> : public promise_chain_t<void> {
-public:
-    promise_chain_impl_t(Callable cb);
-    void handle();
-    future_t<Res> get_future();
-private:
-    Callable m_callback;
-    promise_t<Res> m_promise;
-};
-
-template <typename Callable>
-class promise_chain_impl_t<void, Callable, void, void> : public promise_chain_t<void> {
-public:
-    promise_chain_impl_t(Callable cb);
-    void handle();
-    future_t<void> get_future();
-private:
-    Callable m_callback;
-    promise_t<void> m_promise;
-};
-
 // Only to be instantiated by a promise_t
 template <typename T>
 class promise_data_t {
@@ -216,17 +126,15 @@ public:
     bool released() const;
     bool abandoned() const;
 
-    template <typename U = T>
-    typename std::enable_if<std::is_move_constructible<U>::value, void>::type
-    assign(T value);
-
-    template <typename U = T>
-    typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
-    assign(const T &value);
+    void assign(T &&value); // Move constructor must be available
+    void assign(const T &value); // Copy constructor must be available
 
     T &ref();
     const T &cref() const;
-    T release();
+
+    template <typename U = T>
+    typename std::enable_if<std::is_move_constructible<U>::value, T>::type
+    release();
 
     future_t<T> add_future();
 
@@ -237,12 +145,23 @@ public:
     template <typename Callable, typename Res>
     future_t<Res> add_chain(Callable cb, bool move_chain);
 
-private:
-    void notify_chain();
+    // This class is used internally to chain promises together without using extra coroutines
+    class promise_chain_t : public intrusive_node_t<promise_chain_t> {
+    public:
+        promise_chain_t();
+        virtual ~promise_chain_t();
+        virtual void handle(const T &value) = 0;
+        virtual void handle_move(T value) = 0;
+    };
 
+private:
     template <typename U = T>
     typename std::enable_if<std::is_move_constructible<U>::value, void>::type
-    notify_move_chain();
+    notify_all();
+
+    template <typename U = T>
+    typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
+    notify_all();
 
     enum class state_t {
         unfulfilled,
@@ -253,8 +172,8 @@ private:
     state_t m_state;
     bool m_abandoned;
     intrusive_list_t<future_t<T> > m_futures;
-    intrusive_list_t<promise_chain_t<T> > m_chain;
-    intrusive_list_t<promise_chain_t<T> > m_move_chain;
+    intrusive_list_t<promise_chain_t> m_chain;
+    intrusive_list_t<promise_chain_t> m_move_chain;
 
     union {
         T m_value;
@@ -279,11 +198,18 @@ public:
     template <typename Callable, typename Res>
     future_t<Res> add_chain(Callable cb);
 
+    class promise_chain_t : public intrusive_node_t<promise_chain_t> {
+    public:
+        promise_chain_t();
+        virtual ~promise_chain_t();
+        virtual void handle() = 0;
+    };
+
 private:
     bool m_fulfilled;
     bool m_abandoned;
     intrusive_list_t<future_t<void> > m_futures;
-    intrusive_list_t<promise_chain_t<void> > m_chains;
+    intrusive_list_t<promise_chain_t> m_chains;
 };
 
 } // namespace indecorous
