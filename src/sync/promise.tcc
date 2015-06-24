@@ -164,8 +164,8 @@ template <typename T>
 template <typename U>
 typename std::enable_if<std::is_move_constructible<U>::value, void>::type
 promise_data_t<T>::notify_all() {
-    const T &ref = m_value;
-    m_chain.clear([&] (promise_chain_t *c) { c->handle(ref); delete c; });
+    const T &local_ref = m_value;
+    m_chain.clear([&] (promise_chain_t *c) { c->handle(local_ref); delete c; });
     m_move_chain.clear([&] (promise_chain_t *c) {
             if (this->has()) c->handle_move(this->release());
             delete c;
@@ -178,8 +178,8 @@ template <typename U>
 typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
 promise_data_t<T>::notify_all() {
     GUARANTEE(m_move_chain.empty());
-    const T &ref = m_value;
-    m_chain.clear([&] (promise_chain_t *c) { c->handle(ref); delete c; });
+    const T &local_ref = m_value;
+    m_chain.clear([&] (promise_chain_t *c) { c->handle(local_ref); delete c; });
     m_futures.each([&] (future_t<T> *f) { f->notify(wait_result_t::Success); });
 }
 
@@ -277,104 +277,69 @@ promise_data_t<T>::promise_chain_t::promise_chain_t() { }
 template <typename T>
 promise_data_t<T>::promise_chain_t::~promise_chain_t() { }
 
-promise_data_t<void>::promise_chain_t::promise_chain_t() { }
+template <typename T, typename Callable, typename Res>
+struct chain_fulfillment_t {
+    template <typename U = T>
+    static typename std::enable_if<std::is_copy_constructible<U>::value, void>::type
+    ref(Callable &cb, const T &value, promise_t<Res> *out) {
+        out->fulfill(cb(value));
+    }
 
-promise_data_t<void>::promise_chain_t::~promise_chain_t() { }
+    template <typename U = T>
+    static typename std::enable_if<!std::is_copy_constructible<U>::value, void>::type
+    ref(Callable &, const T &, promise_t<Res> *) { GUARANTEE(false); }
 
-class no_move_t { };
-class no_copy_t { };
+    template <typename U = T>
+    static typename std::enable_if<std::is_move_constructible<U>::value, void>::type
+    move(Callable &cb, T value, promise_t<Res> *out) {
+        out->fulfill(cb(std::move(value)));
+    }
+
+    template <typename U = T>
+    static typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
+    move(Callable &, T, promise_t<Res> *) { GUARANTEE(false); }
+};
+
+template <typename T, typename Callable>
+struct chain_fulfillment_t<T, Callable, void> {
+    template <typename U = T>
+    static typename std::enable_if<std::is_copy_constructible<U>::value, void>::type
+    ref(Callable &cb, const T &value, promise_t<void> *out) {
+        cb(value);
+        out->fulfill();
+    }
+
+    template <typename U = T>
+    static typename std::enable_if<!std::is_copy_constructible<U>::value, void>::type
+    ref(Callable &, const T &, promise_t<void> *) { GUARANTEE(false); }
+
+    template <typename U = T>
+    static typename std::enable_if<std::is_move_constructible<U>::value, void>::type
+    move(Callable &cb, T value, promise_t<void> *out) {
+        cb(std::move(value));
+        out->fulfill();
+    }
+
+    template <typename U = T>
+    static typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
+    move(Callable &, T, promise_t<void> *) { GUARANTEE(false); }
+};
 
 // Default promise_chain_t implementation - supports move and copy
-template <typename T, typename Callable, typename Res, typename Enable = void>
+template <typename T, typename Callable, typename Res>
 class promise_chain_impl_t : public promise_data_t<T>::promise_chain_t {
 public:
     promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
-    void handle(const T &value) { m_promise.fulfill(m_callback(value)); }
-    void handle_move(T value) { m_promise.fulfill(m_callback(std::move(value))); }
+    void handle(const T &value) { chain_fulfillment_t<T, Callable, Res>::ref(m_callback, value, &m_promise); }
+    void handle_move(T value) { chain_fulfillment_t<T, Callable, Res>::move(m_callback, std::move(value), &m_promise); }
     future_t<Res> get_future() { return m_promise.get_future(); }
 private:
     Callable m_callback;
     promise_t<Res> m_promise;
-};
-
-template <typename T, typename Callable, typename Res>
-class promise_chain_impl_t<T, Callable, Res, typename std::enable_if<!std::is_move_constructible<T>::value, no_move_t>::type> :
-        public promise_data_t<T>::promise_chain_t {
-public:
-    promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
-    void handle(const T &value) { m_promise.fulfill(m_callback(value)); }
-    void handle_move(T) { GUARANTEE(false); }
-    future_t<Res> get_future() { return m_promise.get_future(); }
-private:
-    Callable m_callback;
-    promise_t<Res> m_promise;
-};
-
-template <typename T, typename Callable, typename Res>
-class promise_chain_impl_t<T, Callable, Res, typename std::enable_if<!std::is_copy_constructible<T>::value, no_copy_t>::type> :
-        public promise_data_t<T>::promise_chain_t {
-public:
-    promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
-    void handle(const T &) { GUARANTEE(false); }
-    void handle_move(T value) { m_promise.fulfill(m_callback(std::move(value))); }
-    future_t<Res> get_future() { return m_promise.get_future(); }
-private:
-    Callable m_callback;
-    promise_t<Res> m_promise;
-};
-
-template <typename T, typename Callable, typename Enable>
-class promise_chain_impl_t<T, Callable, void, Enable> : public promise_data_t<T>::promise_chain_t {
-public:
-    promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
-    void handle(const T &value) { m_callback(value); m_promise.fulfill(); }
-    void handle_move(T value) { m_callback(std::move(value)); m_promise.fulfill(); }
-    future_t<void> get_future() { return m_promise.get_future(); }
-private:
-    Callable m_callback;
-    promise_t<void> m_promise;
-};
-
-template <typename T, typename Callable>
-class promise_chain_impl_t<T, Callable, void, typename std::enable_if<!std::is_move_constructible<T>::value, no_move_t>::type> :
-        public promise_data_t<T>::promise_chain_t {
-public:
-    promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
-    void handle(const T &value) { m_callback(value); m_promise.fulfill(); }
-    void handle_move(T) { GUARANTEE(false); }
-    future_t<void> get_future() { return m_promise.get_future(); }
-private:
-    Callable m_callback;
-    promise_t<void> m_promise;
-};
-
-template <typename T, typename Callable>
-class promise_chain_impl_t<T, Callable, void, typename std::enable_if<!std::is_copy_constructible<T>::value, no_copy_t>::type> :
-        public promise_data_t<T>::promise_chain_t {
-public:
-    promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
-    void handle(const T &) { GUARANTEE(false); }
-    void handle_move(T value) { m_callback(std::move(value)); m_promise.fulfill(); }
-    future_t<void> get_future() { return m_promise.get_future(); }
-private:
-    Callable m_callback;
-    promise_t<void> m_promise;
-};
-
-// Used by promise_t<void>
-template <typename Callable>
-class promise_chain_impl_t<void, Callable, void, void> : public promise_data_t<void>::promise_chain_t {
-public:
-    promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
-    void handle() { m_callback(); m_promise.fulfill(); }
-    future_t<void> get_future() { return m_promise.get_future(); }
-private:
-    Callable m_callback;
-    promise_t<void> m_promise;
 };
 
 template <typename Callable, typename Res>
-class promise_chain_impl_t<void, Callable, Res, void> : public promise_data_t<void>::promise_chain_t {
+class promise_chain_impl_t<void, Callable, Res> : public promise_data_t<void>::promise_chain_t {
 public:
     promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
     void handle() { m_promise.fulfill(m_callback()); }
@@ -382,6 +347,17 @@ public:
 private:
     Callable m_callback;
     promise_t<Res> m_promise;
+};
+
+template <typename Callable>
+class promise_chain_impl_t<void, Callable, void> : public promise_data_t<void>::promise_chain_t {
+public:
+    promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
+    void handle() { m_callback(); m_promise.fulfill(); }
+    future_t<void> get_future() { return m_promise.get_future(); }
+private:
+    Callable m_callback;
+    promise_t<void> m_promise;
 };
 
 template <typename T>
