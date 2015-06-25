@@ -327,7 +327,7 @@ struct chain_converter_t {
 template <typename T>
 struct chain_converter_t<T, typename std::enable_if<!std::is_copy_constructible<T>::value>::type> {
     chain_converter_t(const T &ref) : m_ref(ref) { }
-    explicit operator const T &() const { return m_ref; }   
+    operator const T &() const { return m_ref; }   
     const T &m_ref;
 };
 
@@ -355,10 +355,6 @@ struct chain_fulfillment_move_t {
     run(Callable &cb, T value, promise_t<Res> *out) {
         out->fulfill(cb(std::move(value)));
     }
-
-    template <typename U = T>
-    static typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
-    run(Callable &, T, promise_t<Res> *) { GUARANTEE(false); }
 };
 
 template <typename T, typename Callable>
@@ -369,10 +365,6 @@ struct chain_fulfillment_move_t<T, Callable, void> {
         cb(std::move(value));
         out->fulfill();
     }
-
-    template <typename U = T>
-    static typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
-    run(Callable &, T, promise_t<void> *) { GUARANTEE(false); }
 };
 
 template <typename T, typename Callable, typename Res>
