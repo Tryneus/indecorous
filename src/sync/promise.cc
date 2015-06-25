@@ -96,6 +96,11 @@ promise_t<void>::~promise_t() {
     }
 }
 
+bool promise_t<void>::fulfilled() const {
+    GUARANTEE(m_data != nullptr);
+    return m_data->has();
+}
+
 void promise_t<void>::fulfill() {
     GUARANTEE(m_data != nullptr);
     m_data->assign();

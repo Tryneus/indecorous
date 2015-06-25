@@ -29,15 +29,15 @@ bool future_t<T>::has() const {
 template <typename T>
 const T &future_t<T>::ref() {
     wait();
-    return m_data->get();
+    return m_data->cref();
 }
 
 template <typename T>
 template <typename U>
 typename std::enable_if<std::is_copy_constructible<U>::value, T>::type
-future_t<T>::copy() const {
+future_t<T>::copy() {
     wait();
-    return m_data->get();
+    return m_data->cref();
 }
 
 template <typename T>
@@ -218,12 +218,6 @@ promise_data_t<T>::notify_all() {
 }
 
 template <typename T>
-T &promise_data_t<T>::ref() {
-    GUARANTEE(m_state == state_t::fulfilled);
-    return m_value;
-}
-
-template <typename T>
 const T &promise_data_t<T>::cref() const {
     GUARANTEE(m_state == state_t::fulfilled);
     return m_value;
@@ -281,6 +275,12 @@ promise_t<T>::~promise_t() {
     if (m_data != nullptr && m_data->abandon()) {
         delete m_data;
     }
+}
+
+template <typename T>
+bool promise_t<T>::fulfilled() const {
+    GUARANTEE(m_data != nullptr);
+    return m_data->has();
 }
 
 template <typename T>
@@ -368,7 +368,7 @@ template <typename T, typename Callable, typename Res>
 class promise_chain_move_impl_t : public promise_data_t<T>::promise_chain_move_t {
 public:
     promise_chain_move_impl_t(Callable cb) : m_callback(std::move(cb)) { }
-    void handle(T value) {
+    void handle(T &&value) {
         chain_fulfillment_move_t<T, Callable, Res>::run(m_callback, std::move(value), &m_promise);
     }
     future_t<Res> get_future() { return m_promise.get_future(); }

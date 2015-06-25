@@ -15,9 +15,49 @@ void test_void_promise() {
     future_t<void> future_b = future_a.then([&] () { });
     future_t<uint64_t> future_c = future_a.then([&] () -> uint64_t { return 3; });
     future_t<char> future_d = future_c.then([&] (uint64_t) { return 'd'; });
-    // TODO: check promise states
+    REQUIRE(!p.fulfilled());
+    REQUIRE(!future_a.has());
+    REQUIRE(!future_b.has());
+    REQUIRE(!future_c.has());
+    REQUIRE(!future_d.has());
+
     p.fulfill();
-    // TODO: check other promises
+
+    REQUIRE(p.fulfilled());
+    REQUIRE(future_a.has());
+    REQUIRE(future_b.has());
+    REQUIRE(future_c.has());
+    REQUIRE(future_d.has());
+
+    future_t<void> future_e = future_c.then([&] (uint64_t) { });
+    future_t<size_t> future_f = future_d.then([&] (const char &) -> size_t { return 6; });
+
+    REQUIRE(future_e.has());
+    REQUIRE(future_f.has());
+
+    REQUIRE(future_c.ref() == 3);
+    REQUIRE(future_c.copy() == 3);
+    REQUIRE(future_c.release() == 3);
+
+    REQUIRE(future_d.ref() == 'd');
+    REQUIRE(future_d.copy() == 'd');
+    REQUIRE(future_d.release() == 'd');
+
+    REQUIRE(future_f.ref() == 6);
+    REQUIRE(future_f.copy() == 6);
+    REQUIRE(future_f.release() == 6);
+
+    REQUIRE_THROWS_AS(future_c.ref(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_c.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_c.release(), wait_object_lost_exc_t);
+
+    REQUIRE_THROWS_AS(future_d.ref(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_d.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_d.release(), wait_object_lost_exc_t);
+
+    REQUIRE_THROWS_AS(future_f.ref(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_f.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_f.release(), wait_object_lost_exc_t);
 }
 
 template <typename T>

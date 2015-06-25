@@ -24,7 +24,7 @@ public:
 
     template <typename U = T>
     typename std::enable_if<std::is_copy_constructible<U>::value, T>::type
-    copy() const;
+    copy();
 
     template <typename U = T>
     typename std::enable_if<std::is_move_constructible<U>::value, T>::type
@@ -85,6 +85,8 @@ public:
     promise_t();
     ~promise_t();
 
+    bool fulfilled() const;
+
     template <typename U = T>
     typename std::enable_if<std::is_copy_constructible<U>::value, void>::type
     fulfill(const T &value);
@@ -105,6 +107,7 @@ public:
     promise_t(promise_t &&other);
     ~promise_t();
 
+    bool fulfilled() const;
     void fulfill();
     future_t<void> get_future();
 
@@ -126,7 +129,6 @@ public:
     void assign(T &&value); // Move constructor must be available
     void assign(const T &value); // Copy constructor must be available
 
-    T &ref();
     const T &cref() const;
 
     template <typename U = T>
@@ -155,7 +157,7 @@ public:
     public:
         promise_chain_move_t();
         virtual ~promise_chain_move_t();
-        virtual void handle(T value) = 0;
+        virtual void handle(T &&value) = 0;
     };
 
 private:
