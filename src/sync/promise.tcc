@@ -19,8 +19,9 @@ future_t<T>::~future_t() {
 }
 
 template <typename T>
-bool future_t<T>::valid() const {
-    return (m_data != nullptr && !m_data->released());
+bool future_t<T>::has() const {
+    GUARANTEE(m_data != nullptr);
+    return m_data->has();
 }
 
 template <typename T>
@@ -157,6 +158,8 @@ promise_data_t<T>::~promise_data_t() {
     if (m_state != state_t::unfulfilled) {
         m_value.~T();
     }
+    m_chain.clear([&] (promise_chain_t *c) { delete c; });
+    m_move_chain.clear([&] (promise_chain_t *c) { delete c; });
 }
 
 template <typename T>
@@ -405,7 +408,7 @@ future_t<Res> promise_data_t<T>::add_chain(Callable cb, bool move_chain) {
 template <typename Callable, typename Res>
 future_t<Res> promise_data_t<void>::add_chain(Callable cb) {
     auto *chain = new promise_chain_impl_t<void, Callable, Res>(std::move(cb));
-    m_chains.push_back(chain);
+    m_chain.push_back(chain);
     return chain->get_future();
 }
 

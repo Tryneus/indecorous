@@ -18,14 +18,17 @@ future_t<void>::~future_t() {
     }
 }
 
-bool future_t<void>::valid() const {
-    return m_data != nullptr;
+bool future_t<void>::has() const {
+    GUARANTEE(m_data != nullptr);
+    return m_data->has();
 }
 
 void future_t<void>::add_wait(wait_callback_t *cb) {
-    assert(m_data != nullptr);
+    GUARANTEE(m_data != nullptr);
     if (m_data->has()) {
         cb->wait_done(wait_result_t::Success);
+    } else if (m_data->abandoned()) {
+        cb->wait_done(wait_result_t::ObjectLost);
     } else {
         m_waiters.push_back(cb);
     }
@@ -40,18 +43,20 @@ void future_t<void>::notify(wait_result_t result) {
 
 promise_data_t<void>::promise_data_t() : m_fulfilled(false), m_abandoned(false) { }
 
-promise_data_t<void>::~promise_data_t() { }
+promise_data_t<void>::~promise_data_t() {
+    m_chain.clear([&] (promise_chain_t *c) { delete c; });
+}
 
 bool promise_data_t<void>::has() const { return m_fulfilled; }
 bool promise_data_t<void>::abandoned() const { return m_abandoned; }
 
 void promise_data_t<void>::assign() {
-    assert(m_fulfilled == false);
+    GUARANTEE(m_fulfilled == false);
     m_fulfilled = true;
     for (future_t<void> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
         f->notify(wait_result_t::Success);
     }
-    m_chains.each([&] (promise_chain_t *c) { c->handle(); });
+    m_chain.clear([&] (promise_chain_t *c) { c->handle(); });
 }
 
 future_t<void> promise_data_t<void>::add_future() {
@@ -68,7 +73,7 @@ bool promise_data_t<void>::remove_future(future_t<void> *f) {
 
 // Returns true if it is safe to delete this promise_data_t
 bool promise_data_t<void>::abandon() {
-    assert(!m_abandoned);
+    GUARANTEE(!m_abandoned);
     m_abandoned = true;
     if (m_fulfilled == false) {
         for (future_t<void> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
@@ -92,12 +97,12 @@ promise_t<void>::~promise_t() {
 }
 
 void promise_t<void>::fulfill() {
-    assert(m_data != nullptr);
+    GUARANTEE(m_data != nullptr);
     m_data->assign();
 }
 
 future_t<void> promise_t<void>::get_future() {
-    assert(m_data != nullptr);
+    GUARANTEE(m_data != nullptr);
     return m_data->add_future();
 }
 

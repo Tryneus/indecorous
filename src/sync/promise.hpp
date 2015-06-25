@@ -20,7 +20,7 @@ public:
     future_t(future_t<T> &&other);
     ~future_t();
 
-    bool valid() const;
+    bool has() const;
 
     template <typename U = T>
     typename std::enable_if<std::is_copy_constructible<U>::value, T>::type
@@ -60,7 +60,7 @@ public:
     future_t(future_t<void> &&other);
     ~future_t();
 
-    bool valid() const;
+    bool has() const;
 
     template <typename Callable, typename Res = typename std::result_of<Callable()>::type>
     future_t<Res> then(Callable cb);
@@ -206,7 +206,7 @@ private:
     bool m_fulfilled;
     bool m_abandoned;
     intrusive_list_t<future_t<void> > m_futures;
-    intrusive_list_t<promise_chain_t> m_chains;
+    intrusive_list_t<promise_chain_t> m_chain;
 };
 
 } // namespace indecorous
