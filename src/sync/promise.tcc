@@ -317,33 +317,17 @@ promise_data_t<T>::promise_chain_move_t::promise_chain_move_t() { }
 template <typename T>
 promise_data_t<T>::promise_chain_move_t::~promise_chain_move_t() { }
 
-template <typename T, typename Enable = void>
-struct chain_converter_t {
-    chain_converter_t(const T &ref) : m_ref(ref) { }
-    operator const T &() const { return m_ref; }   
-    const T &m_ref;
-};
-
-template <typename T>
-struct chain_converter_t<T, typename std::enable_if<!std::is_copy_constructible<T>::value>::type> {
-    chain_converter_t(const T &ref) : m_ref(ref) { }
-    operator const T &() const { return m_ref; }   
-    const T &m_ref;
-};
-
 template <typename T, typename Callable, typename Res>
 struct chain_fulfillment_ref_t {
     static void run(Callable &cb, const T &value, promise_t<Res> *out) {
-        chain_converter_t<T> c(value);
-        out->fulfill(cb(c));
+        out->fulfill(cb(value));
     }
 };
 
 template <typename T, typename Callable>
 struct chain_fulfillment_ref_t<T, Callable, void> {
     static void run(Callable &cb, const T &value, promise_t<void> *out) {
-        chain_converter_t<T> c(value);
-        cb(c);
+        cb(value);
         out->fulfill();
     }
 };
