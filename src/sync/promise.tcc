@@ -48,8 +48,8 @@ future_t<T>::release() {
 template <typename T, typename Callable, typename Res>
 struct fulfillment_t {
     template <typename U>
-    static future_t<void> run(Callable cb, U &&item) {
-        promise_t<void> p;
+    static future_t<Res> run(Callable cb, U &&item) {
+        promise_t<Res> p;
         p.fulfill(cb(std::forward<U>(item)));
         return p.get_future();
     }

@@ -17,12 +17,11 @@ public:
     static non_movable_t make(uint64_t value) { return non_movable_t(value); }
 private:
     non_movable_t(uint64_t value) : m_value(value) { }
-    non_movable_t(non_movable_t &&) = delete;
     uint64_t m_value;
 };
 
-class non_movable_test_t {
-    static void run() {
+struct non_movable_test_t : public handler_t<non_movable_test_t> {
+    static void call() {
         promise_t<non_movable_t> p;
         future_t<non_movable_t> future_base = p.get_future();
         future_t<void> future_void = future_base.then([&] (non_movable_t) { });
@@ -45,8 +44,8 @@ private:
     uint64_t m_value;
 };
 
-class non_copyable_test_t {
-    static void run() {
+struct non_copyable_test_t : public handler_t<non_copyable_test_t> {
+    static void call() {
         promise_t<non_copyable_t> p;
         future_t<non_copyable_t> future_base = p.get_future();
         future_t<void> future_void = future_base.then_release([&] (non_copyable_t) { });
@@ -69,8 +68,8 @@ private:
     uint64_t m_value;
 };
 
-class movable_copyable_test_t {
-    static void run() {
+struct movable_copyable_test_t : public handler_t<movable_copyable_test_t> {
+    static void call() {
         promise_t<movable_copyable_t> p;
         future_t<movable_copyable_t> future_base = p.get_future();
         future_t<void> future_void = future_base.then([&] (movable_copyable_t) { });
