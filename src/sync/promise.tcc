@@ -1,6 +1,8 @@
 #ifndef SYNC_PROMISE_TCC_
 #define SYNC_PROMISE_TCC_
 
+#include <functional>
+
 namespace indecorous {
 
 template <typename T>
@@ -311,60 +313,69 @@ template <typename T>
 promise_data_t<T>::promise_chain_t::~promise_chain_t() { }
 
 template <typename T, typename Callable, typename Res>
-struct chain_fulfillment_t {
+struct chain_fulfillment_ref_t {
     template <typename U = T>
     static typename std::enable_if<std::is_copy_constructible<U>::value, void>::type
-    ref(Callable &cb, const T &value, promise_t<Res> *out) {
+    run(Callable &cb, const T &value, promise_t<Res> *out) {
         out->fulfill(cb(value));
     }
 
     template <typename U = T>
     static typename std::enable_if<!std::is_copy_constructible<U>::value, void>::type
-    ref(Callable &, const T &, promise_t<Res> *) { GUARANTEE(false); }
-
-    template <typename U = T>
-    static typename std::enable_if<std::is_move_constructible<U>::value, void>::type
-    move(Callable &cb, T value, promise_t<Res> *out) {
-        out->fulfill(cb(std::move(value)));
-    }
-
-    template <typename U = T>
-    static typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
-    move(Callable &, T, promise_t<Res> *) { GUARANTEE(false); }
+    run(Callable &, const T &, promise_t<Res> *) { GUARANTEE(false); }
 };
 
 template <typename T, typename Callable>
-struct chain_fulfillment_t<T, Callable, void> {
+struct chain_fulfillment_ref_t<T, Callable, void> {
     template <typename U = T>
     static typename std::enable_if<std::is_copy_constructible<U>::value, void>::type
-    ref(Callable &cb, const T &value, promise_t<void> *out) {
+    run(Callable &cb, const T &value, promise_t<void> *out) {
         cb(value);
         out->fulfill();
     }
 
     template <typename U = T>
     static typename std::enable_if<!std::is_copy_constructible<U>::value, void>::type
-    ref(Callable &, const T &, promise_t<void> *) { GUARANTEE(false); }
+    run(Callable &, const T &, promise_t<void> *) { GUARANTEE(false); }
+};
 
+template <typename T, typename Callable, typename Res>
+struct chain_fulfillment_move_t {
     template <typename U = T>
     static typename std::enable_if<std::is_move_constructible<U>::value, void>::type
-    move(Callable &cb, T value, promise_t<void> *out) {
+    run(Callable &cb, T value, promise_t<Res> *out) {
+        out->fulfill(cb(std::move(value)));
+    }
+
+    template <typename U = T>
+    static typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
+    run(Callable &, T, promise_t<Res> *) { GUARANTEE(false); }
+};
+
+template <typename T, typename Callable>
+struct chain_fulfillment_move_t<T, Callable, void> {
+    template <typename U = T>
+    static typename std::enable_if<std::is_move_constructible<U>::value, void>::type
+    run(Callable &cb, T value, promise_t<void> *out) {
         cb(std::move(value));
         out->fulfill();
     }
 
     template <typename U = T>
     static typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
-    move(Callable &, T, promise_t<void> *) { GUARANTEE(false); }
+    run(Callable &, T, promise_t<void> *) { GUARANTEE(false); }
 };
 
-// Default promise_chain_t implementation - supports move and copy
 template <typename T, typename Callable, typename Res>
 class promise_chain_impl_t : public promise_data_t<T>::promise_chain_t {
 public:
     promise_chain_impl_t(Callable cb) : m_callback(std::move(cb)) { }
-    void handle(const T &value) { chain_fulfillment_t<T, Callable, Res>::ref(m_callback, value, &m_promise); }
-    void handle_move(T value) { chain_fulfillment_t<T, Callable, Res>::move(m_callback, std::move(value), &m_promise); }
+    void handle(const T &value) {
+        chain_fulfillment_ref_t<T, Callable, Res>::run(m_callback, value, &m_promise);
+    }
+    void handle_move(T value) {
+        chain_fulfillment_move_t<T, Callable, Res>::run(m_callback, std::move(value), &m_promise);
+    }
     future_t<Res> get_future() { return m_promise.get_future(); }
 private:
     Callable m_callback;
