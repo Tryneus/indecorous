@@ -140,15 +140,22 @@ public:
     bool abandon();
 
     template <typename Callable, typename Res>
-    future_t<Res> add_chain(Callable cb, bool move_chain);
+    future_t<Res> add_ref_chain(Callable cb);
+    template <typename Callable, typename Res>
+    future_t<Res> add_move_chain(Callable cb);
 
-    // This class is used internally to chain promises together without using extra coroutines
-    class promise_chain_t : public intrusive_node_t<promise_chain_t> {
+    class promise_chain_ref_t : public intrusive_node_t<promise_chain_ref_t> {
     public:
-        promise_chain_t();
-        virtual ~promise_chain_t();
+        promise_chain_ref_t();
+        virtual ~promise_chain_ref_t();
         virtual void handle(const T &value) = 0;
-        virtual void handle_move(T value) = 0;
+    };
+
+    class promise_chain_move_t : public intrusive_node_t<promise_chain_move_t> {
+    public:
+        promise_chain_move_t();
+        virtual ~promise_chain_move_t();
+        virtual void handle(T value) = 0;
     };
 
 private:
@@ -169,8 +176,8 @@ private:
     state_t m_state;
     bool m_abandoned;
     intrusive_list_t<future_t<T> > m_futures;
-    intrusive_list_t<promise_chain_t> m_chain;
-    intrusive_list_t<promise_chain_t> m_move_chain;
+    intrusive_list_t<promise_chain_ref_t> m_ref_chain;
+    intrusive_list_t<promise_chain_move_t> m_move_chain;
 
     union {
         T m_value;
