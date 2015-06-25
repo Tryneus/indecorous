@@ -9,6 +9,41 @@ const size_t num_threads = 8;
 
 using namespace indecorous;
 
+void test_void_promise() {
+    promise_t<void> p;
+    future_t<void> future_a = p.get_future();
+    future_t<void> future_b = future_a.then([&] () { });
+    future_t<uint64_t> future_c = future_a.then([&] () -> uint64_t { return 3; });
+    future_t<char> future_d = future_c.then([&] (uint64_t) { return 'd'; });
+    // TODO: check promise states
+    p.fulfill();
+    // TODO: check other promises
+}
+
+template <typename T>
+void test_copy_promise() {
+    promise_t<T> p;
+    future_t<T> future_a = p.get_future();
+    future_t<void> future_b = future_a.then([&] (T) { });
+    future_t<uint64_t> future_c = future_a.then([&] (const T &) -> uint64_t { return 3; });
+    future_t<char> future_d = future_c.then([&] (uint64_t) { return 'd'; });
+    // TODO: check promise states
+    p.fulfill(T::make(5));
+    // TODO: check other promises
+}
+
+template <typename T>
+void test_move_promise() {
+    promise_t<T> p;
+    future_t<T> future_a = p.get_future();
+    future_t<void> future_b = future_a.then([&] (const T &) { });
+    future_t<uint64_t> future_c = future_a.then_release([&] (T) -> uint64_t { return 3; });
+    future_t<char> future_d = future_c.then([&] (uint64_t) { return 'd'; });
+    // TODO: check promise states
+    p.fulfill(T::make(5));
+    // TODO: check other promises
+}
+
 class non_movable_t {
 public:
     non_movable_t(const non_movable_t &other) : m_value(other.m_value) { }
@@ -22,12 +57,8 @@ private:
 
 struct non_movable_test_t : public handler_t<non_movable_test_t> {
     static void call() {
-        promise_t<non_movable_t> p;
-        future_t<non_movable_t> future_base = p.get_future();
-        future_t<void> future_void = future_base.then([&] (non_movable_t) { });
-        future_t<uint64_t> future_int = future_base.then([&] (const non_movable_t &) -> uint64_t { return 0; });
-        p.fulfill(non_movable_t::make(5));
-        // ASSERTS
+        test_void_promise();
+        test_copy_promise<non_movable_t>();
     }
 };
 IMPL_UNIQUE_HANDLER(non_movable_test_t);
@@ -46,12 +77,7 @@ private:
 
 struct non_copyable_test_t : public handler_t<non_copyable_test_t> {
     static void call() {
-        promise_t<non_copyable_t> p;
-        future_t<non_copyable_t> future_base = p.get_future();
-        future_t<void> future_void = future_base.then_release([&] (non_copyable_t) { });
-        future_t<uint64_t> future_int = future_base.then([&] (const non_copyable_t &) -> uint64_t { return 0; });
-        p.fulfill(non_copyable_t::make(5));
-        // ASSERTS
+        test_move_promise<non_copyable_t>();
     }
 };
 IMPL_UNIQUE_HANDLER(non_copyable_test_t);
@@ -70,13 +96,8 @@ private:
 
 struct movable_copyable_test_t : public handler_t<movable_copyable_test_t> {
     static void call() {
-        promise_t<movable_copyable_t> p;
-        future_t<movable_copyable_t> future_base = p.get_future();
-        future_t<void> future_void = future_base.then([&] (movable_copyable_t) { });
-        future_t<uint64_t> future_int = future_base.then([&] (const movable_copyable_t &) -> uint64_t { return 0; });
-        future_t<char> future_char = future_base.then_release([&] (movable_copyable_t) { return 'a'; });
-        p.fulfill(movable_copyable_t::make(5));
-        // ASSERTS
+        test_copy_promise<movable_copyable_t>();
+        test_move_promise<movable_copyable_t>();
     }
 };
 IMPL_UNIQUE_HANDLER(movable_copyable_test_t);

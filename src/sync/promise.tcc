@@ -66,6 +66,25 @@ struct fulfillment_t<T, Callable, void> {
     }
 };
 
+template <typename Callable, typename Res>
+struct fulfillment_t<void, Callable, Res> {
+    static future_t<Res> run(Callable cb) {
+        promise_t<Res> p;
+        p.fulfill(cb());
+        return p.get_future();
+    }
+};
+
+template <typename Callable>
+struct fulfillment_t<void, Callable, void> {
+    static future_t<void> run(Callable cb) {
+        promise_t<void> p;
+        cb();
+        p.fulfill();
+        return p.get_future();
+    }
+};
+
 template <typename T>
 template <typename Callable, typename Res>
 future_t<Res> future_t<T>::then(Callable cb) {
@@ -89,6 +108,17 @@ future_t<T>::then_release(Callable cb) {
     }
 
     return m_data->template add_chain<Callable, Res>(std::move(cb), true);
+}
+
+template <typename Callable, typename Res>
+future_t<Res> future_t<void>::then(Callable cb) {
+    if (m_data->has()) {
+        return fulfillment_t<void, Callable, Res>::run(std::move(cb));
+    } else if (m_data->abandoned()) {
+        return promise_t<Res>().get_future(); // Return an abandoned future - can never be fulfilled
+    }
+
+    return m_data->template add_chain<Callable, Res>(std::move(cb));
 }
 
 template <typename T>
@@ -369,6 +399,13 @@ future_t<Res> promise_data_t<T>::add_chain(Callable cb, bool move_chain) {
     } else {
         m_chain.push_back(chain);
     }
+    return chain->get_future();
+}
+
+template <typename Callable, typename Res>
+future_t<Res> promise_data_t<void>::add_chain(Callable cb) {
+    auto *chain = new promise_chain_impl_t<void, Callable, Res>(std::move(cb));
+    m_chains.push_back(chain);
     return chain->get_future();
 }
 

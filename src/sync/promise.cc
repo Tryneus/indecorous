@@ -22,16 +22,6 @@ bool future_t<void>::valid() const {
     return m_data != nullptr;
 }
 
-template <typename Callable, typename Res>
-future_t<Res> future_t<void>::then(Callable cb) {
-    return m_data->add_chain<Callable, Res>(cb);
-}
-
-template <typename Callable, typename Res>
-future_t<Res> future_t<void>::then_release(Callable cb) {
-    return m_data->add_chain<Callable, Res>(cb);
-}
-
 void future_t<void>::add_wait(wait_callback_t *cb) {
     assert(m_data != nullptr);
     if (m_data->has()) {
@@ -53,7 +43,7 @@ promise_data_t<void>::promise_data_t() : m_fulfilled(false), m_abandoned(false) 
 promise_data_t<void>::~promise_data_t() { }
 
 bool promise_data_t<void>::has() const { return m_fulfilled; }
-bool promise_data_t<void>::released() const { return false; }
+bool promise_data_t<void>::abandoned() const { return m_abandoned; }
 
 void promise_data_t<void>::assign() {
     assert(m_fulfilled == false);
@@ -87,13 +77,6 @@ bool promise_data_t<void>::abandon() {
         }
     }
     return m_futures.empty();
-}
-
-template <typename Callable, typename Res>
-future_t<Res> promise_data_t<void>::add_chain(Callable cb) {
-    auto *chain = new promise_chain_impl_t<void, Callable, Res>(std::move(cb));
-    m_chains.push_back(chain);
-    return chain->get_future();
 }
 
 promise_t<void>::promise_t() : m_data(new promise_data_t<void>()) { }

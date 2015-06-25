@@ -65,9 +65,6 @@ public:
     template <typename Callable, typename Res = typename std::result_of<Callable()>::type>
     future_t<Res> then(Callable cb);
 
-    template <typename Callable, typename Res = typename std::result_of<Callable()>::type>
-    future_t<Res> then_release(Callable cb);
-
 private:
     friend class promise_data_t<void>;
     explicit future_t(promise_data_t<void> *data);
@@ -187,7 +184,7 @@ public:
     ~promise_data_t();
 
     bool has() const;
-    bool released() const;
+    bool abandoned() const;
 
     void assign();
     future_t<void> add_future();
