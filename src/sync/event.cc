@@ -8,14 +8,14 @@ namespace indecorous {
 event_t::event_t(event_t &&other) :
         m_triggered(other.m_triggered),
         m_waiters(std::move(other.m_waiters)) {
-    m_waiters.each([&] (wait_callback_t *w) { w->object_moved(this); });
+    m_waiters.each([this] (auto cb) { cb->object_moved(this); });
 }
 
 // TODO: consider adding auto-reset and/or wake-one modes or separate class(es)
 event_t::event_t() : m_triggered(false) { }
 
 event_t::~event_t() {
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(wait_result_t::ObjectLost); });
+    m_waiters.clear([] (auto cb) { cb->wait_done(wait_result_t::ObjectLost); });
 }
 
 bool event_t::triggered() const {
@@ -24,7 +24,7 @@ bool event_t::triggered() const {
 
 void event_t::set() {
     m_triggered = true;
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(wait_result_t::Success); });
+    m_waiters.clear([] (auto cb) { cb->wait_done(wait_result_t::Success); });
 }
 
 void event_t::reset() {

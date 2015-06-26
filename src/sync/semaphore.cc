@@ -11,7 +11,7 @@ semaphore_acq_t::semaphore_acq_t(semaphore_acq_t &&other) :
         m_pending(other.m_pending),
         m_waiters(std::move(other.m_waiters)) {
     other.m_parent = nullptr;
-    m_waiters.each([&] (wait_callback_t *cb) { cb->object_moved(this); });
+    m_waiters.each([this] (auto cb) { cb->object_moved(this); });
 }
 
 semaphore_acq_t::semaphore_acq_t(size_t count, semaphore_t *parent) :
@@ -56,7 +56,7 @@ void semaphore_acq_t::combine(semaphore_acq_t &&other) {
     m_owned += other.m_owned;
     other.m_parent = nullptr;
 
-    other.m_waiters.clear([&] (wait_callback_t *cb) { m_waiters.push_back(cb); });
+    other.m_waiters.clear([&] (auto cb) { m_waiters.push_back(cb); });
 }
 
 void semaphore_acq_t::release(size_t count) {
@@ -86,15 +86,15 @@ semaphore_t::semaphore_t(semaphore_t &&other) :
         m_waiters(std::move(other.m_waiters)) {
     other.m_capacity = 0;
     other.m_available = 0;
-    m_acqs.each([&] (semaphore_acq_t *s) { s->m_parent = this; });
-    m_waiters.each([&] (semaphore_acq_t *s) { s->m_parent = this; });
+    m_acqs.each([this] (auto s) { s->m_parent = this; });
+    m_waiters.each([this] (auto s) { s->m_parent = this; });
 }
 
 semaphore_t::semaphore_t(size_t _capacity) : m_capacity(_capacity), m_available(_capacity) { }
 
 semaphore_t::~semaphore_t() {
-    m_waiters.clear([&] (semaphore_acq_t *s) {
-            s->m_waiters.each([&] (wait_callback_t *w) { w->wait_done(wait_result_t::ObjectLost); });
+    m_waiters.clear([] (auto s) {
+            s->m_waiters.each([] (auto w) { w->wait_done(wait_result_t::ObjectLost); });
             s->m_parent = nullptr;
         });
 }
@@ -123,9 +123,7 @@ void semaphore_t::remove(semaphore_acq_t &&destroy) {
     destroy.m_parent = nullptr;
 
     // Scan waiting acqs, make sure none of them want more than we now have
-    DEBUG_ONLY(m_waiters.each([&] (semaphore_acq_t *s) {
-            assert(m_capacity >= (s->m_owned + s->m_pending));
-        }));
+    DEBUG_ONLY(m_waiters.each([&] (auto s) { assert(m_capacity >= (s->m_owned + s->m_pending)); }));
 }
 
 semaphore_acq_t semaphore_t::start_acq(size_t count) {
@@ -138,7 +136,7 @@ void semaphore_t::pump_waiters() {
         semaphore_acq_t *acq = m_waiters.pop_front();
         m_acqs.push_back(acq);
         m_available -= acq->m_pending;
-        acq->m_waiters.each([&] (wait_callback_t *cb) { cb->wait_done(wait_result_t::Success); });
+        acq->m_waiters.each([] (auto cb) { cb->wait_done(wait_result_t::Success); });
     }
 }
 

@@ -10,11 +10,11 @@ mutex_t::mutex_t() :
 mutex_t::mutex_t(mutex_t &&other) :
         m_lock(other.m_lock),
         m_pending_locks(std::move(other.m_pending_locks)) {
-    m_pending_locks.each([&] (mutex_lock_t *m) { m->m_parent = this; });
+    m_pending_locks.each([this] (auto l) { l->m_parent = this; });
 }
 
 mutex_t::~mutex_t() {
-    m_pending_locks.clear([&] (mutex_lock_t *l) { l->m_coro_cb->wait_done(wait_result_t::ObjectLost); });
+    m_pending_locks.clear([] (auto l) { l->m_coro_cb->wait_done(wait_result_t::ObjectLost); });
 }
 
 mutex_lock_t mutex_t::lock() {

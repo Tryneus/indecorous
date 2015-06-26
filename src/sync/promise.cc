@@ -38,13 +38,13 @@ void future_t<void>::remove_wait(wait_callback_t *cb) {
 }
 
 void future_t<void>::notify(wait_result_t result) {
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
+    m_waiters.clear([result] (auto cb) { cb->wait_done(result); });
 }
 
 promise_data_t<void>::promise_data_t() : m_fulfilled(false), m_abandoned(false) { }
 
 promise_data_t<void>::~promise_data_t() {
-    m_chain.clear([&] (promise_chain_t *c) { delete c; });
+    m_chain.clear([] (auto p) { delete p; });
 }
 
 bool promise_data_t<void>::has() const { return m_fulfilled; }
@@ -56,7 +56,7 @@ void promise_data_t<void>::assign() {
     for (future_t<void> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
         f->notify(wait_result_t::Success);
     }
-    m_chain.clear([&] (promise_chain_t *c) { c->handle(); });
+    m_chain.clear([] (auto p) { p->handle(); });
 }
 
 future_t<void> promise_data_t<void>::add_future() {

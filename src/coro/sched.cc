@@ -87,7 +87,7 @@ public:
     }
 
     void wait() {
-        eintr_wrap([&]{ return sem_wait(&m_semaphore); });
+        eintr_wrap([&] { return sem_wait(&m_semaphore); });
     }
 
 private:

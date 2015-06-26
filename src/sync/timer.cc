@@ -80,14 +80,14 @@ single_timer_t::single_timer_t(single_timer_t &&other) :
         m_waiters(std::move(other.m_waiters)),
         m_thread_events(other.m_thread_events) {
     other.m_thread_events = nullptr;
-    m_waiters.each([&] (wait_callback_t *w) { w->object_moved(this); });
+    m_waiters.each([this] (auto cb) { cb->object_moved(this); });
 }
 
 single_timer_t::~single_timer_t() {
     if (in_a_list()) {
         m_thread_events->remove_timer(this);
     }
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(wait_result_t::ObjectLost); });
+    m_waiters.clear([] (auto cb) { cb->wait_done(wait_result_t::ObjectLost); });
 }
 
 void single_timer_t::start(int64_t timeout_ms) {
@@ -106,7 +106,7 @@ void single_timer_t::stop() {
     if (in_a_list()) {
         m_thread_events->remove_timer(this);
     }
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(wait_result_t::Interrupted); });
+    m_waiters.clear([] (auto cb) { cb->wait_done(wait_result_t::Interrupted); });
 }
 
 void single_timer_t::add_wait(wait_callback_t* cb) {
@@ -124,7 +124,7 @@ void single_timer_t::remove_wait(wait_callback_t* cb) {
 
 void single_timer_t::timer_callback(wait_result_t result) {
     m_triggered = true;
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
+    m_waiters.clear([result] (auto cb) { cb->wait_done(result); });
 }
 
 periodic_timer_t::periodic_timer_t() :
@@ -143,7 +143,7 @@ periodic_timer_t::periodic_timer_t(periodic_timer_t &&other) :
         m_waiters(std::move(other.m_waiters)),
         m_thread_events(other.m_thread_events) {
     other.m_thread_events = nullptr;
-    m_waiters.each([&] (wait_callback_t *w) { w->object_moved(this); });
+    m_waiters.each([this] (auto w) { w->object_moved(this); });
 }
 
 periodic_timer_t::~periodic_timer_t() {
@@ -152,7 +152,7 @@ periodic_timer_t::~periodic_timer_t() {
 
 void periodic_timer_t::stop_internal(wait_result_t result) {
     m_period_ms = -1;
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
+    m_waiters.clear([result] (auto cb) { cb->wait_done(result); });
     if (in_a_list()) {
         m_thread_events->remove_timer(this);
     }
@@ -200,7 +200,7 @@ void periodic_timer_t::remove_wait(wait_callback_t* cb) {
 
 void periodic_timer_t::timer_callback(wait_result_t result) {
     assert(m_period_ms != -1);
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
+    m_waiters.clear([result] (auto cb) { cb->wait_done(result); });
 }
 
 } // namespace indecorous

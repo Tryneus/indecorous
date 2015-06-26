@@ -146,7 +146,7 @@ void future_t<T>::remove_wait(wait_callback_t *cb) {
 
 template <typename T>
 void future_t<T>::notify(wait_result_t result) {
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
+    m_waiters.clear([result] (auto cb) { cb->wait_done(result); });
 }
 
 // Only to be instantiated by a promise_t
@@ -160,8 +160,8 @@ promise_data_t<T>::~promise_data_t() {
     if (m_state != state_t::unfulfilled) {
         m_value.~T();
     }
-    m_ref_chain.clear([&] (promise_chain_ref_t *c) { delete c; });
-    m_move_chain.clear([&] (promise_chain_move_t *c) { delete c; });
+    m_ref_chain.clear([] (auto p) { delete p; });
+    m_move_chain.clear([] (auto p) { delete p; });
 }
 
 template <typename T>
@@ -200,12 +200,12 @@ template <typename U>
 typename std::enable_if<std::is_move_constructible<U>::value, void>::type
 promise_data_t<T>::notify_all() {
     const T &local_ref = m_value;
-    m_ref_chain.clear([&] (promise_chain_ref_t *c) { c->handle(local_ref); delete c; });
-    m_move_chain.clear([&] (promise_chain_move_t *c) {
-            if (this->has()) c->handle(this->release());
-            delete c;
+    m_ref_chain.clear([&] (auto p) { p->handle(local_ref); delete p; });
+    m_move_chain.clear([&] (auto p) {
+            if (this->has()) p->handle(this->release());
+            delete p;
         });
-    m_futures.each([&] (future_t<T> *f) { f->notify(wait_result_t::Success); });
+    m_futures.each([] (auto f) { f->notify(wait_result_t::Success); });
 }
 
 template <typename T>
@@ -213,8 +213,8 @@ template <typename U>
 typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
 promise_data_t<T>::notify_all() {
     GUARANTEE(m_move_chain.empty());
-    m_ref_chain.clear([&] (promise_chain_ref_t *c) { c->handle(m_value); delete c; });
-    m_futures.each([&] (future_t<T> *f) { f->notify(wait_result_t::Success); });
+    m_ref_chain.clear([&] (auto p) { p->handle(m_value); delete p; });
+    m_futures.each([&] (auto f) { f->notify(wait_result_t::Success); });
 }
 
 template <typename T>
@@ -254,7 +254,7 @@ bool promise_data_t<T>::abandon() {
     GUARANTEE(!m_abandoned);
     m_abandoned = true;
     if (m_state == state_t::unfulfilled) {
-        m_futures.each([&] (future_t<T> *f) {
+        m_futures.each([&] (auto f) {
                 f->m_data = nullptr;
                 f->notify(wait_result_t::ObjectLost);
             });

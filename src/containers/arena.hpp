@@ -47,7 +47,7 @@ public:
     { }
 
     ~arena_t() {
-        m_free_nodes.clear([&] (node_t *node) { delete node; --m_allocated; });
+        m_free_nodes.clear([&] (auto node) { delete node; --m_allocated; });
         assert(m_allocated == 0);
     }
 

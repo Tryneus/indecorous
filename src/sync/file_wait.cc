@@ -60,7 +60,7 @@ file_wait_t file_wait_t::rdhup(int fd) {
 }
 
 void file_wait_t::file_callback(wait_result_t result) {
-    m_waiters.clear([&] (wait_callback_t *cb) { cb->wait_done(result); });
+    m_waiters.clear([result] (auto cb) { cb->wait_done(result); });
 }
 
 void file_wait_t::add_wait(wait_callback_t* cb) {
