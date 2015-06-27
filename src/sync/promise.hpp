@@ -14,6 +14,18 @@ namespace indecorous {
 template <typename T> class promise_data_t;
 template <> class promise_data_t<void>;
 
+template <typename T> class future_t;
+
+template <typename T>
+struct future_reducer_t {
+    static T reduce();
+};
+
+template <typename T>
+struct future_reducer_t<future_t<T> > {
+    static T reduce();
+};
+
 template <typename T>
 class future_t : public intrusive_node_t<future_t<T> >, public wait_object_t {
 public:
@@ -30,15 +42,17 @@ public:
     typename std::enable_if<std::is_move_constructible<U>::value, T>::type
     release();
 
-    const T &ref();
+    const T &get();
 
     // `then` provides a const reference to the value which may be used to create a copy
-    template <typename Callable, typename Res = typename std::result_of<Callable(T)>::type>
-    future_t<Res> then(Callable cb);
+    template <typename Callable,
+              typename Reduced = decltype(future_reducer_t<typename std::result_of<Callable(T)>::type>::reduce())>
+    future_t<Reduced> then(Callable cb);
 
     // `then_release` provides a move of the value and can only be used if T is move-constructible
-    template <typename Callable, typename Res = typename std::result_of<Callable(T)>::type>
-    typename std::enable_if<std::is_move_constructible<T>::value, future_t<Res> >::type
+    template <typename Callable,
+              typename Reduced = decltype(future_reducer_t<typename std::result_of<Callable(T)>::type>::reduce())>
+    typename std::enable_if<std::is_move_constructible<T>::value, future_t<Reduced> >::type
     then_release(Callable cb);
 
 private:
@@ -62,8 +76,9 @@ public:
 
     bool has() const;
 
-    template <typename Callable, typename Res = typename std::result_of<Callable()>::type>
-    future_t<Res> then(Callable cb);
+    template <typename Callable,
+              typename Reduced = decltype(future_reducer_t<typename std::result_of<Callable()>::type>::reduce())>
+    future_t<Reduced> then(Callable cb);
 
 private:
     friend class promise_data_t<void>;
@@ -113,109 +128,6 @@ public:
 
 private:
     promise_data_t<void> *m_data;
-};
-
-// Only to be instantiated by a promise_t
-template <typename T>
-class promise_data_t {
-public:
-    promise_data_t();
-    ~promise_data_t();
-
-    bool has() const;
-    bool released() const;
-    bool abandoned() const;
-
-    void assign(T &&value); // Move constructor must be available
-    void assign(const T &value); // Copy constructor must be available
-
-    const T &cref() const;
-
-    template <typename U = T>
-    typename std::enable_if<std::is_move_constructible<U>::value, T>::type
-    release();
-
-    future_t<T> add_future();
-
-    // These return true if it is safe to delete this promise_data_t
-    bool remove_future(future_t<T> *f);
-    bool abandon();
-
-    template <typename Callable, typename Res>
-    future_t<Res> add_ref_chain(Callable cb);
-    template <typename Callable, typename Res>
-    future_t<Res> add_move_chain(Callable cb);
-
-    class promise_chain_ref_t : public intrusive_node_t<promise_chain_ref_t> {
-    public:
-        promise_chain_ref_t();
-        virtual ~promise_chain_ref_t();
-        virtual void handle(const T &value) = 0;
-    };
-
-    class promise_chain_move_t : public intrusive_node_t<promise_chain_move_t> {
-    public:
-        promise_chain_move_t();
-        virtual ~promise_chain_move_t();
-        virtual void handle(T &&value) = 0;
-    };
-
-private:
-    template <typename U = T>
-    typename std::enable_if<std::is_move_constructible<U>::value, void>::type
-    notify_all();
-
-    template <typename U = T>
-    typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
-    notify_all();
-
-    enum class state_t {
-        unfulfilled,
-        fulfilled,
-        released,
-    };
-
-    state_t m_state;
-    bool m_abandoned;
-    intrusive_list_t<future_t<T> > m_futures;
-    intrusive_list_t<promise_chain_ref_t> m_ref_chain;
-    intrusive_list_t<promise_chain_move_t> m_move_chain;
-
-    union {
-        T m_value;
-        char m_buffer[sizeof(T)];
-    };
-};
-
-template <> class promise_data_t<void> {
-public:
-    promise_data_t();
-    ~promise_data_t();
-
-    bool has() const;
-    bool abandoned() const;
-
-    void assign();
-    future_t<void> add_future();
-
-    bool remove_future(future_t<void> *f);
-    bool abandon();
-
-    template <typename Callable, typename Res>
-    future_t<Res> add_chain(Callable cb);
-
-    class promise_chain_t : public intrusive_node_t<promise_chain_t> {
-    public:
-        promise_chain_t();
-        virtual ~promise_chain_t();
-        virtual void handle() = 0;
-    };
-
-private:
-    bool m_fulfilled;
-    bool m_abandoned;
-    intrusive_list_t<future_t<void> > m_futures;
-    intrusive_list_t<promise_chain_t> m_chain;
 };
 
 } // namespace indecorous

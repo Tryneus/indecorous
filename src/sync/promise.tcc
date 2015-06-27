@@ -5,12 +5,117 @@
 
 namespace indecorous {
 
+// Internal type used by promise_t and future_t
+template <typename T>
+class promise_data_t {
+public:
+    promise_data_t();
+    ~promise_data_t();
+
+    bool has() const;
+    bool released() const;
+    bool abandoned() const;
+
+    void assign(T &&value); // Move constructor must be available
+    void assign(const T &value); // Copy constructor must be available
+
+    const T &cref() const;
+
+    template <typename U = T>
+    typename std::enable_if<std::is_move_constructible<U>::value, T>::type
+    release();
+
+    future_t<T> add_future();
+
+    // These return true if it is safe to delete this promise_data_t
+    bool remove_future(future_t<T> *f);
+    bool abandon();
+
+    template <typename Callable, typename Res>
+    future_t<Res> add_ref_chain(Callable cb);
+    template <typename Callable, typename Res>
+    future_t<Res> add_move_chain(Callable cb);
+
+    class promise_chain_ref_t : public intrusive_node_t<promise_chain_ref_t> {
+    public:
+        promise_chain_ref_t();
+        virtual ~promise_chain_ref_t();
+        virtual void handle(const T &value) = 0;
+    };
+
+    class promise_chain_move_t : public intrusive_node_t<promise_chain_move_t> {
+    public:
+        promise_chain_move_t();
+        virtual ~promise_chain_move_t();
+        virtual void handle(T &&value) = 0;
+    };
+
+private:
+    template <typename U = T>
+    typename std::enable_if<std::is_move_constructible<U>::value, void>::type
+    notify_all();
+
+    template <typename U = T>
+    typename std::enable_if<!std::is_move_constructible<U>::value, void>::type
+    notify_all();
+
+    enum class state_t {
+        unfulfilled,
+        fulfilled,
+        released,
+    };
+
+    state_t m_state;
+    bool m_abandoned;
+    intrusive_list_t<future_t<T> > m_futures;
+    intrusive_list_t<promise_chain_ref_t> m_ref_chain;
+    intrusive_list_t<promise_chain_move_t> m_move_chain;
+
+    union {
+        T m_value;
+        char m_buffer[sizeof(T)];
+    };
+};
+
+// Specialization of internal type for void promises
+template <> class promise_data_t<void> {
+public:
+    promise_data_t();
+    ~promise_data_t();
+
+    bool has() const;
+    bool abandoned() const;
+
+    void assign();
+    future_t<void> add_future();
+
+    bool remove_future(future_t<void> *f);
+    bool abandon();
+
+    template <typename Callable, typename Res>
+    future_t<Res> add_chain(Callable cb);
+
+    class promise_chain_t : public intrusive_node_t<promise_chain_t> {
+    public:
+        promise_chain_t();
+        virtual ~promise_chain_t();
+        virtual void handle() = 0;
+    };
+
+private:
+    bool m_fulfilled;
+    bool m_abandoned;
+    intrusive_list_t<future_t<void> > m_futures;
+    intrusive_list_t<promise_chain_t> m_chain;
+};
+
 template <typename T>
 future_t<T>::future_t(future_t<T> &&other) :
         intrusive_node_t<future_t<T> >(std::move(other)),
         m_data(other.m_data),
         m_waiters(std::move(other.m_waiters)) {
     other.m_data = nullptr;
+    m_waiters.each([this] (auto cb) { cb->object_moved(this); });
 }
 
 template <typename T>
@@ -27,7 +132,7 @@ bool future_t<T>::has() const {
 }
 
 template <typename T>
-const T &future_t<T>::ref() {
+const T &future_t<T>::get() {
     wait();
     return m_data->cref();
 }
@@ -89,39 +194,39 @@ struct fulfillment_t<void, Callable, void> {
 };
 
 template <typename T>
-template <typename Callable, typename Res>
-future_t<Res> future_t<T>::then(Callable cb) {
+template <typename Callable, typename Reduced>
+future_t<Reduced> future_t<T>::then(Callable cb) {
     if (m_data->has()) {
-        return fulfillment_t<T, Callable, Res>::run(std::move(cb), m_data->cref());
+        return fulfillment_t<T, Callable, Reduced>::run(std::move(cb), m_data->cref());
     } else if (m_data->abandoned() || m_data->released()) {
-        return promise_t<Res>().get_future(); // Return an abandoned future - can never be fulfilled
+        return promise_t<Reduced>().get_future(); // Return an abandoned future - can never be fulfilled
     }
 
-    return m_data->template add_ref_chain<Callable, Res>(std::move(cb));
+    return m_data->template add_ref_chain<Callable, Reduced>(std::move(cb));
 }
 
 template <typename T>
-template <typename Callable, typename Res>
-typename std::enable_if<std::is_move_constructible<T>::value, future_t<Res> >::type
+template <typename Callable, typename Reduced>
+typename std::enable_if<std::is_move_constructible<T>::value, future_t<Reduced> >::type
 future_t<T>::then_release(Callable cb) {
     if (m_data->has()) {
-        return fulfillment_t<T, Callable, Res>::run(std::move(cb), m_data->release());
+        return fulfillment_t<T, Callable, Reduced>::run(std::move(cb), m_data->release());
     } else if (m_data->abandoned() || m_data->released()) {
-        return promise_t<Res>().get_future(); // Return an abandoned future - can never be fulfilled
+        return promise_t<Reduced>().get_future(); // Return an abandoned future - can never be fulfilled
     }
 
-    return m_data->template add_move_chain<Callable, Res>(std::move(cb));
+    return m_data->template add_move_chain<Callable, Reduced>(std::move(cb));
 }
 
-template <typename Callable, typename Res>
-future_t<Res> future_t<void>::then(Callable cb) {
+template <typename Callable, typename Reduced>
+future_t<Reduced> future_t<void>::then(Callable cb) {
     if (m_data->has()) {
-        return fulfillment_t<void, Callable, Res>::run(std::move(cb));
+        return fulfillment_t<void, Callable, Reduced>::run(std::move(cb));
     } else if (m_data->abandoned()) {
-        return promise_t<Res>().get_future(); // Return an abandoned future - can never be fulfilled
+        return promise_t<Reduced>().get_future(); // Return an abandoned future - can never be fulfilled
     }
 
-    return m_data->template add_chain<Callable, Res>(std::move(cb));
+    return m_data->template add_chain<Callable, Reduced>(std::move(cb));
 }
 
 template <typename T>
