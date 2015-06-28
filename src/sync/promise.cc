@@ -111,9 +111,5 @@ future_t<void> promise_t<void>::get_future() {
     return m_data->add_future();
 }
 
-promise_data_t<void>::promise_chain_t::promise_chain_t() { }
-
-promise_data_t<void>::promise_chain_t::~promise_chain_t() { }
-
 } // namespace indecorous
 

@@ -46,12 +46,14 @@ public:
 
     // `then` provides a const reference to the value which may be used to create a copy
     template <typename Callable,
-              typename Reduced = decltype(future_reducer_t<typename std::result_of<Callable(T)>::type>::reduce())>
+              typename Res = typename std::result_of<Callable(T)>::type,
+              typename Reduced = decltype(future_reducer_t<Res>::reduce())>
     future_t<Reduced> then(Callable cb);
 
     // `then_release` provides a move of the value and can only be used if T is move-constructible
     template <typename Callable,
-              typename Reduced = decltype(future_reducer_t<typename std::result_of<Callable(T)>::type>::reduce())>
+              typename Res = typename std::result_of<Callable(T)>::type,
+              typename Reduced = decltype(future_reducer_t<Res>::reduce())>
     typename std::enable_if<std::is_move_constructible<T>::value, future_t<Reduced> >::type
     then_release(Callable cb);
 
@@ -77,7 +79,8 @@ public:
     bool has() const;
 
     template <typename Callable,
-              typename Reduced = decltype(future_reducer_t<typename std::result_of<Callable()>::type>::reduce())>
+              typename Res = typename std::result_of<Callable()>::type,
+              typename Reduced = decltype(future_reducer_t<Res>::reduce())>
     future_t<Reduced> then(Callable cb);
 
 private:
@@ -113,6 +116,13 @@ public:
     future_t<T> get_future();
 
 private:
+    template <typename U, typename Callable, typename Res, typename Reduced>
+    friend struct chain_fulfillment_ref_t;
+    template <typename U, typename Callable, typename Res, typename Reduced>
+    friend struct chain_fulfillment_move_t;
+    template <typename Callable, typename Res, typename Reduced>
+    friend class promise_chain_void_impl_t;
+
     promise_data_t<T> *m_data;
 };
 
@@ -127,6 +137,13 @@ public:
     future_t<void> get_future();
 
 private:
+    template <typename U, typename Callable, typename Res, typename Reduced>
+    friend struct chain_fulfillment_ref_t;
+    template <typename U, typename Callable, typename Res, typename Reduced>
+    friend struct chain_fulfillment_move_t;
+    template <typename Callable, typename Res, typename Reduced>
+    friend class promise_chain_void_impl_t;
+
     promise_data_t<void> *m_data;
 };
 

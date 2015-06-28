@@ -14,11 +14,23 @@ void test_nested_promise() {
     future_t<void> future_a = p_a.get_future();
     promise_t<char> p_b;
     future_t<char> future_b = future_a.then([&] () { return p_b.get_future(); });
+    promise_t<void> p_c;
+    future_t<void> future_c = future_a.then([&] () { return p_c.get_future(); });
+    promise_t<bool> p_d;
+    future_t<bool> future_d = future_b.then([&] (char) { return p_d.get_future(); });
+    promise_t<void> p_e;
+    future_t<void> future_e = future_b.then([&] (char) { return p_e.get_future(); });
 
     REQUIRE(!p_a.fulfilled());
     REQUIRE(!future_a.has());
     REQUIRE(!p_b.fulfilled());
     REQUIRE(!future_b.has());
+    REQUIRE(!p_c.fulfilled());
+    REQUIRE(!future_c.has());
+    REQUIRE(!p_d.fulfilled());
+    REQUIRE(!future_d.has());
+    REQUIRE(!p_e.fulfilled());
+    REQUIRE(!future_e.has());
 
     p_a.fulfill();
 
@@ -26,14 +38,54 @@ void test_nested_promise() {
     REQUIRE(future_a.has());
     REQUIRE(!p_b.fulfilled());
     REQUIRE(!future_b.has());
+    REQUIRE(!p_c.fulfilled());
+    REQUIRE(!future_c.has());
 
     p_b.fulfill('b');
 
+    REQUIRE(!p_c.fulfilled());
+    REQUIRE(!future_c.has());
+    REQUIRE(!p_d.fulfilled());
+    REQUIRE(!future_d.has());
+    REQUIRE(!p_e.fulfilled());
+    REQUIRE(!future_e.has());
     REQUIRE(p_b.fulfilled());
     REQUIRE(future_b.has());
     REQUIRE(future_b.get() == 'b');
     REQUIRE(future_b.copy() == 'b');
     REQUIRE(future_b.release() == 'b');
+
+    p_c.fulfill();
+
+    REQUIRE(!p_d.fulfilled());
+    REQUIRE(!future_d.has());
+    REQUIRE(!p_e.fulfilled());
+    REQUIRE(!future_e.has());
+    REQUIRE(p_c.fulfilled());
+    REQUIRE(future_c.has());
+
+    p_d.fulfill(true);
+
+    REQUIRE(!p_e.fulfilled());
+    REQUIRE(!future_e.has());
+    REQUIRE(p_d.fulfilled());
+    REQUIRE(future_d.has());
+    REQUIRE(future_b.get());
+    REQUIRE(future_b.copy());
+    REQUIRE(future_b.release());
+
+    p_e.fulfill();
+
+    REQUIRE(p_e.fulfilled());
+    REQUIRE(future_e.has());
+
+    REQUIRE_THROWS_AS(future_b.get(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_b.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_b.release(), wait_object_lost_exc_t);
+
+    REQUIRE_THROWS_AS(future_d.get(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_d.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_d.release(), wait_object_lost_exc_t);
 }
 
 void test_void_promise() {
