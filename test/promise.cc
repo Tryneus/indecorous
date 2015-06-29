@@ -9,6 +9,83 @@ const size_t num_threads = 8;
 
 using namespace indecorous;
 
+struct callable_struct_t {
+    static int static_fn() { return 1; }
+    int member_fn() { return 2; }
+    int operator()() { return 3; }
+};
+
+int callable_int() { return 4; }
+
+void test_callable_promise() {
+    callable_struct_t s;
+    promise_t<void> p;
+    future_t<void> f = p.get_future();
+    future_t<int> future_a = f.then(callable_struct_t::static_fn);
+    future_t<int> future_b = f.then(std::bind(&callable_struct_t::member_fn, &s));
+    future_t<int> future_c = f.then(s);
+    future_t<int> future_d = f.then(callable_int);
+    future_t<int> future_e = f.then([] { return 5; });
+
+    REQUIRE(!p.fulfilled());
+    REQUIRE(!f.has());
+    REQUIRE(!future_a.has());
+    REQUIRE(!future_b.has());
+    REQUIRE(!future_c.has());
+    REQUIRE(!future_d.has());
+    REQUIRE(!future_e.has());
+
+    p.fulfill();
+
+    REQUIRE(p.fulfilled());
+    REQUIRE(f.has());
+    REQUIRE(future_a.has());
+    REQUIRE(future_b.has());
+    REQUIRE(future_c.has());
+    REQUIRE(future_d.has());
+    REQUIRE(future_e.has());
+
+    REQUIRE(future_a.get() == 1);
+    REQUIRE(future_a.copy() == 1);
+    REQUIRE(future_a.release() == 1);
+
+    REQUIRE(future_b.get() == 2);
+    REQUIRE(future_b.copy() == 2);
+    REQUIRE(future_b.release() == 2);
+
+    REQUIRE(future_c.get() == 3);
+    REQUIRE(future_c.copy() == 3);
+    REQUIRE(future_c.release() == 3);
+
+    REQUIRE(future_d.get() == 4);
+    REQUIRE(future_d.copy() == 4);
+    REQUIRE(future_d.release() == 4);
+
+    REQUIRE(future_e.get() == 5);
+    REQUIRE(future_e.copy() == 5);
+    REQUIRE(future_e.release() == 5);
+
+    REQUIRE_THROWS_AS(future_a.get(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_a.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_a.release(), wait_object_lost_exc_t);
+
+    REQUIRE_THROWS_AS(future_b.get(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_b.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_b.release(), wait_object_lost_exc_t);
+
+    REQUIRE_THROWS_AS(future_c.get(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_c.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_c.release(), wait_object_lost_exc_t);
+
+    REQUIRE_THROWS_AS(future_d.get(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_d.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_d.release(), wait_object_lost_exc_t);
+
+    REQUIRE_THROWS_AS(future_e.get(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_e.copy(), wait_object_lost_exc_t);
+    REQUIRE_THROWS_AS(future_e.release(), wait_object_lost_exc_t);
+}
+
 void test_nested_promise() {
     {
         promise_t<void> p_a;
@@ -322,8 +399,18 @@ struct movable_copyable_test_t : public handler_t<movable_copyable_test_t> {
 };
 IMPL_UNIQUE_HANDLER(movable_copyable_test_t);
 
+struct common_promise_test_t : public handler_t<common_promise_test_t> {
+    static void call() {
+        test_void_promise();
+        test_nested_promise();
+        test_callable_promise();
+    }
+};
+IMPL_UNIQUE_HANDLER(common_promise_test_t);
+
 TEST_CASE("promise", "[sync][promise]") {
     scheduler_t sched(1, shutdown_policy_t::Eager);
+    sched.broadcast_local<common_promise_test_t>();
     sched.broadcast_local<non_movable_test_t>();
     sched.broadcast_local<non_copyable_test_t>();
     sched.broadcast_local<movable_copyable_test_t>();
