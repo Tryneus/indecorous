@@ -53,16 +53,34 @@ bool promise_data_t<void>::abandoned() const { return m_abandoned; }
 void promise_data_t<void>::assign() {
     GUARANTEE(m_fulfilled == false);
     m_fulfilled = true;
-    for (future_t<void> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
-        f->notify(wait_result_t::Success);
-    }
-    m_chain.clear([] (auto p) { p->handle(); });
+    notify_all();
 }
 
 future_t<void> promise_data_t<void>::add_future() {
     future_t<void> res(this);
     m_futures.push_back(&res);
     return res;
+}
+
+void promise_data_t<void>::notify_all() {
+    if (m_fulfilled) {
+        m_futures.each([] (auto f) { f->notify(wait_result_t::Success); });
+        m_chain.clear([] (auto p) { p->handle(); delete p; });
+    } else if (m_abandoned) {
+        m_futures.each([] (auto f) { f->notify(wait_result_t::ObjectLost); });
+        m_chain.clear([] (auto p) { p->handle(); delete p; });
+    }
+}
+
+void promise_data_t<void>::reassign_futures(future_t<void> *real_future) {
+    promise_data_t<void> *other_data = real_future->m_data;
+
+    m_chain.clear([&] (auto p) { other_data->m_chain.push_back(p); });
+    m_futures.clear([&] (auto f) {
+            f->m_data = other_data;
+            other_data->m_futures.push_back(f);
+        });
+    other_data->notify_all();
 }
 
 // Returns true if it is safe to delete this promise_data_t
@@ -75,12 +93,7 @@ bool promise_data_t<void>::remove_future(future_t<void> *f) {
 bool promise_data_t<void>::abandon() {
     GUARANTEE(!m_abandoned);
     m_abandoned = true;
-    if (m_fulfilled == false) {
-        for (future_t<void> *f = m_futures.front(); f != nullptr; f = m_futures.next(f)) {
-            f->m_data = nullptr;
-            f->notify(wait_result_t::ObjectLost);
-        }
-    }
+    notify_all();
     return m_futures.empty();
 }
 

@@ -107,6 +107,8 @@ public:
     };
 
 private:
+    void notify_all();
+
     bool m_fulfilled;
     bool m_abandoned;
     intrusive_list_t<future_t<void> > m_futures;
@@ -323,8 +325,12 @@ template <typename T>
 void promise_data_t<T>::reassign_futures(future_t<T> *real_future) {
     promise_data_t<T> *other_data = real_future->m_data;
 
-    // TODO: Would be faster to move all of them at once rather than one at a time
-    m_futures.clear([&] (auto f) { other_data->m_futures.push_back(f); });
+    m_ref_chain.clear([&] (auto p) { other_data->m_ref_chain.push_back(p); });
+    m_move_chain.clear([&] (auto p) { other_data->m_move_chain.push_back(p); });
+    m_futures.clear([&] (auto f) {
+            f->m_data = other_data;
+            other_data->m_futures.push_back(f);
+        });
     other_data->notify_all();
 }
 

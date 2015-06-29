@@ -10,82 +10,151 @@ const size_t num_threads = 8;
 using namespace indecorous;
 
 void test_nested_promise() {
-    promise_t<void> p_a;
-    future_t<void> future_a = p_a.get_future();
-    promise_t<char> p_b;
-    future_t<char> future_b = future_a.then([&] () { return p_b.get_future(); });
-    promise_t<void> p_c;
-    future_t<void> future_c = future_a.then([&] () { return p_c.get_future(); });
-    promise_t<bool> p_d;
-    future_t<bool> future_d = future_b.then([&] (char) { return p_d.get_future(); });
-    promise_t<void> p_e;
-    future_t<void> future_e = future_b.then([&] (char) { return p_e.get_future(); });
+    {
+        promise_t<void> p_a;
+        future_t<void> future_a = p_a.get_future();
+        promise_t<char> p_b;
+        future_t<char> future_b = future_a.then([&] () { return p_b.get_future(); });
+        promise_t<void> p_c;
+        future_t<void> future_c = future_a.then([&] () { return p_c.get_future(); });
+        promise_t<bool> p_d;
+        future_t<bool> future_d = future_b.then([&] (char) { return p_d.get_future(); });
+        promise_t<void> p_e;
+        future_t<void> future_e = future_b.then([&] (char) { return p_e.get_future(); });
 
-    REQUIRE(!p_a.fulfilled());
-    REQUIRE(!future_a.has());
-    REQUIRE(!p_b.fulfilled());
-    REQUIRE(!future_b.has());
-    REQUIRE(!p_c.fulfilled());
-    REQUIRE(!future_c.has());
-    REQUIRE(!p_d.fulfilled());
-    REQUIRE(!future_d.has());
-    REQUIRE(!p_e.fulfilled());
-    REQUIRE(!future_e.has());
+        REQUIRE(!p_a.fulfilled());
+        REQUIRE(!future_a.has());
+        REQUIRE(!p_b.fulfilled());
+        REQUIRE(!future_b.has());
+        REQUIRE(!p_c.fulfilled());
+        REQUIRE(!future_c.has());
+        REQUIRE(!p_d.fulfilled());
+        REQUIRE(!future_d.has());
+        REQUIRE(!p_e.fulfilled());
+        REQUIRE(!future_e.has());
 
-    p_a.fulfill();
+        p_a.fulfill();
 
-    REQUIRE(p_a.fulfilled());
-    REQUIRE(future_a.has());
-    REQUIRE(!p_b.fulfilled());
-    REQUIRE(!future_b.has());
-    REQUIRE(!p_c.fulfilled());
-    REQUIRE(!future_c.has());
+        REQUIRE(p_a.fulfilled());
+        REQUIRE(future_a.has());
+        REQUIRE(!p_b.fulfilled());
+        REQUIRE(!future_b.has());
+        REQUIRE(!p_c.fulfilled());
+        REQUIRE(!future_c.has());
 
-    p_b.fulfill('b');
+        p_b.fulfill('b');
 
-    REQUIRE(!p_c.fulfilled());
-    REQUIRE(!future_c.has());
-    REQUIRE(!p_d.fulfilled());
-    REQUIRE(!future_d.has());
-    REQUIRE(!p_e.fulfilled());
-    REQUIRE(!future_e.has());
-    REQUIRE(p_b.fulfilled());
-    REQUIRE(future_b.has());
-    REQUIRE(future_b.get() == 'b');
-    REQUIRE(future_b.copy() == 'b');
-    REQUIRE(future_b.release() == 'b');
+        REQUIRE(!p_c.fulfilled());
+        REQUIRE(!future_c.has());
+        REQUIRE(!p_d.fulfilled());
+        REQUIRE(!future_d.has());
+        REQUIRE(!p_e.fulfilled());
+        REQUIRE(!future_e.has());
+        REQUIRE(p_b.fulfilled());
+        REQUIRE(future_b.has());
+        REQUIRE(future_b.get() == 'b');
+        REQUIRE(future_b.copy() == 'b');
+        REQUIRE(future_b.release() == 'b');
 
-    p_c.fulfill();
+        p_c.fulfill();
 
-    REQUIRE(!p_d.fulfilled());
-    REQUIRE(!future_d.has());
-    REQUIRE(!p_e.fulfilled());
-    REQUIRE(!future_e.has());
-    REQUIRE(p_c.fulfilled());
-    REQUIRE(future_c.has());
+        REQUIRE(!p_d.fulfilled());
+        REQUIRE(!future_d.has());
+        REQUIRE(!p_e.fulfilled());
+        REQUIRE(!future_e.has());
+        REQUIRE(p_c.fulfilled());
+        REQUIRE(future_c.has());
 
-    p_d.fulfill(true);
+        p_d.fulfill(true);
 
-    REQUIRE(!p_e.fulfilled());
-    REQUIRE(!future_e.has());
-    REQUIRE(p_d.fulfilled());
-    REQUIRE(future_d.has());
-    REQUIRE(future_b.get());
-    REQUIRE(future_b.copy());
-    REQUIRE(future_b.release());
+        REQUIRE(!p_e.fulfilled());
+        REQUIRE(!future_e.has());
+        REQUIRE(p_d.fulfilled());
+        REQUIRE(future_d.has());
+        REQUIRE(future_d.get());
+        REQUIRE(future_d.copy());
+        REQUIRE(future_d.release());
 
-    p_e.fulfill();
+        p_e.fulfill();
 
-    REQUIRE(p_e.fulfilled());
-    REQUIRE(future_e.has());
+        REQUIRE(p_e.fulfilled());
+        REQUIRE(future_e.has());
 
-    REQUIRE_THROWS_AS(future_b.get(), wait_object_lost_exc_t);
-    REQUIRE_THROWS_AS(future_b.copy(), wait_object_lost_exc_t);
-    REQUIRE_THROWS_AS(future_b.release(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_b.get(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_b.copy(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_b.release(), wait_object_lost_exc_t);
 
-    REQUIRE_THROWS_AS(future_d.get(), wait_object_lost_exc_t);
-    REQUIRE_THROWS_AS(future_d.copy(), wait_object_lost_exc_t);
-    REQUIRE_THROWS_AS(future_d.release(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_d.get(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_d.copy(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_d.release(), wait_object_lost_exc_t);
+    }
+
+    {
+        promise_t<void> p_a;
+        future_t<void> future_a = p_a.get_future();
+        promise_t<char> p_b;
+        future_t<char> future_b = future_a.then([&] () { return p_b.get_future(); });
+        promise_t<void> p_c;
+        future_t<void> future_c = future_a.then([&] () { return p_c.get_future(); });
+        promise_t<bool> p_d;
+        future_t<bool> future_d = future_b.then([&] (char) { return p_d.get_future(); });
+        promise_t<void> p_e;
+        future_t<void> future_e = future_b.then([&] (char) { return p_e.get_future(); });
+
+        REQUIRE(!p_a.fulfilled());
+        REQUIRE(!future_a.has());
+        REQUIRE(!p_b.fulfilled());
+        REQUIRE(!future_b.has());
+        REQUIRE(!p_c.fulfilled());
+        REQUIRE(!future_c.has());
+        REQUIRE(!p_d.fulfilled());
+        REQUIRE(!future_d.has());
+        REQUIRE(!p_e.fulfilled());
+        REQUIRE(!future_e.has());
+
+        p_e.fulfill();
+        REQUIRE(p_e.fulfilled());
+        REQUIRE(!future_e.has());
+        p_d.fulfill(false);
+        REQUIRE(p_d.fulfilled());
+        REQUIRE(!future_d.has());
+        REQUIRE(!future_e.has());
+        p_c.fulfill();
+        REQUIRE(p_c.fulfilled());
+        REQUIRE(!future_c.has());
+        REQUIRE(!future_d.has());
+        REQUIRE(!future_e.has());
+        p_b.fulfill('a');
+        REQUIRE(p_b.fulfilled());
+        REQUIRE(!future_b.has());
+        REQUIRE(!future_c.has());
+        REQUIRE(!future_d.has());
+        REQUIRE(!future_e.has());
+        p_a.fulfill();
+        REQUIRE(p_a.fulfilled());
+
+        REQUIRE(future_a.has());
+        REQUIRE(future_b.has());
+        REQUIRE(future_c.has());
+        REQUIRE(future_d.has());
+        REQUIRE(future_e.has());
+
+        REQUIRE(future_b.get() == 'a');
+        REQUIRE(future_b.copy() == 'a');
+        REQUIRE(future_b.release() == 'a');
+
+        REQUIRE(!future_d.get());
+        REQUIRE(!future_d.copy());
+        REQUIRE(!future_d.release());
+
+        REQUIRE_THROWS_AS(future_b.get(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_b.copy(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_b.release(), wait_object_lost_exc_t);
+
+        REQUIRE_THROWS_AS(future_d.get(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_d.copy(), wait_object_lost_exc_t);
+        REQUIRE_THROWS_AS(future_d.release(), wait_object_lost_exc_t);
+    }
 }
 
 void test_void_promise() {
@@ -206,6 +275,7 @@ private:
 struct non_movable_test_t : public handler_t<non_movable_test_t> {
     static void call() {
         test_void_promise();
+        test_nested_promise();
         test_copy_promise<non_movable_t>();
     }
 };
