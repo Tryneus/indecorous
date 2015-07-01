@@ -52,12 +52,28 @@ void spawn_class_fn_no_args() {
     }
 }
 
+void spawn_std_function_no_args() {
+    bench_timer_t timer("coro/spawn std::function no args", reps);
+    for (size_t i = 0; i < reps; ++i) {
+        coro_t::spawn_now(std::function<void()>(&no_args_fn));
+    }
+}
+
+void spawn_std_bind_no_args() {
+    bench_timer_t timer("coro/spawn std::bind no args", reps);
+    for (size_t i = 0; i < reps; ++i) {
+        coro_t::spawn_now(std::bind(&no_args_fn));
+    }
+}
+
 struct spawn_bench_t : public handler_t<spawn_bench_t> {
     static void call() {
         spawn_empty_lambda();
         spawn_lambda_no_args();
         spawn_fn_ptr_no_args();
         spawn_class_fn_no_args();
+        spawn_std_function_no_args();
+        spawn_std_bind_no_args();
     }
 };
 IMPL_UNIQUE_HANDLER(spawn_bench_t);
