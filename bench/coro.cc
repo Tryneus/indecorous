@@ -10,9 +10,8 @@
 
 using namespace indecorous;
 
-size_t reps = 128;
+size_t reps = 10000;
 
-/*
 void spawn_empty_lambda() {
     bench_timer_t timer("coro/spawn empty lambda", reps);
     for (size_t i = 0; i < reps; ++i) {
@@ -24,20 +23,15 @@ void spawn_lambda_no_args() {
     int res = 0;
     bench_timer_t timer("coro/spawn lambda no args", reps);
     for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn([res] { res += 1; });
+        coro_t::spawn([&] { res += 1; });
     }
 }
-*/
-std::atomic<size_t> num_active;
 
-void no_args_fn() {
-    --num_active;
-}
+void no_args_fn() { }
 
 void spawn_fn_ptr_no_args() {
     bench_timer_t timer("coro/spawn function pointer no args", reps);
     for (size_t i = 0; i < reps; ++i) {
-        ++num_active;
         coro_t::spawn_now(&no_args_fn);
     }
 }
@@ -60,10 +54,10 @@ void spawn_class_fn_no_args() {
 
 struct spawn_bench_t : public handler_t<spawn_bench_t> {
     static void call() {
-        //spawn_empty_lambda();
-        //spawn_lambda_no_args();
+        spawn_empty_lambda();
+        spawn_lambda_no_args();
         spawn_fn_ptr_no_args();
-        //spawn_class_fn_no_args();
+        spawn_class_fn_no_args();
     }
 };
 IMPL_UNIQUE_HANDLER(spawn_bench_t);
