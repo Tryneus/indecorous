@@ -64,7 +64,6 @@ struct spawn_bench_t : public handler_t<spawn_bench_t> {
         //spawn_lambda_no_args();
         spawn_fn_ptr_no_args();
         //spawn_class_fn_no_args();
-        debugf("done with spawn_bench_t::call");
     }
 };
 IMPL_UNIQUE_HANDLER(spawn_bench_t);

@@ -33,11 +33,9 @@ void shutdown_t::shutdown(message_hub_t *hub) {
 void shutdown_t::update(int64_t active_delta, message_hub_t *hub) {
     uint64_t res = m_active_count.fetch_add(active_delta);
 
-    debugf("shutdown_t::update new active count: %" PRIu64, res + active_delta);
     bool done = ((res + active_delta) == 0);
     if (done && res != 0) {
         if (!m_finish_sent.load()) {
-            debugf("sending finish_stop_t");
             m_active_count.fetch_add(m_thread_count);
             m_finish_sent.store(true);
             hub->broadcast_local_noreply<finish_stop_t>();
