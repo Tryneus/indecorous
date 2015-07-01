@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cassert>
 #include <cstddef>
+#include <type_traits>
 
 #include "containers/arena.hpp"
 #include "containers/intrusive.hpp"
@@ -70,21 +71,15 @@ public:
     static void yield();
 
     // Create a coroutine and put it on the queue to run
-    template <typename Res, typename... Args>
-    static future_t<Res> spawn(Res(*fn)(Args...), Args &&...args) {
-        return coro_t::self()->spawn_internal(false, fn, std::forward<Args>(args)...);
+    template <typename Callable, typename... Args>
+    static auto spawn(Callable &&cb, Args &&...args) {
+        return coro_t::self()->spawn_internal(false, std::forward<Callable>(cb),
+                                              std::forward<Args>(args)...);
     }
-    template <typename Res, typename Class, typename... Args>
-    static future_t<Res> spawn(Res(Class::*fn)(Args...), Class *instance, Args &&...args) {
-        return coro_t::self()->spawn_internal(false, fn, instance, std::forward<Args>(args)...);
-    }
-    template <typename Res, typename... Args>
-    static future_t<Res> spawn_now(Res(*fn)(Args...), Args &&...args) {
-        return coro_t::self()->spawn_internal(true, fn, std::forward<Args>(args)...);
-    }
-    template <typename Res, typename Class, typename... Args>
-    static future_t<Res> spawn_now(Res(Class::*fn)(Args...), Class *instance, Args &&...args) {
-        return coro_t::self()->spawn_internal(true, fn, instance, std::forward<Args>(args)...);
+    template <typename Callable, typename... Args>
+    static auto spawn_now(Callable &&cb, Args &&...args) {
+        return coro_t::self()->spawn_internal(false, std::forward<Callable>(cb),
+                                              std::forward<Args>(args)...);
     }
 
     typedef void(coro_t::*hook_fn_t)(coro_t*, void*, bool);
@@ -99,25 +94,29 @@ private:
     friend void coro_pull();
     friend class wait_object_t;
 
-    template <typename Res, typename... Args>
-    future_t<Res> spawn_internal(bool immediate, Res(*fn)(Args...), Args &&...args) {
+    template <typename Callable, typename... Args,
+              typename Res = typename std::result_of<Callable(Args...)>::type>
+    typename std::enable_if<!std::is_member_function_pointer<Callable>::value, future_t<Res> >::type
+    spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
         coro_t *context = coro_t::create();
-        std::tuple<promise_t<Res>, Res(*)(Args...), Args...> params(
-            std::move(promise), fn, std::forward<Args>(args)... );
+        std::tuple<promise_t<Res>, Callable, Args...> params(
+            std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)... );
         context->begin(&coro_t::hook<Res, decltype(params), 2>, this, &params, immediate);
         swap(context);
         return res;
     }
 
-    template <typename Res, typename Class, typename... Args>
-    future_t<Res> spawn_internal(bool immediate, Res(Class::*fn)(Args...), Class *instance, Args &&...args) {
+    template <typename Callable, typename... Args,
+              typename Res = typename std::result_of<Callable(Args...)>::type>
+    typename std::enable_if<std::is_member_function_pointer<Callable>::value, future_t<Res> >::type
+    spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
         coro_t *context = coro_t::create();
-        std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> params(
-            std::move(promise), fn, instance, std::forward<Args>(args)... );
+        std::tuple<promise_t<Res>, Callable, Args...> params(
+            std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)... );
         context->begin(&coro_t::hook<Res, decltype(params), 3>, this, &params, immediate);
         swap(context);
         return res;
@@ -136,20 +135,18 @@ private:
     template <typename Res>
     class runner_t {
     public:
-        template <size_t... N, typename... Args>
-        static void run(std::integer_sequence<size_t, N...>,
-                        std::tuple<promise_t<Res>, Res(*)(Args...), Args...> *args) {
-            promise_t<Res> promise(std::get<0>(std::move(args)));
-            promise.fulfill(std::get<1>(args)(std::get<N+2>(std::move(args))...));
+        template <size_t... N, typename Callable, typename... Args>
+        static typename std::enable_if<!std::is_member_function_pointer<Callable>::value, void>::type
+        run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
+            promise_t<Res> promise(std::get<0>(std::move(*args)));
+            promise.fulfill(std::get<1>(*args)(std::get<N+2>(std::move(*args))...));
         }
 
-        template <size_t... N, typename Class, typename... Args>
-        static void run(std::integer_sequence<size_t, N...>,
-                        std::tuple<promise_t<Res>, Res(Class::*)(Args...), Class *, Args...> *args) {
-            promise_t<Res> promise(std::get<0>(std::move(args)));
-            Class *instance = std::get<2>(args);
-            Res(Class::*fn)(Args...) = std::get<1>(args);
-            promise.fulfill((instance->*fn)(std::get<N+3>(std::move(args))...));
+        template <size_t... N, typename Callable, typename... Args>
+        static typename std::enable_if<std::is_member_function_pointer<Callable>::value, void>::type
+        run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
+            promise_t<Res> promise(std::get<0>(std::move(*args)));
+            promise.fulfill((std::get<2>(std::move(*args))->*std::get<1>(std::move(*args)))(std::get<N+3>(std::move(*args))...));
         }
     };
 
@@ -188,21 +185,19 @@ private:
 // Specialization for void-returning functions
 template <> class coro_t::runner_t<void> {
 public:
-    template <size_t... N, typename... Args>
-    static void run(std::integer_sequence<size_t, N...>,
-                    std::tuple<promise_t<void>, void(*)(Args...), Args...> *args) {
+    template <size_t... N, typename Callable, typename... Args>
+    static typename std::enable_if<!std::is_member_function_pointer<Callable>::value, void>::type
+    run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
         promise_t<void> promise(std::get<0>(std::move(*args)));
-        std::get<1>(*args)(std::get<N+2>(std::move(*args))...);
+        std::get<1>(std::move(*args))(std::get<N+2>(std::move(*args))...);
         promise.fulfill();
     }
 
-    template <size_t... N, typename Class, typename... Args>
-    static void run(std::integer_sequence<size_t, N...>,
-                    std::tuple<promise_t<void>, void(Class::*)(Args...), Class *, Args...> *args) {
+    template <size_t... N, typename Callable, typename... Args>
+    static typename std::enable_if<std::is_member_function_pointer<Callable>::value, void>::type
+    run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
         promise_t<void> promise(std::get<0>(std::move(*args)));
-        Class *instance = std::get<2>(*args);
-        void(Class::*fn)(Args...) = std::get<1>(*args);
-        (instance->*fn)(std::get<N+3>(std::move(*args))...);
+        (std::get<2>(std::move(*args))->*std::get<1>(std::move(*args)))(std::get<N+3>(std::move(*args))...);
         promise.fulfill();
     }
 };
