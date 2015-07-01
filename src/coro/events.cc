@@ -60,14 +60,17 @@ void events_t::remove_file_wait(file_callback_t *cb) {
     m_epoll_changes.insert(cb->fd());
 }
 
-void events_t::wait() {
-    absolute_time_t start_time(0);
-    int timeout = -1;
-    if (!m_timer_list.empty()) {
-        timeout = absolute_time_t::ms_diff(m_timer_list.front()->timeout(), start_time);
+void events_t::check(bool wait) {
+    int timeout = 0;
+    if (wait) {
+        absolute_time_t start_time(0);
+        timeout = -1;
+        if (!m_timer_list.empty()) {
+            timeout = absolute_time_t::ms_diff(m_timer_list.front()->timeout(), start_time);
 
-        if (timeout < 0) {
-            timeout = 0;
+            if (timeout < 0) {
+                timeout = 0;
+            }
         }
     }
 

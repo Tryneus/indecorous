@@ -126,12 +126,17 @@ int64_t dispatcher_t::run() {
         m_release = nullptr;
     }
 
+    debugf("coro_delta: %" PRIi64, m_coro_delta);
     assert(m_running == nullptr);
     return m_coro_delta;
 }
 
-void dispatcher_t::note_send() {
+void dispatcher_t::note_new_task() {
     m_coro_delta += 1;
+}
+
+void dispatcher_t::note_accepted_task() {
+    m_coro_delta -= 1;
 }
 
 void dispatcher_t::enqueue_release(coro_t *coro) {
@@ -145,14 +150,18 @@ coro_t::coro_t(dispatcher_t *dispatch) :
         m_valgrindStackId(VALGRIND_STACK_REGISTER(m_stack, m_stack + sizeof(m_stack))),
         m_wait_callback(this),
         m_wait_result(wait_result_t::Success) {
+//    debugf("creating coroutine %p", this);
     GUARANTEE_ERR(getcontext(&m_context) == 0);
 
     m_context.uc_stack.ss_sp = m_stack;
     m_context.uc_stack.ss_size = s_stackSize;
     m_context.uc_link = nullptr;
+
+    m_dispatch->note_new_task();
 }
 
 coro_t::~coro_t() {
+//    debugf("destroying coroutine %p", this);
     VALGRIND_STACK_DEREGISTER(m_valgrindStackId);
 }
 

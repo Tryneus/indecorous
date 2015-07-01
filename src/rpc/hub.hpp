@@ -62,8 +62,6 @@ public:
         return res;
     }
 
-    void send_reply(target_id_t target_id, write_message_t &&msg);
-
 private:
     friend class scheduler_t; // For initializing local targets
     void set_local_targets(std::list<thread_t> *threads);

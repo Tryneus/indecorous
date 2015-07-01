@@ -25,20 +25,20 @@ public:
 
     template <typename Callback, typename... Args>
     void call_noreply(Args &&...args) {
-        if (is_local()) { note_send(); }
+        note_send();
         send_request<Callback>(request_id_t::noreply(), std::forward<Args>(args)...);
     }
 
     template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
     result_t call_sync(Args &&...args) {
-        if (is_local()) { note_send(); }
+        note_send();
         request_id_t request_id = send_request<Callback>(request_gen.next(), std::forward<Args>(args)...);
         return serializer_t<result_t>::read(get_response(request_id).release());
     }
 
     template <typename Callback, typename result_t = typename handler_wrapper_t<Callback>::result_t, typename... Args>
     future_t<result_t> call_async(Args &&...args) {
-        if (is_local()) { note_send(); }
+        note_send();
         request_id_t request_id = send_request<Callback>(request_gen.next(), std::forward<Args>(args)...);
         return get_response(request_id).then_release(&target_t::parse_result<result_t>);
     }

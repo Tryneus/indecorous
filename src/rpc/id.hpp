@@ -22,6 +22,7 @@ public:
     // This should only be called before spawning threads
     static target_id_t assign();
 
+    bool is_local() const;
     uint64_t value() const;
     bool operator ==(const target_id_t &other) const;
 private:

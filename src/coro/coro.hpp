@@ -36,7 +36,8 @@ public:
     void close();
 
     // Called when an rpc is sent from this thread
-    void note_send();
+    void note_new_task();
+    void note_accepted_task();
 
     void enqueue_release(coro_t *coro);
 

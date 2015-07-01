@@ -19,9 +19,11 @@ void target_t::wait(wait_object_t *interruptor) {
 }
 
 void target_t::note_send() const {
-    thread_t *t = thread_t::self();
-    if (t != nullptr) {
-        t->dispatcher()->note_send(); 
+    if (is_local()) {
+        thread_t *t = thread_t::self();
+        if (t != nullptr) {
+            t->dispatcher()->note_new_task(); 
+        }
     }
 }
 

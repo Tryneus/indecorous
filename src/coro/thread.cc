@@ -45,7 +45,7 @@ void thread_t::main() {
         m_stop_immediately = false;
         m_shutdown->update(m_dispatch.run(), &m_hub);
         while (!m_stop_immediately) {
-            m_events.wait();
+            m_events.check(m_dispatch.m_run_queue.empty());
             m_shutdown->update(m_dispatch.run(), &m_hub);
         }
 

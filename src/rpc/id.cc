@@ -13,6 +13,10 @@ target_id_t target_id_t::assign() {
     return generator.next();
 }
 
+bool target_id_t::is_local() const {
+    return true; // TODO: local/remote target id generation
+}
+
 uint64_t target_id_t::value() const {
     return value_;
 }

@@ -15,12 +15,10 @@ class message_hub_t;
 class handler_callback_t {
 public:
     virtual ~handler_callback_t();
-    virtual void handle(message_hub_t *hub, read_message_t msg) = 0;
+    virtual write_message_t handle(read_message_t msg) = 0;
     virtual void handle_noreply(read_message_t msg) = 0;
     virtual handler_id_t id() const = 0;
 };
-
-void send_reply(message_hub_t *hub, target_id_t source_id, write_message_t msg);
 
 template <typename Callback>
 class handler_wrapper_t {
@@ -29,15 +27,14 @@ public:
     class internal_handler_t : public handler_callback_t {
     public:
         typedef Res result_t;
-        void handle(message_hub_t *hub, read_message_t msg) {
+        write_message_t handle(read_message_t msg) {
             assert(msg.buffer.has());
             Res res = handle_internal(std::index_sequence_for<Args...>{},
                                       std::tuple<Args...>{serializer_t<Args>::read(&msg)...});
-            send_reply(hub, msg.source_id,
-                       write_message_t::create(msg.source_id,
-                           handler_id_t::reply(),
-                           msg.request_id,
-                           std::move(res)));
+            return write_message_t::create(msg.source_id,
+                                           handler_id_t::reply(),
+                                           msg.request_id,
+                                           std::move(res));
         }
 
         void handle_noreply(read_message_t msg) {
@@ -83,14 +80,13 @@ template <typename... Args>
 class handler_wrapper_t<Callback>::internal_handler_t<void, Args...> : public handler_callback_t {
 public:
     typedef void result_t;
-    void handle(message_hub_t *hub, read_message_t msg) {
+    write_message_t handle(read_message_t msg) {
         assert(msg.buffer.has());
         handle_internal(std::index_sequence_for<Args...>{},
                         std::tuple<Args...>{serializer_t<Args>::read(&msg)...});
-        send_reply(hub, msg.source_id,
-                   write_message_t::create(msg.source_id,
-                       handler_id_t::reply(),
-                       msg.request_id));
+        return write_message_t::create(msg.source_id,
+                                       handler_id_t::reply(),
+                                       msg.request_id);
     }
 
     void handle_noreply(read_message_t msg) {

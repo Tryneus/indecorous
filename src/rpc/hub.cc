@@ -26,6 +26,19 @@ future_t<read_message_t> message_hub_t::get_response(request_id_t id) {
     return it->second.get_future();
 }
 
+void handle_wrapper(message_hub_t *hub, handler_callback_t *handler, read_message_t msg) {
+    target_id_t source_id = msg.source_id;
+    write_message_t reply = handler->handle(std::move(msg));
+
+    target_t *source = hub->target(source_id);
+    if (source != nullptr) {
+        source->send_reply(std::move(reply));
+    }
+}
+void handle_noreply_wrapper(handler_callback_t *handler, read_message_t msg) {
+    handler->handle_noreply(std::move(msg));
+}
+
 bool message_hub_t::spawn(read_message_t msg) {
     assert(msg.buffer.has());
     if (msg.handler_id == handler_id_t::reply()) {
@@ -36,11 +49,15 @@ bool message_hub_t::spawn(read_message_t msg) {
             debugf("Orphan reply encountered, no promise found");
         }
     } else {
+        if (msg.source_id.is_local()) {
+            thread_t::self()->dispatcher()->note_accepted_task();
+        }
+
         auto cb_it = m_handlers.find(msg.handler_id);
         if (msg.request_id == request_id_t::noreply()) {
-            coro_t::spawn(&handler_callback_t::handle_noreply, cb_it->second, std::move(msg));
+            coro_t::spawn(&handle_noreply_wrapper, cb_it->second, std::move(msg));
         } else if (cb_it != m_handlers.end()) {
-            coro_t::spawn(&handler_callback_t::handle, cb_it->second, this, std::move(msg));
+            coro_t::spawn(&handle_wrapper, this, cb_it->second, std::move(msg));
         } else {
             debugf("No registered handler for handler_id (%lu).", msg.handler_id.value());
         }
@@ -55,15 +72,6 @@ local_target_t *message_hub_t::self_target() {
 target_t *message_hub_t::target(target_id_t id) {
     auto it = m_targets.find(id);
     return (it == m_targets.end()) ? nullptr : it->second;
-}
-
-void message_hub_t::send_reply(target_id_t target_id, write_message_t &&msg) {
-    target_t *t = target(target_id);
-    if (t != nullptr) {
-        t->send_reply(std::move(msg));
-    } else {
-        debugf("Cannot find target (%lu) to send reply to.", target_id.value());
-    }
 }
 
 void message_hub_t::set_local_targets(std::list<thread_t> *threads) {
