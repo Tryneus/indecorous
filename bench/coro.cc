@@ -15,7 +15,7 @@ size_t reps = 150;
 void spawn_empty_lambda() {
     bench_timer_t timer("coro/spawn empty lambda", reps);
     for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn([] { });
+        coro_t::spawn_now([] { });
     }
 }
 
@@ -23,7 +23,7 @@ void spawn_lambda_no_args() {
     int res = 0;
     bench_timer_t timer("coro/spawn lambda no args", reps);
     for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn([&] { res += 1; });
+        coro_t::spawn_now([&] { res += 1; });
     }
 }
 

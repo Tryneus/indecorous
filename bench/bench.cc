@@ -29,7 +29,6 @@ bench_timer_t::bench_timer_t(std::string test_name, size_t count) :
         m_count(count) {
     int res = clock_gettime(CLOCK_MONOTONIC, &m_start_time);
     GUARANTEE(res == 0);
-    debugf("start time: %ld.%0.9ld", m_start_time.tv_sec, m_start_time.tv_nsec);
 }
 
 bench_timer_t::~bench_timer_t() {
@@ -44,10 +43,6 @@ bench_timer_t::~bench_timer_t() {
         (static_cast<float>(delta.tv_nsec) / 1000000000.0);
 
     float per_item = total / static_cast<float>(m_count);
-    debugf("start time: %ld.%0.9ld, end time: %ld.%0.9ld",
-           m_start_time.tv_sec, m_start_time.tv_nsec,
-           end_time.tv_sec, end_time.tv_nsec);
-
     debugf("%s | total %.3f s | per item: %.6f s",
            m_test_name.c_str(), total, per_item);
 }
