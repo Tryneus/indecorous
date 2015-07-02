@@ -1,7 +1,7 @@
 #ifndef BENCH_HPP_
 #define BENCH_HPP_
 
-#include <sys/time.h>
+#include <time.h>
 #include <string>
 
 class bench_timer_t {
@@ -11,7 +11,7 @@ public:
 private:
     const std::string m_test_name;
     const size_t m_count;
-    struct timeval m_start_time;
+    struct timespec m_start_time;
 };
 
 #endif // BENCH_HPP_

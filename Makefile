@@ -29,7 +29,7 @@ ifeq ($(DEBUG),1)
 else
   BUILD_TYPE = $(join $(COMPILER_SUFFIX),_release)
   CXX_FLAGS += -O3 -DNDEBUG
-  LD_FLAGS += -flto
+#  LD_FLAGS += -flto
 endif
 
 SRC_DIR = src

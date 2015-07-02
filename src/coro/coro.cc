@@ -126,6 +126,8 @@ int64_t dispatcher_t::run() {
         m_release = nullptr;
     }
 
+    debugf("run returning with queue size: %zu", m_run_queue.size());
+
     assert(m_running == nullptr);
     return m_coro_delta;
 }

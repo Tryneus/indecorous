@@ -78,7 +78,7 @@ public:
     }
     template <typename Callable, typename... Args>
     static auto spawn_now(Callable &&cb, Args &&...args) {
-        return coro_t::self()->spawn_internal(false, std::forward<Callable>(cb),
+        return coro_t::self()->spawn_internal(true, std::forward<Callable>(cb),
                                               std::forward<Args>(args)...);
     }
 
