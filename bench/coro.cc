@@ -10,7 +10,7 @@
 
 using namespace indecorous;
 
-size_t reps = 150;
+size_t reps = 1000000;
 
 void spawn_empty_lambda() {
     bench_timer_t timer("coro/spawn empty lambda", reps);

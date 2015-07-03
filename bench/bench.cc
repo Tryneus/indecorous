@@ -2,7 +2,6 @@
 
 #include "common.hpp"
 
-
 void timespec_subtract(struct timespec *x,
                        struct timespec *y,
                        struct timespec *result) {
@@ -43,6 +42,6 @@ bench_timer_t::~bench_timer_t() {
         (static_cast<float>(delta.tv_nsec) / 1000000000.0);
 
     float per_item = total / static_cast<float>(m_count);
-    debugf("%s | total %.3f s | per item: %.6f s",
+    debugf("%s | total %.3f s | per item: %.9f s",
            m_test_name.c_str(), total, per_item);
 }
