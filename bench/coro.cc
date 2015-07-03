@@ -12,68 +12,114 @@ using namespace indecorous;
 
 size_t reps = 1000000;
 
-void spawn_empty_lambda() {
-    bench_timer_t timer("coro/spawn empty lambda", reps);
+int sum() {
+    return 0;
+}
+
+template <typename... Args>
+int sum(int value, Args &&...args) {
+    return value + sum(std::forward<Args>(args)...);
+}
+
+
+template <typename... Args>
+void spawn_lambda(Args &&...args) {
+    bench_timer_t timer("coro/spawn lambda", reps);
     for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn_now([] { });
+        coro_t::spawn_now([] (Args &&...inner_args) {
+                return sum(std::forward<Args>(inner_args)...);
+            }, std::forward<Args>(args)...);
     }
 }
 
-void spawn_lambda_no_args() {
-    int res = 0;
-    bench_timer_t timer("coro/spawn lambda no args", reps);
-    for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn_now([&] { res += 1; });
-    }
+template <typename... Args>
+int basic_function(Args &&...args) {
+    return sum(std::forward<Args>(args)...);
 }
 
-void no_args_fn() { }
-
-void spawn_fn_ptr_no_args() {
-    bench_timer_t timer("coro/spawn function pointer no args", reps);
+template <typename... Args>
+void spawn_basic_function(Args &&...args) {
+    bench_timer_t timer("coro/spawn function pointer", reps);
     for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn_now(&no_args_fn);
+        coro_t::spawn_now(&basic_function<Args...>, std::forward<Args>(args)...);
     }
 }
 
 class spawn_class_t {
 public:
-    spawn_class_t() : m_res(0) { }
-    void no_args_fn() { m_res += 1; }
-private:
-    int m_res;
+    spawn_class_t() { }
+
+    template <typename... Args>
+    int member_function(Args &&...args) {
+        return sum(std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    int operator()(Args &&...args) {
+        return sum(std::forward<Args>(args)...);
+    }
 };
 
-void spawn_class_fn_no_args() {
-    bench_timer_t timer("coro/spawn class function no args", reps);
+template <typename... Args>
+void spawn_member_function(Args &&...args) {
+    bench_timer_t timer("coro/spawn member function", reps);
     spawn_class_t instance;
     for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn_now(&spawn_class_t::no_args_fn, &instance);
+        coro_t::spawn_now(&spawn_class_t::member_function<Args...>, &instance, std::forward<Args>(args)...);
     }
 }
 
-void spawn_std_function_no_args() {
-    bench_timer_t timer("coro/spawn std::function no args", reps);
+template <typename... Args>
+void spawn_member_operator(Args &&...args) {
+    bench_timer_t timer("coro/spawn member operator ()", reps);
+    spawn_class_t instance;
     for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn_now(std::function<void()>(&no_args_fn));
+        coro_t::spawn_now(instance, std::forward<Args>(args)...);
     }
 }
 
-void spawn_std_bind_no_args() {
-    bench_timer_t timer("coro/spawn std::bind no args", reps);
+template <typename... Args>
+void spawn_std_function(Args &&...args) {
+    bench_timer_t timer("coro/spawn std::function", reps);
     for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn_now(std::bind(&no_args_fn));
+        coro_t::spawn_now(std::function<void(Args&&...)>(&basic_function<Args...>), std::forward<Args>(args)...);
     }
 }
+
+/*
+template <typename... Args>
+void spawn_std_bind(Args &&...args) {
+    bench_timer_t timer("coro/spawn std::bind", reps);
+    for (size_t i = 0; i < reps; ++i) {
+        coro_t::spawn_now(std::bind(&basic_function<Args...>, std::forward<Args>(args)...));
+    }
+}
+*/
 
 struct spawn_bench_t : public handler_t<spawn_bench_t> {
     static void call() {
-        spawn_empty_lambda();
-        spawn_lambda_no_args();
-        spawn_fn_ptr_no_args();
-        spawn_class_fn_no_args();
-        spawn_std_function_no_args();
-        spawn_std_bind_no_args();
+        run(std::make_integer_sequence<int, 0>{});
+        run(std::make_integer_sequence<int, 1>{});
+        run(std::make_integer_sequence<int, 2>{});
+        run(std::make_integer_sequence<int, 3>{});
+        run(std::make_integer_sequence<int, 4>{});
+        run(std::make_integer_sequence<int, 5>{});
+        run(std::make_integer_sequence<int, 6>{});
+        run(std::make_integer_sequence<int, 7>{});
+        run(std::make_integer_sequence<int, 8>{});
+        run(std::make_integer_sequence<int, 9>{});
+        run(std::make_integer_sequence<int, 10>{});
+    }
+
+    template <int... N>
+    static void run(std::integer_sequence<int, N...>) {
+        debugf("Running with %zu args", sizeof...(N));
+        spawn_lambda(N...);
+        spawn_basic_function(N...);
+        spawn_member_function(N...);
+        spawn_member_operator(N...);
+        spawn_std_function(N...);
+        //spawn_std_bind(N...);
     }
 };
 IMPL_UNIQUE_HANDLER(spawn_bench_t);
