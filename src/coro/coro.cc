@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <sys/eventfd.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include <valgrind/valgrind.h>
 
@@ -13,7 +14,57 @@
 
 namespace indecorous {
 
+size_t round_size_up(size_t minimum_size, size_t multiple) {
+    assert(multiple != 0);
+
+    size_t remainder = minimum_size % multiple;
+    if (remainder == 0) {
+        return minimum_size;
+    }
+
+    return minimum_size + multiple - remainder;
+}
+
 size_t dispatcher_t::s_max_swaps_per_loop = 100;
+
+const size_t coro_t::s_page_size = ::sysconf(_SC_PAGESIZE);
+const size_t coro_t::s_stack_size = round_size_up(64 * 1024, coro_t::s_page_size);
+
+coro_cache_t::coro_cache_t(size_t max_cache_size,
+                           dispatcher_t *dispatch) :
+    m_max_cache_size(max_cache_size),
+    m_dispatch(dispatch),
+    m_extant(0) { }
+
+coro_cache_t::~coro_cache_t() {
+    m_extant -= m_cache.size();
+    assert(m_extant == 0);
+
+    m_cache.clear([] (auto c) { delete c; });
+}
+
+coro_t *coro_cache_t::get() {
+    if (m_cache.empty()) {
+        ++m_extant;
+        return new coro_t(m_dispatch);
+    }
+
+    return m_cache.pop_front();
+}
+
+void coro_cache_t::release(coro_t *coro) {
+    assert(!coro->in_a_list());
+    if (m_cache.size() >= m_max_cache_size) {
+        delete coro;
+    } else {
+        // Mark most of the coro_t's stack as not-needed so we don't use so much memory
+        GUARANTEE_ERR(madvise(coro->m_stack,
+                              coro_t::s_stack_size - coro_t::s_page_size,
+                              MADV_DONTNEED) == 0);
+
+        m_cache.push_front(coro);
+    }
+}
 
 // Used to hand over parameters to a new coroutine - since we can't safely pass pointers
 struct handover_params_t {
@@ -74,11 +125,11 @@ void coro_pull() {
 
 dispatcher_t::dispatcher_t() :
         m_swap_permitted(true),
-        m_context_arena(32),
+        m_coro_cache(32, this),
         m_running(nullptr),
         m_release(nullptr),
         m_swap_count(0),
-        m_rpc_consumer(m_context_arena.get(this)),
+        m_rpc_consumer(m_coro_cache.get()),
         m_coro_delta(0) {
     // Save the currently running context
     GUARANTEE_ERR(getcontext(&m_main_context) == 0);
@@ -106,7 +157,7 @@ void dispatcher_t::close() {
     swapcontext(&m_main_context, &m_rpc_consumer->m_context);
 
     assert(m_release == m_rpc_consumer);
-    m_context_arena.release(m_rpc_consumer);
+    m_coro_cache.release(m_rpc_consumer);
     m_rpc_consumer = nullptr;
 }
 
@@ -122,7 +173,7 @@ int64_t dispatcher_t::run() {
     }
 
     if (m_release != nullptr) {
-        m_context_arena.release(m_release);
+        m_coro_cache.release(m_release);
         m_release = nullptr;
     }
 
@@ -146,20 +197,33 @@ void dispatcher_t::enqueue_release(coro_t *coro) {
 
 coro_t::coro_t(dispatcher_t *dispatch) :
         m_dispatch(dispatch),
-        m_valgrindStackId(VALGRIND_STACK_REGISTER(m_stack, m_stack + sizeof(m_stack))),
         m_wait_callback(this),
         m_wait_result(wait_result_t::Success) {
+    m_stack = (char *)mmap(nullptr, s_stack_size,
+                           PROT_READ | PROT_WRITE,
+                           MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK,
+                           -1, 0);
+    GUARANTEE_ERR(m_stack != MAP_FAILED);
+
+    // Protect the last page of the stack so we get a segfault on overflow
+    GUARANTEE_ERR(mprotect(m_stack, s_page_size, PROT_NONE) == 0);
+
     GUARANTEE_ERR(getcontext(&m_context) == 0);
+
+    GUARANTEE_ERR(madvise(m_stack,
+                          s_stack_size - s_page_size,
+                          MADV_DONTNEED) == 0);
 
     m_context.uc_stack.ss_sp = m_stack;
     m_context.uc_stack.ss_size = s_stackSize;
     m_context.uc_link = nullptr;
 
-    m_dispatch->note_new_task();
+    m_valgrind_stack_id = VALGRIND_STACK_REGISTER(m_stack, m_stack + s_stack_size);
 }
 
 coro_t::~coro_t() {
-    VALGRIND_STACK_DEREGISTER(m_valgrindStackId);
+    VALGRIND_STACK_DEREGISTER(m_valgrind_stack_id);
+    GUARANTEE_ERR(munmap(m_stack, s_stack_size) == 0);
 }
 
 void launch_coro() {
@@ -180,6 +244,8 @@ void launch_coro() {
 
 void coro_t::begin(coro_t::hook_fn_t fn, coro_t *parent, void *params, bool immediate) {
     // The new coroutine will pick up its parameters from the thread-static variable
+    m_dispatch->note_new_task();
+
     assert(handover_params.fn == nullptr);
     handover_params.init(this, fn, params, parent, immediate);
     makecontext(&m_context, launch_coro, 0);
@@ -199,7 +265,7 @@ void coro_t::maybe_swap_parent(coro_t *parent, bool immediate) {
 
 coro_t *coro_t::create() {
     dispatcher_t *dispatch = thread_t::self()->dispatcher();
-    return dispatch->m_context_arena.get(dispatch);
+    return dispatch->m_coro_cache.get();
 }
 
 void coro_t::end() {
@@ -229,7 +295,7 @@ void coro_t::swap(coro_t *next) {
     }
 
     if (m_dispatch->m_release != nullptr) {
-        m_dispatch->m_context_arena.release(m_dispatch->m_release);
+        m_dispatch->m_coro_cache.release(m_dispatch->m_release);
         m_dispatch->m_release = nullptr;
     }
 

@@ -80,18 +80,18 @@ public:
     }
 
     template <typename Callable>
-    void each(Callable &&c) {
+    void each(Callable &&callable) {
         T *item = front();
         while (item != nullptr) {
-            c(item);
+            callable(item);
             item = next(item);
         }
     }
 
     template <typename Callable>
-    void clear(Callable &&c) {
+    void clear(Callable &&callable) {
         while (!empty()) {
-            c(pop_front());
+            callable(pop_front());
         }
     }
 

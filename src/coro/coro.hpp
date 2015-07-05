@@ -16,9 +16,25 @@
 
 namespace indecorous {
 
-class coro_t;
-
 [[noreturn]] void launch_coro();
+
+class coro_t;
+class dispatcher_t;
+
+class coro_cache_t {
+public:
+    coro_cache_t(size_t max_cache_size,
+                 dispatcher_t *dispatch);
+    ~coro_cache_t();
+
+    coro_t *get();
+    void release(coro_t *stack);
+private:
+    const size_t m_max_cache_size;
+    dispatcher_t *m_dispatch;
+    size_t m_extant;
+    intrusive_list_t<coro_t> m_cache;
+};
 
 // Not thread-safe, exactly one dispatcher_t per thread
 class dispatcher_t
@@ -42,7 +58,7 @@ public:
 
     void enqueue_release(coro_t *coro);
 
-    arena_t<coro_t> m_context_arena; // arena used to cache context allocations
+    coro_cache_t m_coro_cache; // arena used to cache coro allocations
     intrusive_list_t<coro_t> m_run_queue; // queue of contexts to run
 
     coro_t *volatile m_running;
@@ -89,10 +105,10 @@ public:
 private:
     friend class scheduler_t;
     friend class dispatcher_t;
-    friend class arena_t<coro_t>; // To allow instantiation of this class
     friend void launch_coro();
     friend void coro_pull();
     friend class wait_object_t;
+    friend class coro_cache_t;
 
     template <typename Callable, typename... Args,
               typename Res = typename std::result_of<Callable(Args...)>::type>
@@ -174,10 +190,13 @@ private:
         coro_t *m_parent;
     };
 
+    static const size_t s_page_size;
+    static const size_t s_stack_size;
+
     dispatcher_t *m_dispatch;
     ucontext_t m_context;
-    char m_stack[s_stackSize];
-    int m_valgrindStackId;
+    char *m_stack;
+    int m_valgrind_stack_id;
     coro_wait_callback_t m_wait_callback;
     wait_result_t m_wait_result;
 };
