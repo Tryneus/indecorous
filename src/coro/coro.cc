@@ -28,7 +28,7 @@ size_t round_size_up(size_t minimum_size, size_t multiple) {
 size_t dispatcher_t::s_max_swaps_per_loop = 100;
 
 const size_t coro_t::s_page_size = ::sysconf(_SC_PAGESIZE);
-const size_t coro_t::s_stack_size = round_size_up(64 * 1024, coro_t::s_page_size);
+const size_t coro_t::s_stack_size = round_size_up(128 * 1024, coro_t::s_page_size);
 
 coro_cache_t::coro_cache_t(size_t max_cache_size,
                            dispatcher_t *dispatch) :
@@ -58,9 +58,11 @@ void coro_cache_t::release(coro_t *coro) {
         delete coro;
     } else {
         // Mark most of the coro_t's stack as not-needed so we don't use so much memory
-        GUARANTEE_ERR(madvise(coro->m_stack,
-                              coro_t::s_stack_size - coro_t::s_page_size,
-                              MADV_DONTNEED) == 0);
+        // TODO: this is surprisingly slow for large stack sizes - maybe protect most of the
+        // stack and only grow it (and later MADV_DONTNEED the extra) when it overflows
+        // GUARANTEE_ERR(madvise(coro->m_stack + coro_t::s_page_size,
+        //                       coro_t::s_stack_size - coro_t::s_page_size * 2,
+        //                       MADV_DONTNEED) == 0);
 
         m_cache.push_front(coro);
     }
@@ -207,6 +209,7 @@ coro_t::coro_t(dispatcher_t *dispatch) :
 
     // Protect the last page of the stack so we get a segfault on overflow
     GUARANTEE_ERR(mprotect(m_stack, s_page_size, PROT_NONE) == 0);
+    GUARANTEE_ERR(madvise(m_stack, s_page_size, MADV_DONTNEED) == 0);
 
     GUARANTEE_ERR(getcontext(&m_context) == 0);
 
