@@ -14,13 +14,13 @@ public:
     ~mutex_lock_t();
 private:
     friend class mutex_t;
-    mutex_lock_t(mutex_t *parent, wait_object_t *interruptor);
+    mutex_lock_t(mutex_t *parent, waitable_t *interruptor);
 
     mutex_t *m_parent;
     wait_callback_t *m_coro_cb;
 };
 
-// The mutex is not publicly implemented as a wait_object_t so you cannot
+// The mutex is not publicly implemented as a waitable_t so you cannot
 // wait_all on them and unintentionally deadlock.
 class mutex_t {
 public:
@@ -29,7 +29,7 @@ public:
     ~mutex_t();
 
     mutex_lock_t lock();
-    mutex_lock_t lock(wait_object_t *interruptor);
+    mutex_lock_t lock(waitable_t *interruptor);
 
 private:
     friend class mutex_lock_t;

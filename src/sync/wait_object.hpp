@@ -5,7 +5,7 @@
 
 namespace indecorous {
 
-class wait_object_t;
+class waitable_t;
 
 enum class wait_result_t {
     Success,
@@ -22,12 +22,12 @@ public:
     wait_callback_t(wait_callback_t &&other) = default;
 
     virtual void wait_done(wait_result_t result) = 0;
-    virtual void object_moved(wait_object_t *new_ptr) = 0;
+    virtual void object_moved(waitable_t *new_ptr) = 0;
 };
 
-class wait_object_t {
+class waitable_t {
 public:
-    virtual ~wait_object_t() { }
+    virtual ~waitable_t() { }
 
     void wait();
     virtual void add_wait(wait_callback_t* waiter) = 0;

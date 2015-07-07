@@ -14,7 +14,7 @@ target_id_t target_t::id() const {
     return target_id;
 }
 
-void target_t::wait(wait_object_t *interruptor) {
+void target_t::wait(waitable_t *interruptor) {
     stream()->wait(interruptor);
 }
 

@@ -32,7 +32,7 @@ void check_wait_result(wait_result_t result) {
     }
 }
 
-void wait_object_t::wait() {
+void waitable_t::wait() {
     dispatcher_t *dispatch = thread_t::self()->dispatcher();
     coro_t *self = dispatch->m_running;
     assert(!self->in_a_list());

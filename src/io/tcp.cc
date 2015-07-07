@@ -27,7 +27,7 @@ tcp_conn_t::tcp_conn_t(scoped_fd_t sock) :
     m_read_buffer.reserve(s_read_buffer_size);
 }
 
-tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, wait_object_t *interruptor) :
+tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, waitable_t *interruptor) :
         m_socket(init_socket(ip_port)),
         m_in(file_wait_t::in(m_socket.get())),
         m_out(file_wait_t::out(m_socket.get())),
@@ -43,7 +43,7 @@ tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, wait_object_t *interruptor)
     assert(err == 0); // TODO: exception
 }
 
-void tcp_conn_t::read(void *buffer, size_t count, wait_object_t *interruptor) {
+void tcp_conn_t::read(void *buffer, size_t count, waitable_t *interruptor) {
     char *buf = reinterpret_cast<char *>(buffer);
     auto lock = m_read_mutex.lock();
 
@@ -70,7 +70,7 @@ void tcp_conn_t::read(void *buffer, size_t count, wait_object_t *interruptor) {
     }
 }
 
-size_t tcp_conn_t::read_until(char delim, void *buffer, size_t count, wait_object_t *interruptor) {
+size_t tcp_conn_t::read_until(char delim, void *buffer, size_t count, waitable_t *interruptor) {
     char *buf = reinterpret_cast<char *>(buffer);
     auto lock = m_read_mutex.lock();
     size_t original_count = count;
@@ -88,7 +88,7 @@ size_t tcp_conn_t::read_until(char delim, void *buffer, size_t count, wait_objec
     return original_count;
 }
 
-void tcp_conn_t::write(void *buffer, size_t count, wait_object_t *interruptor) {
+void tcp_conn_t::write(void *buffer, size_t count, waitable_t *interruptor) {
     char *buf = reinterpret_cast<char *>(buffer);
     auto lock = m_write_mutex.lock();
 
@@ -112,7 +112,7 @@ scoped_fd_t tcp_conn_t::init_socket(const ip_and_port_t &ip_port) {
     return sock;
 }
 
-void tcp_conn_t::read_into_buffer(wait_object_t *interruptor) {
+void tcp_conn_t::read_into_buffer(waitable_t *interruptor) {
     assert(m_read_buffer_offset == m_read_buffer.size());
     ssize_t res = 0;
     m_read_buffer_offset = 0;

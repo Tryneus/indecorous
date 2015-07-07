@@ -26,7 +26,7 @@ void local_stream_t::write(write_message_t &&msg) {
     GUARANTEE_ERR(::write(fd.get(), &value, sizeof(value)) == sizeof(value));
 }
 
-void local_stream_t::wait(wait_object_t *interruptor) {
+void local_stream_t::wait(waitable_t *interruptor) {
     // TODO: this involves a TLS-lookup, but it's only used from a place that
     // already has the TLS value.
     file_wait_t in = file_wait_t::in(fd.get());
@@ -60,7 +60,7 @@ void tcp_stream_t::write(write_message_t &&msg) {
     write_exactly(buffer.data(), buffer.capacity());
 }
 
-void tcp_stream_t::wait(wait_object_t *) {
+void tcp_stream_t::wait(waitable_t *) {
     // TODO: implement;
 }
 

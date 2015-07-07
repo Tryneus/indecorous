@@ -9,7 +9,7 @@ namespace indecorous {
 
 class drainer_t;
 
-class drainer_lock_t : public wait_object_t, public intrusive_node_t<drainer_lock_t> {
+class drainer_lock_t : public waitable_t, public intrusive_node_t<drainer_lock_t> {
 public:
     drainer_lock_t(drainer_lock_t &&other);
     drainer_lock_t(const drainer_lock_t &other);
@@ -27,7 +27,7 @@ private:
     drainer_t *m_parent;
 };
 
-class drainer_t : public wait_object_t {
+class drainer_t : public waitable_t {
 public:
     drainer_t(drainer_t &&other);
     drainer_t();

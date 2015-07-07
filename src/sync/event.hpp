@@ -6,7 +6,7 @@
 
 namespace indecorous {
 
-class event_t : public wait_object_t {
+class event_t : public waitable_t {
 public:
     event_t(event_t &&other);
     event_t();

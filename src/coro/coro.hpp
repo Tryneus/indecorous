@@ -107,7 +107,7 @@ private:
     friend class dispatcher_t;
     friend void launch_coro();
     friend void coro_pull();
-    friend class wait_object_t;
+    friend class waitable_t;
     friend class coro_cache_t;
 
     template <typename Callable, typename... Args,
@@ -186,7 +186,7 @@ private:
         coro_wait_callback_t(coro_t *parent);
     private:
         void wait_done(wait_result_t result);
-        void object_moved(wait_object_t *new_ptr);
+        void object_moved(waitable_t *new_ptr);
         coro_t *m_parent;
     };
 

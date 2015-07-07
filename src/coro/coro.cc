@@ -346,7 +346,7 @@ void coro_t::coro_wait_callback_t::wait_done(wait_result_t result) {
     m_parent->notify(result);
 }
 
-void coro_t::coro_wait_callback_t::object_moved(wait_object_t *) {
+void coro_t::coro_wait_callback_t::object_moved(waitable_t *) {
     // We don't actually care where the wait object is, do nothing
 }
 

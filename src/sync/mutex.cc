@@ -21,11 +21,11 @@ mutex_lock_t mutex_t::lock() {
     return mutex_lock_t(this, nullptr);
 }
 
-mutex_lock_t mutex_t::lock(wait_object_t *interruptor) {
+mutex_lock_t mutex_t::lock(waitable_t *interruptor) {
     return mutex_lock_t(this, interruptor);
 }
 
-mutex_lock_t::mutex_lock_t(mutex_t *parent, wait_object_t *) :
+mutex_lock_t::mutex_lock_t(mutex_t *parent, waitable_t *) :
         m_parent(parent), m_coro_cb(nullptr) {
     if (m_parent->m_lock == nullptr) {
         m_parent->m_lock = this;

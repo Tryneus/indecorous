@@ -6,7 +6,7 @@ namespace indecorous {
 
 multiple_waiter_t::multiple_waiter_t(multiple_waiter_t::wait_type_t type,
                                      size_t total,
-                                     wait_object_t *interruptor) :
+                                     waitable_t *interruptor) :
         m_owner_coro(coro_t::self()),
         m_interruptor(interruptor),
         m_ready(false),
@@ -71,17 +71,17 @@ void multiple_waiter_t::wait_done(wait_result_t result) {
     }
 }
 
-void multiple_waiter_t::object_moved(wait_object_t *new_ptr) {
+void multiple_waiter_t::object_moved(waitable_t *new_ptr) {
     m_interruptor = new_ptr;
 }
 
-multiple_wait_callback_t::multiple_wait_callback_t(wait_object_t *obj,
+multiple_wait_callback_t::multiple_wait_callback_t(waitable_t *obj,
                                                    multiple_waiter_t *waiter) :
         m_obj(obj), m_waiter(waiter) {
     m_obj->add_wait(this);
 }
 
-multiple_wait_callback_t::multiple_wait_callback_t(wait_object_t &obj,
+multiple_wait_callback_t::multiple_wait_callback_t(waitable_t &obj,
                                                    multiple_waiter_t *waiter) :
         m_obj(&obj), m_waiter(waiter) {
     m_obj->add_wait(this);
@@ -100,7 +100,7 @@ void multiple_wait_callback_t::wait_done(wait_result_t result) {
     m_waiter->item_finished(result);
 }
 
-void multiple_wait_callback_t::object_moved(wait_object_t *new_ptr) {
+void multiple_wait_callback_t::object_moved(waitable_t *new_ptr) {
     m_obj = new_ptr;
 }
 

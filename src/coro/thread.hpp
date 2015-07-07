@@ -33,7 +33,7 @@ public:
     dispatcher_t *dispatcher();
     events_t *events();
 
-    wait_object_t *stop_event();
+    waitable_t *stop_event();
 
     void join();
 

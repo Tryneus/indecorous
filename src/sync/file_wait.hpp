@@ -23,7 +23,7 @@ private:
     uint32_t m_event_mask;
 };
 
-class file_wait_t : public wait_object_t, private file_callback_t {
+class file_wait_t : public waitable_t, private file_callback_t {
 public:
     file_wait_t(file_wait_t &&other);
 

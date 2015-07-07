@@ -41,7 +41,7 @@ protected:
     absolute_time_t m_timeout;
 };
 
-class single_timer_t : public wait_object_t, private timer_callback_t {
+class single_timer_t : public waitable_t, private timer_callback_t {
 public:
     single_timer_t();
     single_timer_t(int64_t timeout_ms); // Starts the timer immediately
@@ -62,7 +62,7 @@ private:
     events_t *m_thread_events;
 };
 
-class periodic_timer_t : public wait_object_t, private timer_callback_t {
+class periodic_timer_t : public waitable_t, private timer_callback_t {
 public:
     periodic_timer_t();
     periodic_timer_t(int64_t period_ms); // Starts the timer immediately

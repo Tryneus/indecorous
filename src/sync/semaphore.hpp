@@ -34,7 +34,7 @@ class semaphore_t;
 // sem.remove(acq); // permanently remove the owned resources from the semaphore and invalidate the acq
 // sem.capacity(); // == 2
 
-class semaphore_acq_t : public wait_object_t, public intrusive_node_t<semaphore_acq_t> {
+class semaphore_acq_t : public waitable_t, public intrusive_node_t<semaphore_acq_t> {
 public:
     semaphore_acq_t(semaphore_acq_t &&other);
     ~semaphore_acq_t();
