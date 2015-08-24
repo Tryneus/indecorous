@@ -25,19 +25,19 @@ bool target_id_t::operator ==(const target_id_t &other) const {
     return value_ == other.value_;
 }
 
-handler_id_t::handler_id_t(uint64_t _value) :
+rpc_id_t::rpc_id_t(uint64_t _value) :
     value_(_value) { }
 
-uint64_t handler_id_t::value() const {
+uint64_t rpc_id_t::value() const {
     return value_;
 }
 
-bool handler_id_t::operator ==(const handler_id_t &other) const {
+bool rpc_id_t::operator ==(const rpc_id_t &other) const {
     return value_ == other.value_;
 }
 
-handler_id_t handler_id_t::reply() {
-    return handler_id_t(std::numeric_limits<uint64_t>::max());
+rpc_id_t rpc_id_t::reply() {
+    return rpc_id_t(std::numeric_limits<uint64_t>::max());
 }
 
 request_id_t::request_id_t(uint64_t _value) :

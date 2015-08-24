@@ -4,6 +4,7 @@
 #include <tuple>
 #include <utility>
 #include <type_traits>
+#include <unordered_map>
 
 #include "rpc/message.hpp"
 #include "rpc/serialize.hpp"
@@ -12,107 +13,115 @@ namespace indecorous {
 
 class message_hub_t;
 
-class handler_callback_t {
-public:
-    virtual ~handler_callback_t();
+struct rpc_callback_t {
+    virtual ~rpc_callback_t();
     virtual write_message_t handle(read_message_t msg) = 0;
     virtual void handle_noreply(read_message_t msg) = 0;
-    virtual handler_id_t id() const = 0;
+    virtual rpc_id_t id() const = 0;
 };
 
-template <typename Callback>
-class handler_wrapper_t {
-public:
-    template <typename Res, typename... Args>
-    class internal_handler_t : public handler_callback_t {
-    public:
-        typedef Res result_t;
-        write_message_t handle(read_message_t msg) {
-            assert(msg.buffer.has());
-            Res res = handle_internal(std::index_sequence_for<Args...>{},
-                                      std::tuple<Args...>{serializer_t<Args>::read(&msg)...});
-            return write_message_t::create(msg.source_id,
-                                           handler_id_t::reply(),
-                                           msg.request_id,
-                                           std::move(res));
-        }
+// TODO: put this someplace sensical
+std::unordered_map<rpc_id_t, rpc_callback_t *> &register_callback(rpc_callback_t *cb);
 
-        void handle_noreply(read_message_t msg) {
-            assert(msg.buffer.has());
-            handle_internal(std::index_sequence_for<Args...>{},
-                            std::tuple<Args...>{serializer_t<Args>::read(&msg)...});
-        }
-
-        handler_id_t id() const {
-            return Callback::handler_id();
-        }
-
-        static write_message_t make_write(target_id_t target, request_id_t request_id, Args &&...args) {
-            return write_message_t::create(target,
-                                           Callback::handler_id(),
-                                           request_id,
-                                           std::forward<Args>(args)...);
-        }
-
-    private:
-        template <size_t... N>
-        static Res handle_internal(std::integer_sequence<size_t, N...>,
-                                   std::tuple<Args...> &&args) {
-            return Callback::call(std::move(std::get<N>(args))...);
-        }
+template <typename T>
+struct static_rpc_t : public rpc_callback_t {
+    static_rpc_t() { }
+    write_message_t handle(read_message_t msg) final {
+        return T::handle(std::move(msg));
     };
-
-    // Predeclare the void specialization or this breaks on clang
-    template <typename... Args> class internal_handler_t<void, Args...>;
-
-    // Used to convert a function to a parameter pack of result and arg types
-    template <typename Res, typename... Args>
-    static internal_handler_t<Res, Args...> dummy_translator(Res(*fn)(Args...));
-
-    typedef decltype(dummy_translator(Callback::call)) handler_impl_t;
-    handler_impl_t internal_handler;
-    typedef typename handler_impl_t::result_t result_t;
-};
-
-// Specialization for handlers with a void return type
-template <typename Callback>
-template <typename... Args>
-class handler_wrapper_t<Callback>::internal_handler_t<void, Args...> : public handler_callback_t {
-public:
-    typedef void result_t;
-    write_message_t handle(read_message_t msg) {
-        assert(msg.buffer.has());
-        handle_internal(std::index_sequence_for<Args...>{},
-                        std::tuple<Args...>{serializer_t<Args>::read(&msg)...});
-        return write_message_t::create(msg.source_id,
-                                       handler_id_t::reply(),
-                                       msg.request_id);
+    void handle_noreply(read_message_t msg) final {
+        T::handle_noreply(std::move(msg));
     }
-
-    void handle_noreply(read_message_t msg) {
-        assert(msg.buffer.has());
-        handle_internal(std::index_sequence_for<Args...>{},
-                        std::tuple<Args...>{serializer_t<Args>::read(&msg)...});
-    }
-
-    handler_id_t id() const {
-        return Callback::handler_id();
-    }
-
-    static write_message_t make_write(target_id_t target, request_id_t request_id, Args &&...args) {
-        return write_message_t::create(target,
-                                       Callback::handler_id(),
-                                       request_id,
-                                       std::forward<Args>(args)...);
-    }
-
-private:
-    template <size_t... N>
-    static void handle_internal(std::integer_sequence<size_t, N...>,
-                                std::tuple<Args...> &&args) {
-        Callback::call(std::move(std::get<N>(args))...);
+    rpc_id_t id() const final {
+        return T::s_rpc_id;
     }
 };
+
+
+template <typename T>
+struct static_rpc_registration_t {
+    static_rpc_registration_t() {
+        static static_rpc_t<T> rpc = static_rpc_t<T>();
+        register_callback(&rpc);
+    }
+};
+
+// Dummy functions to get the return types of member functions
+template <typename Class, typename Res, typename... Args>
+static Res result_translator(Res(Class::*fn)(Args...));
+template <typename Class, typename Res, typename... Args>
+static Res result_translator(Res(*fn)(Args...));
+
+#define INDECOROUS_STRINGIFY_INTERNAL(x) #x
+#define INDECOROUS_STRINGIFY(x) INDECOROUS_STRINGIFY_INTERNAL(x)
+
+// Note: this doesn't allow for templatized handler types
+// TODO: '__FILE__' is probably not safe for cross-compiler or build environment compatibility
+#define INDECOROUS_UNIQUE_RPC(RPC) \
+    const indecorous::rpc_id_t RPC::s_rpc_id = \
+        rpc_id_t(std::hash<std::string>()(__FILE__ ":" INDECOROUS_STRINGIFY(__LINE__) ":" #RPC));
+
+#define DECLARE_MEMBER_RPC(Class, RPC, ...) \
+    struct RPC : public indecorous::rpc_callback_t { \
+        RPC(Class *parent); \
+        ~RPC(); \
+        indecorous::write_message_t handle(indecorous::read_message_t msg) final; \
+        void handle_noreply(indecorous::read_message_t msg) final; \
+        indecorous::rpc_id_t id() const final; \
+        static auto fn_ptr() { return &Class::RPC ## _indecorous_callback; } \
+        static indecorous::write_message_t make_write(__VA_ARGS__); \
+        static const indecorous::rpc_id_t s_rpc_id; \
+        Class * const m_parent; \
+    } RPC ## _indecorous_rpc = RPC(this); \
+    auto RPC ## _indecorous_callback(__VA_ARGS__)
+
+#define IMPL_MEMBER_RPC(Class, RPC, ...) \
+    INDECOROUS_UNIQUE_RPC(Class::RPC); \
+    Class::RPC::RPC(Class *parent) : m_parent(parent) { \
+        indecorous::thread_t::self()->hub()->add_member_rpc(s_rpc_id, this); \
+    } \
+    Class::RPC::~RPC() { \
+        indecorous::thread_t::self()->hub()->remove_member_rpc(s_rpc_id); \
+    } \
+    indecorous::write_message_t Class::RPC::handle(indecorous::read_message_t msg) final { \
+        return indecorous::do_rpc(&Class::RPC ## _indecorous_callback, m_parent, std::move(msg)); \
+    } \
+    void Class::RPC::handle_noreply(indecorous::read_message_t msg) final { \
+        indecorous::do_rpc_noreply(&Class::RPC ## _indecorous_callback, m_parent, std::move(msg)); \
+    } \
+    indecorous::rpc_id_t Class::RPC::id() const final { \
+        return s_rpc_id; \
+    } \
+    auto Class::RPC ## _indecorous_callback(__VA_ARGS__)
+
+#define DECLARE_STATIC_RPC(Class, RPC, ...) \
+    struct RPC { \
+        RPC() = delete; \
+        static indecorous::write_message_t handle(indecorous::read_message_t msg); \
+        static void handle_noreply(indecorous::read_message_t msg); \
+        static auto fn_ptr() { return &Class::RPC ## _indecorous_callback; } \
+        static indecorous::write_message_t make_write(__VA_ARGS__); \
+        static const indecorous::rpc_id_t s_rpc_id; \
+        static const static_rpc_registration_t<RPC> s_registration; \
+    }; \
+    static auto RPC ## _indecorous_callback(__VA_ARGS__)
+
+#define IMPL_STATIC_RPC(RPC, ...) \
+    INDECOROUS_UNIQUE_RPC(RPC); \
+    indecorous::write_message_t RPC::handle(indecorous::read_message_t msg) { \
+        return indecorous::do_rpc(&RPC ## _indecorous_callback, \
+                                  std::move(msg)); \
+    } \
+    void RPC::handle_noreply(indecorous::read_message_t msg) { \
+        indecorous::do_rpc_noreply(&RPC ## _indecorous_callback, \
+                                   std::move(msg)); \
+    } \
+    indecorous::static_rpc_registration_t<RPC> RPC::s_registration = \
+        indecorous::static_rpc_registration_t<RPC>(); \
+    auto indecorous_ ## RPC ## _callback(__VA_ARGS__)
+
+template <typename Res, typename... Args>
+class rpc_caller_t { };
 
 } // namespace indecorous
 

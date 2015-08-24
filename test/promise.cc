@@ -3,7 +3,7 @@
 #include "coro/sched.hpp"
 #include "errors.hpp"
 #include "sync/promise.hpp"
-#include "rpc/hub_data.hpp"
+#include "rpc/handler.hpp"
 
 const size_t num_threads = 8;
 

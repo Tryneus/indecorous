@@ -3,17 +3,16 @@
 #include <cassert>
 
 #include "rpc/handler.hpp"
-#include "rpc/hub_data.hpp"
 #include "rpc/target.hpp"
 
 #include "coro/thread.hpp"
 
 namespace indecorous {
 
-// This constructor copies the statically-initialized set of handlers
+// This constructor copies the statically-initialized set of rpcs
 message_hub_t::message_hub_t() :
     m_self_target(),
-    m_handlers(register_handler(nullptr)) { }
+    m_rpcs(register_rpc(nullptr)) { }
 
 message_hub_t::~message_hub_t() { }
 
@@ -26,22 +25,22 @@ future_t<read_message_t> message_hub_t::get_response(request_id_t id) {
     return it->second.get_future();
 }
 
-void handle_wrapper(message_hub_t *hub, handler_callback_t *handler, read_message_t msg) {
+void handle_wrapper(message_hub_t *hub, rpc_callback_t *rpc, read_message_t msg) {
     target_id_t source_id = msg.source_id;
-    write_message_t reply = handler->handle(std::move(msg));
+    write_message_t reply = rpc->handle(std::move(msg));
 
     target_t *source = hub->target(source_id);
     if (source != nullptr) {
         source->send_reply(std::move(reply));
     }
 }
-void handle_noreply_wrapper(handler_callback_t *handler, read_message_t msg) {
-    handler->handle_noreply(std::move(msg));
+void handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg) {
+    rpc->handle_noreply(std::move(msg));
 }
 
 bool message_hub_t::spawn(read_message_t msg) {
     assert(msg.buffer.has());
-    if (msg.handler_id == handler_id_t::reply()) {
+    if (msg.handler_id == rpc_id_t::reply()) {
         auto reply_it = m_replies.find(msg.request_id);
         if (reply_it != m_replies.end()) {
             reply_it->second.fulfill(std::move(msg));

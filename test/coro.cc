@@ -10,7 +10,6 @@
 #include "coro/sched.hpp"
 #include "errors.hpp"
 #include "rpc/handler.hpp"
-#include "rpc/hub_data.hpp"
 #include "rpc/target.hpp"
 #include "rpc/serialize_stl.hpp"
 #include "sync/timer.hpp"
@@ -19,6 +18,33 @@
 const size_t num_threads = 8;
 
 using namespace indecorous;
+
+struct coro_test_t {
+    DECLARE_STATIC_RPC(coro_test_t, log, std::string, std::string, int) -> void;
+    DECLARE_STATIC_RPC(coro_test_t, wait) -> void;
+    DECLARE_STATIC_RPC(coro_test_t, suicide) -> void;
+};
+
+IMPL_STATIC_RPC(coro_test_t::log, std::string a, std::string b, int value) -> void {
+    debugf("Got called with %s, %s, %d", a.c_str(), b.c_str(), value);
+}
+
+IMPL_STATIC_RPC(coro_test_t::wait) -> void {
+    periodic_timer_t timer_a;
+    single_timer_t timer_b;
+    timer_a.start(10);
+    timer_b.start(100);
+    wait_any(&timer_a, timer_b);
+    wait_all(timer_a, &timer_b);
+}
+
+IMPL_STATIC_RPC(coro_test_t::suicide) -> void {
+    kill(parent_pid, signum);
+}
+
+IMPL_UNIQUE_HANDLER(spawn_handler_t);
+IMPL_UNIQUE_HANDLER(wait_handler_t);
+IMPL_UNIQUE_HANDLER(suicide_handler_t);
 
 TEST_CASE("coro/empty", "[coro][shutdown]") {
     for (size_t i = 1; i < 16; ++i) {
@@ -30,13 +56,6 @@ TEST_CASE("coro/empty", "[coro][shutdown]") {
     }
 }
 
-struct spawn_handler_t : public handler_t<spawn_handler_t> {
-    static void call(std::string a, std::string b, int value) {
-        debugf("Got called with %s, %s, %d", a.c_str(), b.c_str(), value);
-    }
-};
-IMPL_UNIQUE_HANDLER(spawn_handler_t);
-
 TEST_CASE("coro/spawn", "[coro][shutdown]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Eager);
     sched.broadcast_local<spawn_handler_t>("foo", "bar", 1);
@@ -46,18 +65,6 @@ TEST_CASE("coro/spawn", "[coro][shutdown]") {
     sched.run();
 }
 
-struct wait_handler_t : public handler_t<wait_handler_t> {
-    static void call() {
-        periodic_timer_t timer_a;
-        single_timer_t timer_b;
-        timer_a.start(10);
-        timer_b.start(100);
-        wait_any(&timer_a, timer_b);
-        wait_all(timer_a, &timer_b);
-    }
-};
-IMPL_UNIQUE_HANDLER(wait_handler_t);
-
 TEST_CASE("coro/wait", "[coro][sync]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Eager);
     sched.broadcast_local<wait_handler_t>();
@@ -66,13 +73,6 @@ TEST_CASE("coro/wait", "[coro][sync]") {
     sched.broadcast_local<wait_handler_t>();
     sched.run();
 }
-
-struct suicide_handler_t : public handler_t<suicide_handler_t> {
-    static void call(pid_t parent_pid, int signum) {
-        kill(parent_pid, signum);
-    }
-};
-IMPL_UNIQUE_HANDLER(suicide_handler_t);
 
 // Disabled by default as it causes complications in a debugger
 TEST_CASE("coro/sigint", "[coro][shutdown][hide]") {

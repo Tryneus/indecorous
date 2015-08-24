@@ -16,7 +16,7 @@ class write_message_t {
 public:
     template <typename... Args>
     static write_message_t create(target_id_t source_id,
-                                  handler_id_t handler_id,
+                                  rpc_id_t rpc_id,
                                   request_id_t request_id,
                                   Args &&...args);
     write_message_t(write_message_t &&other) = default;
@@ -27,7 +27,7 @@ public:
 
 private:
     write_message_t(target_id_t source_id,
-                    handler_id_t handler_id,
+                    rpc_id_t rpc_id,
                     request_id_t request_id,
                     size_t payload_size);
 
@@ -47,23 +47,23 @@ public:
     buffer_owner_t buffer;
     size_t offset;
     target_id_t source_id;
-    handler_id_t handler_id;
+    rpc_id_t rpc_id;
     request_id_t request_id;
 
 private:
     read_message_t(buffer_owner_t _buffer,
                    size_t _offset,
                    target_id_t _source_id,
-                   handler_id_t _handler_id,
+                   rpc_id_t _rpc_id,
                    request_id_t _request_id);
 };
 
 template <typename... Args>
 write_message_t write_message_t::create(target_id_t source_id,
-                                        handler_id_t handler_id,
+                                        rpc_id_t rpc_id,
                                         request_id_t request_id,
                                         Args &&...args) {
-    write_message_t res(source_id, handler_id, request_id,
+    write_message_t res(source_id, rpc_id, request_id,
                         full_serialized_size(std::forward<Args>(args)...));
     full_serialize(&res, std::forward<Args>(args)...);
     return res;

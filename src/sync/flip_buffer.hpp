@@ -5,7 +5,7 @@
 #include <atomic>
 
 #include "rpc/hub.hpp"
-#include "rpc/hub_data.hpp"
+#include "rpc/handler.hpp"
 #include "sync/swap.hpp"
 
 class flip_buffer_base_t {

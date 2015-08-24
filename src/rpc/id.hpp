@@ -34,12 +34,12 @@ private:
     uint64_t value_;
 };
 
-class handler_id_t {
+class rpc_id_t {
 public:
-    explicit handler_id_t(uint64_t _value);
+    explicit rpc_id_t(uint64_t _value);
     uint64_t value() const;
-    static handler_id_t reply();
-    bool operator ==(const handler_id_t &other) const;
+    static rpc_id_t reply();
+    bool operator ==(const rpc_id_t &other) const;
 private:
     uint64_t value_;
 };
@@ -65,8 +65,8 @@ template <> struct hash<indecorous::target_id_t> {
         return std::hash<uint64_t>()(id.value());
     }
 };
-template <> struct hash<indecorous::handler_id_t> {
-    size_t operator () (const indecorous::handler_id_t &id) const {
+template <> struct hash<indecorous::rpc_id_t> {
+    size_t operator () (const indecorous::rpc_id_t &id) const {
         return std::hash<uint64_t>()(id.value());
     }
 };
