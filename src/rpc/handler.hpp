@@ -27,10 +27,10 @@ template <typename T>
 struct static_rpc_t : public rpc_callback_t {
     static_rpc_t() { }
     write_message_t handle(read_message_t msg) final {
-        return T::handle(std::move(msg));
+        return T::static_handle(std::move(msg));
     };
     void handle_noreply(read_message_t msg) final {
-        T::handle_noreply(std::move(msg));
+        T::static_handle_noreply(std::move(msg));
     }
     rpc_id_t id() const final {
         return T::s_rpc_id;
@@ -69,7 +69,6 @@ static Res result_translator(Res(*fn)(Args...));
         void handle_noreply(indecorous::read_message_t msg) final; \
         indecorous::rpc_id_t id() const final; \
         static auto fn_ptr() { return &Class::RPC ## _indecorous_callback; } \
-        static indecorous::write_message_t make_write(__VA_ARGS__); \
         static const indecorous::rpc_id_t s_rpc_id; \
         Class * const m_parent; \
     } RPC ## _indecorous_rpc = RPC(this); \
@@ -84,10 +83,10 @@ static Res result_translator(Res(*fn)(Args...));
         indecorous::thread_t::self()->hub()->remove_member_rpc(s_rpc_id); \
     } \
     indecorous::write_message_t Class::RPC::handle(indecorous::read_message_t msg) final { \
-        return indecorous::do_rpc(&Class::RPC ## _indecorous_callback, m_parent, std::move(msg)); \
+        return indecorous::do_member_rpc(&Class::RPC ## _indecorous_callback, m_parent, std::move(msg)); \
     } \
     void Class::RPC::handle_noreply(indecorous::read_message_t msg) final { \
-        indecorous::do_rpc_noreply(&Class::RPC ## _indecorous_callback, m_parent, std::move(msg)); \
+        indecorous::do_member_rpc_noreply(&Class::RPC ## _indecorous_callback, m_parent, std::move(msg)); \
     } \
     indecorous::rpc_id_t Class::RPC::id() const final { \
         return s_rpc_id; \
@@ -95,12 +94,11 @@ static Res result_translator(Res(*fn)(Args...));
     auto Class::RPC ## _indecorous_callback(__VA_ARGS__)
 
 #define DECLARE_STATIC_RPC(Class, RPC, ...) \
-    struct RPC { \
+    struct RPC : public indecorous::static_rpc_t<RPC> { \
         RPC() = delete; \
-        static indecorous::write_message_t handle(indecorous::read_message_t msg); \
-        static void handle_noreply(indecorous::read_message_t msg); \
+        static indecorous::write_message_t static_handle(indecorous::read_message_t msg); \
+        static void static_handle_noreply(indecorous::read_message_t msg); \
         static auto fn_ptr() { return &Class::RPC ## _indecorous_callback; } \
-        static indecorous::write_message_t make_write(__VA_ARGS__); \
         static const indecorous::rpc_id_t s_rpc_id; \
         static const static_rpc_registration_t<RPC> s_registration; \
     }; \
@@ -108,20 +106,65 @@ static Res result_translator(Res(*fn)(Args...));
 
 #define IMPL_STATIC_RPC(RPC, ...) \
     INDECOROUS_UNIQUE_RPC(RPC); \
-    indecorous::write_message_t RPC::handle(indecorous::read_message_t msg) { \
-        return indecorous::do_rpc(&RPC ## _indecorous_callback, \
-                                  std::move(msg)); \
+    indecorous::write_message_t RPC::static_handle(indecorous::read_message_t msg) { \
+        return indecorous::do_static_rpc(&RPC ## _indecorous_callback, \
+                                         std::move(msg)); \
     } \
-    void RPC::handle_noreply(indecorous::read_message_t msg) { \
-        indecorous::do_rpc_noreply(&RPC ## _indecorous_callback, \
-                                   std::move(msg)); \
+    void RPC::static_handle_noreply(indecorous::read_message_t msg) { \
+        indecorous::do_static_rpc_noreply(&RPC ## _indecorous_callback, \
+                                          std::move(msg)); \
     } \
-    indecorous::static_rpc_registration_t<RPC> RPC::s_registration = \
+    const indecorous::static_rpc_registration_t<RPC> RPC::s_registration = \
         indecorous::static_rpc_registration_t<RPC>(); \
-    auto indecorous_ ## RPC ## _callback(__VA_ARGS__)
+    auto RPC ## _indecorous_callback(__VA_ARGS__)
+
+// Combine this arg-forwarding code with coro.hpp for smaller binaries?
+template <typename Res, size_t... N, typename... Args>
+Res call_static_with_args(Res (*fn)(Args...), std::tuple<Args...> &&args,
+                   std::integer_sequence<size_t, N...>) {
+    return fn(std::get<N>(std::move(args))...);
+}
+
+template <typename Res, size_t... N, typename Class, typename... Args>
+Res call_member_with_args(Class *c, Res (Class::*fn)(Args...), std::tuple<Args...> &&args,
+                          std::integer_sequence<size_t, N...>) {
+    return c->*fn(std::get<N>(std::move(args))...);
+}
 
 template <typename Res, typename... Args>
-class rpc_caller_t { };
+write_message_t do_static_rpc(Res (*fn)(Args...), read_message_t msg) {
+    std::tuple<Args...> args { serializer_t<Args>::read(&msg)... };
+    Res res = call_static_with_args(fn, std::move(args),
+        std::make_index_sequence<std::tuple_size<decltype(args)>::value>{});
+    return write_message_t::create(msg.source_id,
+                                   rpc_id_t::reply(),
+                                   msg.request_id,
+                                   std::move(res));
+}
+
+template <typename Class, typename Res, typename... Args>
+write_message_t do_member_rpc(Class *instance, Res (Class::*fn)(Args...), read_message_t msg) {
+    std::tuple<Args...> args { serializer_t<Args>::read(&msg)... };
+    Res res = call_member_with_args(instance, fn, std::move(args),
+        std::make_index_sequence<std::tuple_size<decltype(args)>::value>{});
+    return write_message_t::create(msg.source_id,
+                                   rpc_id_t::reply(),
+                                   msg.request_id,
+                                   std::move(res));
+}
+
+template <typename Res, typename... Args>
+void do_static_rpc_noreply(Res (*fn)(Args...), read_message_t msg) {
+    std::tuple<Args...> args { serializer_t<Args>::read(&msg)... };
+    call_static_with_args(fn, std::move(args),
+        std::make_index_sequence<std::tuple_size<decltype(args)>::value>{});
+}
+template <typename Class, typename Res, typename... Args>
+void do_member_rpc_noreply(Class *instance, Res (Class::*fn)(Args...), read_message_t msg) {
+    std::tuple<Args...> args { serializer_t<Args>::read(&msg)... };
+    call_member_with_args(instance, fn, std::move(args),
+        std::make_index_sequence<std::tuple_size<decltype(args)>::value>{});
+}
 
 } // namespace indecorous
 

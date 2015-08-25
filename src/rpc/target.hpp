@@ -57,7 +57,11 @@ private:
 
     template <typename RPC, typename... Args>
     request_id_t send_request(request_id_t request_id, Args &&...args) {
-        write_message_t msg = RPC::make_write(id(), RPC::id(), std::forward<Args>(args)...);
+        // TODO: enforce that args matches up with what is expected by the RPC
+        write_message_t msg = write_message_t::create(id(),
+                                                      RPC::s_rpc_id,
+                                                      request_id,
+                                                      std::forward<Args>(args)...);
         stream()->write(std::move(msg));
         return request_id;
     }

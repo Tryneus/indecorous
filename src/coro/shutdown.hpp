@@ -18,8 +18,8 @@ public:
     void update(int64_t active_delta, message_hub_t *hub);
     void reset(uint64_t initial_count);
 private:
-    DECLARE_STATIC_RPC(shutdown_t, init_stop);
-    DECLARE_STATIC_RPC(shutdown_t, finish_stop);
+    DECLARE_STATIC_RPC(shutdown_t, init_stop) -> void;
+    DECLARE_STATIC_RPC(shutdown_t, finish_stop) -> void;
     std::atomic<bool> m_finish_sent;
     std::atomic<uint64_t> m_active_count;
     size_t m_thread_count;

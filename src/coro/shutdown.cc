@@ -35,11 +35,11 @@ void shutdown_t::reset(uint64_t initial_count) {
     m_active_count.store(initial_count + 1);
 }
 
-IMPL_STATIC_RPC(shutdown_t::init_stop) {
+IMPL_STATIC_RPC(shutdown_t::init_stop) -> void {
     thread_t::self()->m_stop_event.set();
 }
 
-IMPL_STATIC_RPC(shutdown_t::finish_stop) {
+IMPL_STATIC_RPC(shutdown_t::finish_stop) -> void {
     thread_t::self()->m_stop_immediately = true;
 }
 

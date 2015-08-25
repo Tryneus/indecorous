@@ -38,8 +38,7 @@ public:
     void join();
 
 private:
-    friend struct init_stop_t; // For updating the stop event
-    friend struct finish_stop_t; // For updating the stop flag
+    friend class shutdown_t; // For updating the stop event and stop flag
 
     void main();
 
