@@ -2,8 +2,10 @@
 #define RPC_SERIALIZE_MACROS_HPP_
 
 #include <type_traits>
+#include <utility>
 
-#include "rpc/serialize.hpp"
+class read_message_t;
+class write_message_t;
 
 #define SERIALIZABLE_INTEGRAL(Type) \
     template <> struct serializer_t<Type> { \
@@ -11,6 +13,8 @@
         static int write(write_message_t *, const Type &); \
         static Type read(read_message_t *); \
     };
+
+#include "rpc/serialize.hpp"
 
 #define SERIALIZABLE_ENUM(Type) \
     template <> struct serializer_t<Type> { \
@@ -23,8 +27,9 @@
             return static_cast<Type>(serializer_t<Value>::read(msg)); } \
     };
 
-#define MAKE_DECLTYPE_PARAM(x) decltype(x) arg_##x
-#define MAKE_MOVE_CONSTRUCT(x) x(std::move(arg_##x))
+// TODO: make construction move params (if possible)
+#define MAKE_MOVE_DECLTYPE_PARAM(x) decltype(x) const &arg_ ## x
+#define MAKE_MOVE_CONSTRUCT(x) x(std::move(arg_ ## x))
 #define MAKE_DECLTYPE(x) decltype(x)
 
 // TODO: consider wrapping these inside a static class to reduce verbosity and code generation
@@ -35,7 +40,7 @@
     template <typename T, typename... Args> \
     friend T full_deserialize(read_message_t *); \
 
-#define CONCAT(a, b) a##b
+#define CONCAT(a, b) a ## b
 
 // Put a DECLARE call in the header file and an IMPL call in the implementation
 // file so we don't cause as much preprocessor load in the header.
@@ -72,7 +77,7 @@
     { return full_deserialize<Type, CALL_MACRO(N, MAKE_DECLTYPE, __VA_ARGS__)>(Param); }
 
 #define DECLARE_CONSTRUCTOR_FN(Type, Prefix, N, ...) \
-    Prefix Type(CALL_MACRO(N, MAKE_DECLTYPE_PARAM, __VA_ARGS__))
+    Prefix Type(CALL_MACRO(N, MAKE_MOVE_DECLTYPE_PARAM, __VA_ARGS__))
 #define IMPL_CONSTRUCTOR_BODY(N, ...) \
     : CALL_MACRO(N, MAKE_MOVE_CONSTRUCT, __VA_ARGS__) { }
 
@@ -82,11 +87,11 @@
     static DECLARE_DESERIALIZE_FN(Type, , ); \
     FRIEND_SERIALIZERS()
 
-#define DECLARE_SERIALIZABLE_N(Type, ...) \
+#define DECLARE_SERIALIZABLE_N(Type, N, ...) \
     DECLARE_SERIALIZED_SIZE_FN(); \
     DECLARE_SERIALIZE_FN(, msg); \
     static DECLARE_DESERIALIZE_FN(Type, , msg); \
-    Type(CALL_MACRO(N, MAKE_DECLTYPE_PARAM, __VA_ARGS__)); \
+    DECLARE_CONSTRUCTOR_FN(Type, , N, __VA_ARGS__); \
     FRIEND_SERIALIZERS()
 
 #define MAKE_SERIALIZABLE_0(Type, ...) \
@@ -107,10 +112,10 @@
     DECLARE_SERIALIZE_FN(Type::, ) { return 0; } \
     DECLARE_DESERIALIZE_FN(Type, Type::, ) { return Type(); }
 
-#define IMPL_SERIALIZABLE_N(Type, ...) \
+#define IMPL_SERIALIZABLE_N(Type, N, ...) \
     DECLARE_SERIALIZED_SIZE_FN(Type::) IMPL_SERIALIZED_SIZE_BODY(__VA_ARGS__) \
     DECLARE_SERIALIZE_FN(Type::, msg) IMPL_SERIALIZE_BODY(msg, __VA_ARGS__) \
-    static DECLARE_DESERIALIZE_FN(Type, Type::, msg) IMPL_DESERIALIZE_BODY(Type, msg, N, __VA_ARGS__) \
+    DECLARE_DESERIALIZE_FN(Type, Type::, msg) IMPL_DESERIALIZE_BODY(Type, msg, N, __VA_ARGS__) \
     DECLARE_CONSTRUCTOR_FN(Type, Type::, N, __VA_ARGS__) IMPL_CONSTRUCTOR_BODY(N, __VA_ARGS__)
 
 // These macros allow SERIALIZABLE to be called with up to 32 member variables,
@@ -130,7 +135,7 @@
                    _17, _18, _19, _20, _21, _22, _23, _24, \
                    _25, _26, _27, _28, _29, _30, _31,   X, ...) X
 
-#define CALL_MACRO(N, name, ...) CALL_MACRO_##N(name, __VA_ARGS__)
+#define CALL_MACRO(N, name, ...) CALL_MACRO_ ## N(name, __VA_ARGS__)
 #define CALL_MACRO_32(name, x, ...) CALL_MACRO_1(name, x), CALL_MACRO_31(name, __VA_ARGS__)
 #define CALL_MACRO_31(name, x, ...) CALL_MACRO_1(name, x), CALL_MACRO_30(name, __VA_ARGS__)
 #define CALL_MACRO_30(name, x, ...) CALL_MACRO_1(name, x), CALL_MACRO_29(name, __VA_ARGS__)

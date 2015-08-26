@@ -12,7 +12,7 @@ namespace indecorous {
 // This constructor copies the statically-initialized set of rpcs
 message_hub_t::message_hub_t() :
     m_self_target(),
-    m_rpcs(register_rpc(nullptr)) { }
+    m_rpcs(register_callback(nullptr)) { }
 
 message_hub_t::~message_hub_t() { }
 
@@ -40,7 +40,7 @@ void handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg) {
 
 bool message_hub_t::spawn(read_message_t msg) {
     assert(msg.buffer.has());
-    if (msg.handler_id == rpc_id_t::reply()) {
+    if (msg.rpc_id == rpc_id_t::reply()) {
         auto reply_it = m_replies.find(msg.request_id);
         if (reply_it != m_replies.end()) {
             reply_it->second.fulfill(std::move(msg));
@@ -52,13 +52,13 @@ bool message_hub_t::spawn(read_message_t msg) {
             thread_t::self()->dispatcher()->note_accepted_task();
         }
 
-        auto cb_it = m_handlers.find(msg.handler_id);
+        auto cb_it = m_rpcs.find(msg.rpc_id);
         if (msg.request_id == request_id_t::noreply()) {
             coro_t::spawn(&handle_noreply_wrapper, cb_it->second, std::move(msg));
-        } else if (cb_it != m_handlers.end()) {
+        } else if (cb_it != m_rpcs.end()) {
             coro_t::spawn(&handle_wrapper, this, cb_it->second, std::move(msg));
         } else {
-            debugf("No registered handler for handler_id (%lu).", msg.handler_id.value());
+            debugf("No registered RPC for rpc_id (%lu).", msg.rpc_id.value());
         }
     }
     return true;

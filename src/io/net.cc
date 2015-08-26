@@ -2,12 +2,35 @@
 
 #include "udns.h"
 
+#include "rpc/message.hpp"
 #include "sync/drainer.hpp"
 #include "sync/file_wait.hpp"
 #include "sync/mutex.hpp"
 #include "sync/timer.hpp"
 
 namespace indecorous {
+
+size_t serializer_t<in6_addr>::size(const in6_addr &item) {
+    return sizeof(item.s6_addr);
+}
+
+int serializer_t<in6_addr>::write(write_message_t *msg, const in6_addr &item) {
+    for (size_t i = 0; i < sizeof(item.s6_addr); ++i) {
+        msg->push_back(item.s6_addr[i]);
+    }
+    return 0;
+}
+
+in6_addr serializer_t<in6_addr>::read(read_message_t *msg) {
+    in6_addr res;
+    for (size_t i = 0; i < sizeof(res.s6_addr); ++i) {
+        res.s6_addr[i] = msg->pop();
+    }
+    return res;
+}
+
+IMPL_SERIALIZABLE(ip_address_t, m_addr, m_scope_id);
+IMPL_SERIALIZABLE(ip_and_port_t, m_addr, m_port);
 
 __attribute__((constructor)) 
 void udns_init() {
@@ -117,8 +140,8 @@ std::vector<ip_address_t> resolve_hostname(const std::string &host) {
     return ctx.resolve(host);
 }
 
-ip_address_t::ip_address_t(const in6_addr &addr, uint32_t scope_id) :
-    m_addr(addr), m_scope_id(scope_id) { }
+//ip_address_t::ip_address_t(const in6_addr &addr, uint32_t scope_id) :
+//    m_addr(addr), m_scope_id(scope_id) { }
 
 ip_address_t ip_address_t::loopback() {
     return ip_address_t(in6addr_loopback, 0);

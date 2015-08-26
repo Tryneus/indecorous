@@ -22,7 +22,7 @@ using namespace indecorous;
 struct coro_test_t {
     DECLARE_STATIC_RPC(coro_test_t, log, std::string, std::string, int) -> void;
     DECLARE_STATIC_RPC(coro_test_t, wait) -> void;
-    DECLARE_STATIC_RPC(coro_test_t, suicide) -> void;
+    DECLARE_STATIC_RPC(coro_test_t, suicide, pid_t parent_pid, int signum) -> void;
 };
 
 IMPL_STATIC_RPC(coro_test_t::log, std::string a, std::string b, int value) -> void {
@@ -38,13 +38,9 @@ IMPL_STATIC_RPC(coro_test_t::wait) -> void {
     wait_all(timer_a, &timer_b);
 }
 
-IMPL_STATIC_RPC(coro_test_t::suicide) -> void {
+IMPL_STATIC_RPC(coro_test_t::suicide, pid_t parent_pid, int signum) -> void {
     kill(parent_pid, signum);
 }
-
-IMPL_UNIQUE_HANDLER(spawn_handler_t);
-IMPL_UNIQUE_HANDLER(wait_handler_t);
-IMPL_UNIQUE_HANDLER(suicide_handler_t);
 
 TEST_CASE("coro/empty", "[coro][shutdown]") {
     for (size_t i = 1; i < 16; ++i) {
@@ -58,19 +54,19 @@ TEST_CASE("coro/empty", "[coro][shutdown]") {
 
 TEST_CASE("coro/spawn", "[coro][shutdown]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Eager);
-    sched.broadcast_local<spawn_handler_t>("foo", "bar", 1);
+    sched.broadcast_local<coro_test_t::log>("foo", "bar", 1);
     sched.run();
 
-    sched.broadcast_local<spawn_handler_t>("", "-", false);
+    sched.broadcast_local<coro_test_t::log>("", "-", false);
     sched.run();
 }
 
 TEST_CASE("coro/wait", "[coro][sync]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Eager);
-    sched.broadcast_local<wait_handler_t>();
+    sched.broadcast_local<coro_test_t::wait>();
     sched.run();
 
-    sched.broadcast_local<wait_handler_t>();
+    sched.broadcast_local<coro_test_t::wait>();
     sched.run();
 }
 
@@ -79,9 +75,9 @@ TEST_CASE("coro/sigint", "[coro][shutdown][hide]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Kill);
     target_t *target = sched.threads().begin()->hub()->self_target();
 
-    target->call_noreply<suicide_handler_t>(getpid(), SIGINT);
+    target->call_noreply<coro_test_t::suicide>(getpid(), SIGINT);
     sched.run();
 
-    target->call_noreply<suicide_handler_t>(getpid(), SIGTERM);
+    target->call_noreply<coro_test_t::suicide>(getpid(), SIGTERM);
     sched.run();
 }

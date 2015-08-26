@@ -349,15 +349,6 @@ private:
     uint64_t m_value;
 };
 
-struct non_movable_test_t : public handler_t<non_movable_test_t> {
-    static void call() {
-        test_void_promise();
-        test_nested_promise();
-        test_copy_promise<non_movable_t>();
-    }
-};
-IMPL_UNIQUE_HANDLER(non_movable_test_t);
-
 class non_copyable_t {
 public:
     non_copyable_t(non_copyable_t &&other) : m_value(std::move(other.m_value)) { }
@@ -370,13 +361,6 @@ private:
     non_copyable_t(const non_copyable_t &) = delete;
     uint64_t m_value;
 };
-
-struct non_copyable_test_t : public handler_t<non_copyable_test_t> {
-    static void call() {
-        test_move_promise<non_copyable_t>();
-    }
-};
-IMPL_UNIQUE_HANDLER(non_copyable_test_t);
 
 class movable_copyable_t {
 public:
@@ -391,28 +375,39 @@ private:
     uint64_t m_value;
 };
 
-struct movable_copyable_test_t : public handler_t<movable_copyable_test_t> {
-    static void call() {
-        test_copy_promise<movable_copyable_t>();
-        test_move_promise<movable_copyable_t>();
-    }
+struct promise_test_t {
+    DECLARE_STATIC_RPC(promise_test_t, non_movable) -> void;
+    DECLARE_STATIC_RPC(promise_test_t, non_copyable) -> void;
+    DECLARE_STATIC_RPC(promise_test_t, movable_copyable) -> void;
+    DECLARE_STATIC_RPC(promise_test_t, common) -> void;
 };
-IMPL_UNIQUE_HANDLER(movable_copyable_test_t);
 
-struct common_promise_test_t : public handler_t<common_promise_test_t> {
-    static void call() {
-        test_void_promise();
-        test_nested_promise();
-        test_callable_promise();
-    }
+IMPL_STATIC_RPC(promise_test_t::non_movable) -> void {
+    test_void_promise();
+    test_nested_promise();
+    test_copy_promise<non_movable_t>();
+}
+
+IMPL_STATIC_RPC(promise_test_t::non_copyable) -> void {
+    test_move_promise<non_copyable_t>();
 };
-IMPL_UNIQUE_HANDLER(common_promise_test_t);
+
+IMPL_STATIC_RPC(promise_test_t::movable_copyable) -> void {
+    test_copy_promise<movable_copyable_t>();
+    test_move_promise<movable_copyable_t>();
+}
+
+IMPL_STATIC_RPC(promise_test_t::common) -> void {
+    test_void_promise();
+    test_nested_promise();
+    test_callable_promise();
+}
 
 TEST_CASE("promise", "[sync][promise]") {
     scheduler_t sched(1, shutdown_policy_t::Eager);
-    sched.broadcast_local<common_promise_test_t>();
-    sched.broadcast_local<non_movable_test_t>();
-    sched.broadcast_local<non_copyable_test_t>();
-    sched.broadcast_local<movable_copyable_test_t>();
+    sched.broadcast_local<promise_test_t::common>();
+    sched.broadcast_local<promise_test_t::non_movable>();
+    sched.broadcast_local<promise_test_t::non_copyable>();
+    sched.broadcast_local<promise_test_t::movable_copyable>();
     sched.run();
 }

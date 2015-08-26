@@ -4,12 +4,12 @@
 
 namespace indecorous {
 
-std::unordered_map<rpc_id_t, handler_callback_t *> &register_handler(handler_callback_t *cb) {
-    static std::unordered_map<rpc_id_t, handler_callback_t *> handlers;
+std::unordered_map<rpc_id_t, rpc_callback_t *> &register_callback(rpc_callback_t *cb) {
+    static std::unordered_map<rpc_id_t, rpc_callback_t *> rpcs;
     if (cb != nullptr) {
-        GUARANTEE(handlers.emplace(cb->id(), cb).second);
+        GUARANTEE(rpcs.emplace(cb->id(), cb).second);
     }
-    return handlers;
+    return rpcs;
 }
 
 } // namespace indecorous

@@ -14,7 +14,6 @@ namespace indecorous {
 
 class target_t;
 class thread_t;
-class handler_callback_t;
 class read_message_t;
 class write_message_t;
 

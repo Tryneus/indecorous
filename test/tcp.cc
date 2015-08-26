@@ -7,6 +7,7 @@
 #include "rpc/target.hpp"
 #include "sync/event.hpp"
 #include "io/tcp.hpp"
+#include "rpc/serialize_stl.hpp"
 
 const size_t num_threads = 2;
 
@@ -32,7 +33,7 @@ IMPL_STATIC_RPC(tcp_test_t::server_loop) -> void {
             conn.read(&val, sizeof(val), &done_event);
         });
     
-    thread_t::self()->hub()->broadcast_local_sync<client_t>(listener.local_port());
+    thread_t::self()->hub()->broadcast_local_sync<tcp_test_t::client>(listener.local_port());
     done_event.wait();
 }
 
@@ -40,19 +41,14 @@ IMPL_STATIC_RPC(tcp_test_t::resolve, std::string host) -> std::vector<ip_address
     return resolve_hostname(host);
 }
 
-INDECOROUS_UNIQUE_RPC(tcp_test_t::client);
-INDECOROUS_UNIQUE_RPC(tcp_test_t::server_loop);
-INDECOROUS_UNIQUE_RPC(tcp_test_t::serve);
-INDECOROUS_UNIQUE_RPC(tcp_test_t::serve);
-
 TEST_CASE("tcp/basic", "[tcp]") {
     scheduler_t sched(2, shutdown_policy_t::Eager);
-    sched.threads().begin()->hub()->self_target()->call_noreply<server_t>();
+    sched.threads().begin()->hub()->self_target()->call_noreply<tcp_test_t::server_loop>();
     sched.run();
 }
 
 TEST_CASE("tcp/resolve", "[tcp][dns]") {
     scheduler_t sched(2, shutdown_policy_t::Eager);
-    sched.threads().begin()->hub()->self_target()->call_noreply<resolve_t>();
+    sched.threads().begin()->hub()->self_target()->call_noreply<tcp_test_t::resolve>("www.google.com");
     sched.run();
 }

@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <tuple>
 #include <utility>
 
 #include "rpc/serialize_macros.hpp"
@@ -46,20 +47,6 @@ SERIALIZABLE_INTEGRAL(uint32_t);
 SERIALIZABLE_INTEGRAL(uint64_t);
 SERIALIZABLE_INTEGRAL(float);
 SERIALIZABLE_INTEGRAL(double);
-
-// Specialization for pointers - note that this is not safe if sent to non-local targets
-template <typename T>
-struct serializer_t<T *> {
-    static size_t size(const T *item) {
-        return serializer_t<uint64_t>::size(static_cast<uint64_t>(item));
-    }
-    static int write(write_message_t *msg, const T *item) {
-        return serializer_t<uint64_t>::write(msg, static_cast<uint64_t>(item));
-    }
-    static T *read(read_message_t *msg) {
-        return static_cast<T *>(serializer_t<uint64_t>::read(msg));
-    }
-};
 
 template <typename... Args>
 size_t full_serialized_size(const Args &...args) {

@@ -48,14 +48,14 @@ struct static_rpc_registration_t {
 
 // Dummy functions to get the return types of member functions
 template <typename Class, typename Res, typename... Args>
-static Res result_translator(Res(Class::*fn)(Args...));
-template <typename Class, typename Res, typename... Args>
-static Res result_translator(Res(*fn)(Args...));
+Res result_translator(Res(Class::*fn)(Args...));
+template <typename Res, typename... Args>
+Res result_translator(Res(*fn)(Args...));
 
 #define INDECOROUS_STRINGIFY_INTERNAL(x) #x
 #define INDECOROUS_STRINGIFY(x) INDECOROUS_STRINGIFY_INTERNAL(x)
 
-// Note: this doesn't allow for templatized handler types
+// Note: this doesn't allow for templatized rpc types
 // TODO: '__FILE__' is probably not safe for cross-compiler or build environment compatibility
 #define INDECOROUS_UNIQUE_RPC(RPC) \
     const indecorous::rpc_id_t RPC::s_rpc_id = \
@@ -132,7 +132,8 @@ Res call_member_with_args(Class *c, Res (Class::*fn)(Args...), std::tuple<Args..
 }
 
 template <typename Res, typename... Args>
-write_message_t do_static_rpc(Res (*fn)(Args...), read_message_t msg) {
+typename std::enable_if<!std::is_same<Res, void>::value, write_message_t>::type
+do_static_rpc(Res (*fn)(Args...), read_message_t msg) {
     std::tuple<Args...> args { serializer_t<Args>::read(&msg)... };
     Res res = call_static_with_args(fn, std::move(args),
         std::make_index_sequence<std::tuple_size<decltype(args)>::value>{});
@@ -143,7 +144,8 @@ write_message_t do_static_rpc(Res (*fn)(Args...), read_message_t msg) {
 }
 
 template <typename Class, typename Res, typename... Args>
-write_message_t do_member_rpc(Class *instance, Res (Class::*fn)(Args...), read_message_t msg) {
+typename std::enable_if<!std::is_same<Res, void>::value, write_message_t>::type
+do_member_rpc(Class *instance, Res (Class::*fn)(Args...), read_message_t msg) {
     std::tuple<Args...> args { serializer_t<Args>::read(&msg)... };
     Res res = call_member_with_args(instance, fn, std::move(args),
         std::make_index_sequence<std::tuple_size<decltype(args)>::value>{});
@@ -151,6 +153,28 @@ write_message_t do_member_rpc(Class *instance, Res (Class::*fn)(Args...), read_m
                                    rpc_id_t::reply(),
                                    msg.request_id,
                                    std::move(res));
+}
+
+template <typename Res, typename... Args>
+typename std::enable_if<std::is_same<Res, void>::value, write_message_t>::type
+do_static_rpc(Res (*fn)(Args...), read_message_t msg) {
+    std::tuple<Args...> args { serializer_t<Args>::read(&msg)... };
+    call_static_with_args(fn, std::move(args),
+        std::make_index_sequence<std::tuple_size<decltype(args)>::value>{});
+    return write_message_t::create(msg.source_id,
+                                   rpc_id_t::reply(),
+                                   msg.request_id);
+}
+
+template <typename Class, typename Res, typename... Args>
+typename std::enable_if<std::is_same<Res, void>::value, write_message_t>::type
+do_member_rpc(Class *instance, Res (Class::*fn)(Args...), read_message_t msg) {
+    std::tuple<Args...> args { serializer_t<Args>::read(&msg)... };
+    call_member_with_args(instance, fn, std::move(args),
+        std::make_index_sequence<std::tuple_size<decltype(args)>::value>{});
+    return write_message_t::create(msg.source_id,
+                                   rpc_id_t::reply(),
+                                   msg.request_id);
 }
 
 template <typename Res, typename... Args>

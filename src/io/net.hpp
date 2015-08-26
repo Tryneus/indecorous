@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "rpc/serialize_macros.hpp"
+
 namespace indecorous {
 
 class ip_address_t {
@@ -23,9 +25,11 @@ public:
 private:
     friend class ip_and_port_t;
     friend class udns_ctx_t;
-    ip_address_t(const in6_addr &addr, uint32_t scope_id);
+    //ip_address_t(const in6_addr &addr, uint32_t scope_id);
     in6_addr m_addr;
     uint32_t m_scope_id;
+
+    DECLARE_SERIALIZABLE(ip_address_t, m_addr, m_scope_id);
 };
 
 std::vector<ip_address_t> resolve_hostname(const std::string &host);
@@ -46,6 +50,15 @@ private:
 
     ip_address_t m_addr;
     uint16_t m_port;
+
+    DECLARE_SERIALIZABLE(ip_and_port_t, m_addr, m_port);
+};
+
+// Serialization for in6_addr struct
+template <> struct serializer_t<in6_addr> {
+    static size_t size(const in6_addr &item);
+    static int write(write_message_t *msg, const in6_addr &item);
+    static in6_addr read(read_message_t *msg);
 };
 
 } // namespace indecorous

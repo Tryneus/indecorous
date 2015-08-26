@@ -68,7 +68,7 @@ private:
 
     template <typename Res>
     static Res parse_result(read_message_t msg) {
-        return serializer_t<Res>::read(std::move(msg));
+        return serializer_t<Res>::read(&msg);
     }
 
     future_t<read_message_t> get_response(request_id_t request_id);
