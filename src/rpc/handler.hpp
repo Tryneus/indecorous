@@ -46,11 +46,27 @@ struct static_rpc_registration_t {
     }
 };
 
+template <typename... Args>
+struct write_generator_t {
+    static write_message_t make(target_id_t src,
+                                rpc_id_t rpc,
+                                request_id_t req,
+                                Args &&...args) {
+        return write_message_t::create(src, rpc, req, std::forward<Args>(args)...);
+    }
+};
+
+template <typename Res, typename... Args>
+struct rpc_bridge_t {
+    typedef Res result_t;
+    typedef write_generator_t<Args...> write_t;
+};
+
 // Dummy functions to get the return types of member functions
 template <typename Class, typename Res, typename... Args>
-Res result_translator(Res(Class::*fn)(Args...));
+rpc_bridge_t<Res, Args...> rpc_bridge(Res(Class::*fn)(Args...));
 template <typename Res, typename... Args>
-Res result_translator(Res(*fn)(Args...));
+rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
 
 #define INDECOROUS_STRINGIFY_INTERNAL(x) #x
 #define INDECOROUS_STRINGIFY(x) INDECOROUS_STRINGIFY_INTERNAL(x)
@@ -93,12 +109,12 @@ Res result_translator(Res(*fn)(Args...));
     } \
     auto Class::RPC ## _indecorous_callback(__VA_ARGS__)
 
-#define DECLARE_STATIC_RPC(Class, RPC, ...) \
+#define DECLARE_STATIC_RPC(RPC, ...) \
     struct RPC : public indecorous::static_rpc_t<RPC> { \
         RPC() = delete; \
         static indecorous::write_message_t static_handle(indecorous::read_message_t msg); \
         static void static_handle_noreply(indecorous::read_message_t msg); \
-        static auto fn_ptr() { return &Class::RPC ## _indecorous_callback; } \
+        static auto fn_ptr() { return &RPC ## _indecorous_callback; } \
         static const indecorous::rpc_id_t s_rpc_id; \
         static const static_rpc_registration_t<RPC> s_registration; \
     }; \

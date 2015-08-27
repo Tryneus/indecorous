@@ -14,9 +14,9 @@ const size_t num_threads = 2;
 using namespace indecorous;
 
 struct tcp_test_t {
-    DECLARE_STATIC_RPC(tcp_test_t, client, uint16_t server_port) -> void;
-    DECLARE_STATIC_RPC(tcp_test_t, server_loop) -> void;
-    DECLARE_STATIC_RPC(tcp_test_t, resolve, std::string host) -> std::vector<ip_address_t>;
+    DECLARE_STATIC_RPC(client, uint16_t server_port) -> void;
+    DECLARE_STATIC_RPC(server_loop) -> void;
+    DECLARE_STATIC_RPC(resolve, std::string host) -> std::vector<ip_address_t>;
 };
 
 IMPL_STATIC_RPC(tcp_test_t::client, uint16_t server_port) -> void {

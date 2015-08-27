@@ -376,10 +376,10 @@ private:
 };
 
 struct promise_test_t {
-    DECLARE_STATIC_RPC(promise_test_t, non_movable) -> void;
-    DECLARE_STATIC_RPC(promise_test_t, non_copyable) -> void;
-    DECLARE_STATIC_RPC(promise_test_t, movable_copyable) -> void;
-    DECLARE_STATIC_RPC(promise_test_t, common) -> void;
+    DECLARE_STATIC_RPC(non_movable) -> void;
+    DECLARE_STATIC_RPC(non_copyable) -> void;
+    DECLARE_STATIC_RPC(movable_copyable) -> void;
+    DECLARE_STATIC_RPC(common) -> void;
 };
 
 IMPL_STATIC_RPC(promise_test_t::non_movable) -> void {

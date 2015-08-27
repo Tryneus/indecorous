@@ -29,14 +29,16 @@ public:
         send_request<RPC>(request_id_t::noreply(), std::forward<Args>(args)...);
     }
 
-    template <typename RPC, typename... Args, typename Res = decltype(result_translator(RPC::fn_ptr))>
+    template <typename RPC, typename... Args,
+              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr))::result_t>
     Res call_sync(Args &&...args) {
         note_send();
         request_id_t request_id = send_request<RPC>(request_gen.next(), std::forward<Args>(args)...);
         return serializer_t<Res>::read(get_response(request_id).release());
     }
 
-    template <typename RPC, typename... Args, typename Res = decltype(result_translator(RPC::fn_ptr))>
+    template <typename RPC, typename... Args,
+              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr))::result_t>
     future_t<Res> call_async(Args &&...args) {
         note_send();
         request_id_t request_id = send_request<RPC>(request_gen.next(), std::forward<Args>(args)...);
@@ -57,12 +59,11 @@ private:
 
     template <typename RPC, typename... Args>
     request_id_t send_request(request_id_t request_id, Args &&...args) {
-        // TODO: enforce that args matches up with what is expected by the RPC
-        write_message_t msg = write_message_t::create(id(),
-                                                      RPC::s_rpc_id,
-                                                      request_id,
-                                                      std::forward<Args>(args)...);
-        stream()->write(std::move(msg));
+        stream()->write(
+            decltype(rpc_bridge(RPC::fn_ptr))::write_t::make(id(),
+                                                             RPC::s_rpc_id,
+                                                             request_id,
+                                                             std::forward<Args>(args)...));
         return request_id;
     }
 
