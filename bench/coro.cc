@@ -3,7 +3,6 @@
 #include "coro/coro.hpp"
 #include "coro/sched.hpp"
 #include "rpc/handler.hpp"
-#include "rpc/hub_data.hpp"
 #include "rpc/target.hpp"
 
 #include "bench.hpp"
@@ -96,21 +95,7 @@ void spawn_std_bind(Args &&...args) {
 }
 */
 
-struct spawn_bench_t : public handler_t<spawn_bench_t> {
-    static void call() {
-        run(std::make_integer_sequence<int, 0>{});
-        run(std::make_integer_sequence<int, 1>{});
-        run(std::make_integer_sequence<int, 2>{});
-        run(std::make_integer_sequence<int, 3>{});
-        run(std::make_integer_sequence<int, 4>{});
-        run(std::make_integer_sequence<int, 5>{});
-        run(std::make_integer_sequence<int, 6>{});
-        run(std::make_integer_sequence<int, 7>{});
-        run(std::make_integer_sequence<int, 8>{});
-        run(std::make_integer_sequence<int, 9>{});
-        run(std::make_integer_sequence<int, 10>{});
-    }
-
+struct bench_t {
     template <int... N>
     static void run(std::integer_sequence<int, N...>) {
         debugf("Running with %zu args", sizeof...(N));
@@ -121,11 +106,26 @@ struct spawn_bench_t : public handler_t<spawn_bench_t> {
         spawn_std_function(N...);
         //spawn_std_bind(N...);
     }
+
+    DECLARE_STATIC_RPC(spawn) -> void;
 };
-IMPL_UNIQUE_HANDLER(spawn_bench_t);
+
+IMPL_STATIC_RPC(bench_t::spawn) -> void {
+    run(std::make_integer_sequence<int, 0>{});
+    run(std::make_integer_sequence<int, 1>{});
+    run(std::make_integer_sequence<int, 2>{});
+    run(std::make_integer_sequence<int, 3>{});
+    run(std::make_integer_sequence<int, 4>{});
+    run(std::make_integer_sequence<int, 5>{});
+    run(std::make_integer_sequence<int, 6>{});
+    run(std::make_integer_sequence<int, 7>{});
+    run(std::make_integer_sequence<int, 8>{});
+    run(std::make_integer_sequence<int, 9>{});
+    run(std::make_integer_sequence<int, 10>{});
+}
 
 TEST_CASE("coro/spawn", "[coro][spawn]") {
     scheduler_t sched(1, shutdown_policy_t::Eager);
-    sched.broadcast_local<spawn_bench_t>();
+    sched.broadcast_local<bench_t::spawn>();
     sched.run();
 }

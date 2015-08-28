@@ -7,19 +7,21 @@
 namespace indecorous {
 
 struct message_header_t {
-    static const uint64_t HEADER_MAGIC = 0x302ca58d7f47e0be;
-    uint64_t header_magic;
+    static const uint64_t MAGIC;
+    uint64_t magic;
     uint64_t source_id;
     uint64_t rpc_id;
     uint64_t request_id;
     uint64_t payload_size;
     MAKE_SERIALIZABLE(message_header_t,
-                      header_magic,
+                      magic,
                       source_id,
                       rpc_id,
                       request_id,
                       payload_size);
 };
+
+const uint64_t message_header_t::MAGIC = 0x302ca58d7f47e0be;
 
 write_message_t::write_message_t(target_id_t source_id,
                                  rpc_id_t rpc_id,
@@ -27,7 +29,7 @@ write_message_t::write_message_t(target_id_t source_id,
                                  size_t payload_size) :
         m_buffer(sizeof(message_header_t) + payload_size),
         m_usage(0) {
-    message_header_t header(message_header_t::HEADER_MAGIC, source_id.value(), rpc_id.value(), request_id.value(), payload_size);
+    message_header_t header(message_header_t::MAGIC, source_id.value(), rpc_id.value(), request_id.value(), payload_size);
     assert(serializer_t<message_header_t>::size(header) == sizeof(message_header_t));
     serializer_t<message_header_t>::write(this, std::move(header));
 }
@@ -69,7 +71,7 @@ read_message_t read_message_t::parse(buffer_owner_t &&buffer) {
     read_message_t message(std::move(buffer), 0,
                            target_id_t(-1), rpc_id_t(-1), request_id_t(-1));
     message_header_t header = serializer_t<message_header_t>::read(&message);
-    assert(header.header_magic == message_header_t::HEADER_MAGIC);
+    assert(header.magic == message_header_t::MAGIC);
 
     return read_message_t(std::move(message.buffer), message.offset,
                           target_id_t(header.source_id),
@@ -87,7 +89,7 @@ read_message_t read_message_t::parse(tcp_stream_t *stream) {
     read_message_t message(std::move(header_buffer), 0,
                            target_id_t(-1), rpc_id_t(-1), request_id_t(-1));
     message_header_t header = serializer_t<message_header_t>::read(&message);
-    assert(header.header_magic == message_header_t::HEADER_MAGIC);
+    assert(header.magic == message_header_t::MAGIC);
 
     buffer_owner_t body_buffer(header.payload_size);
     stream->read_exactly(body_buffer.data(), body_buffer.capacity());

@@ -14,7 +14,7 @@ namespace indecorous {
 class message_hub_t;
 
 struct rpc_callback_t {
-    virtual ~rpc_callback_t();
+    virtual ~rpc_callback_t() { }
     virtual write_message_t handle(read_message_t msg) = 0;
     virtual void handle_noreply(read_message_t msg) = 0;
     virtual rpc_id_t id() const = 0;

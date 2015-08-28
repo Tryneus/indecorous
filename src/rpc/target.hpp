@@ -30,7 +30,7 @@ public:
     }
 
     template <typename RPC, typename... Args,
-              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr))::result_t>
+              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr()))::result_t>
     Res call_sync(Args &&...args) {
         note_send();
         request_id_t request_id = send_request<RPC>(request_gen.next(), std::forward<Args>(args)...);
@@ -38,7 +38,7 @@ public:
     }
 
     template <typename RPC, typename... Args,
-              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr))::result_t>
+              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr()))::result_t>
     future_t<Res> call_async(Args &&...args) {
         note_send();
         request_id_t request_id = send_request<RPC>(request_gen.next(), std::forward<Args>(args)...);
@@ -60,10 +60,10 @@ private:
     template <typename RPC, typename... Args>
     request_id_t send_request(request_id_t request_id, Args &&...args) {
         stream()->write(
-            decltype(rpc_bridge(RPC::fn_ptr))::write_t::make(id(),
-                                                             RPC::s_rpc_id,
-                                                             request_id,
-                                                             std::forward<Args>(args)...));
+            decltype(rpc_bridge(RPC::fn_ptr()))::write_t::make(id(),
+                                                               RPC::s_rpc_id,
+                                                               request_id,
+                                                               std::forward<Args>(args)...));
         return request_id;
     }
 

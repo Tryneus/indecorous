@@ -34,7 +34,7 @@ public:
     }
 
     template <typename RPC, typename... Args,
-              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr))::result_t>
+              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr()))::result_t>
     std::vector<future_t<Res> > broadcast_local_async(Args &&...args) {
         std::vector<future_t<Res> > futures;
         futures.reserve(m_local_targets.size());
@@ -45,14 +45,14 @@ public:
     }
 
     template <typename RPC, typename... Args,
-              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr))::result_t>
+              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr()))::result_t>
     typename std::enable_if<std::is_void<Res>::value, void>::type broadcast_local_sync(Args &&...args) {
         std::vector<future_t<Res> > futures = broadcast_local_async<RPC>(std::forward<Args>(args)...);
-        wait_all_it(futures.begin(), futures.end());
+        wait_all_it(futures);
     }
 
     template <typename RPC, typename... Args,
-              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr))::result_t>
+              typename Res = typename decltype(rpc_bridge(RPC::fn_ptr()))::result_t>
     typename std::enable_if<!std::is_void<Res>::value, std::vector<Res> >::type broadcast_local_sync(Args &&...args) {
         std::vector<future_t<Res> > futures = broadcast_local_async<RPC>(std::forward<Args>(args)...);
         std::vector<Res> res;
