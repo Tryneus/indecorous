@@ -13,7 +13,7 @@ future_t<void>::future_t(future_t<void> &&other) :
 future_t<void>::future_t(promise_data_t<void> *data) : m_data(data) { }
 
 future_t<void>::~future_t() {
-    if (m_data->remove_future(this)) {
+    if (m_data != nullptr && m_data->remove_future(this)) {
         delete m_data;
     }
 }

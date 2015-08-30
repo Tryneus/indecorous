@@ -126,7 +126,7 @@ future_t<T>::future_t(future_t<T> &&other) :
 
 template <typename T>
 future_t<T>::~future_t() {
-    if (m_data->remove_future(this)) {
+    if (m_data != nullptr && m_data->remove_future(this)) {
         delete m_data;
     }
 }
