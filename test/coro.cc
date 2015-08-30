@@ -20,16 +20,16 @@ const size_t num_threads = 8;
 using namespace indecorous;
 
 struct coro_test_t {
-    DECLARE_STATIC_RPC(log, std::string, std::string, int) -> void;
-    DECLARE_STATIC_RPC(wait) -> void;
-    DECLARE_STATIC_RPC(suicide, pid_t parent_pid, int signum) -> void;
+    DECLARE_STATIC_RPC(log)(std::string, std::string, int) -> void;
+    DECLARE_STATIC_RPC(wait)() -> void;
+    DECLARE_STATIC_RPC(suicide)(pid_t parent_pid, int signum) -> void;
 };
 
-IMPL_STATIC_RPC(coro_test_t::log, std::string a, std::string b, int value) -> void {
+IMPL_STATIC_RPC(coro_test_t::log)(std::string a, std::string b, int value) -> void {
     debugf("Got called with %s, %s, %d", a.c_str(), b.c_str(), value);
 }
 
-IMPL_STATIC_RPC(coro_test_t::wait) -> void {
+IMPL_STATIC_RPC(coro_test_t::wait)() -> void {
     periodic_timer_t timer_a;
     single_timer_t timer_b;
     timer_a.start(10);
@@ -38,7 +38,7 @@ IMPL_STATIC_RPC(coro_test_t::wait) -> void {
     wait_all(timer_a, &timer_b);
 }
 
-IMPL_STATIC_RPC(coro_test_t::suicide, pid_t parent_pid, int signum) -> void {
+IMPL_STATIC_RPC(coro_test_t::suicide)(pid_t parent_pid, int signum) -> void {
     kill(parent_pid, signum);
 }
 

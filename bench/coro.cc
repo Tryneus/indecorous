@@ -107,10 +107,10 @@ struct bench_t {
         //spawn_std_bind(N...);
     }
 
-    DECLARE_STATIC_RPC(spawn) -> void;
+    DECLARE_STATIC_RPC(spawn)() -> void;
 };
 
-IMPL_STATIC_RPC(bench_t::spawn) -> void {
+IMPL_STATIC_RPC(bench_t::spawn)() -> void {
     run(std::make_integer_sequence<int, 0>{});
     run(std::make_integer_sequence<int, 1>{});
     run(std::make_integer_sequence<int, 2>{});

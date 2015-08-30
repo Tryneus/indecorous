@@ -77,7 +77,7 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
     const indecorous::rpc_id_t RPC::s_rpc_id = \
         rpc_id_t(std::hash<std::string>()(__FILE__ ":" INDECOROUS_STRINGIFY(__LINE__) ":" #RPC));
 
-#define DECLARE_MEMBER_RPC(Class, RPC, ...) \
+#define DECLARE_MEMBER_RPC(Class, RPC) \
     struct RPC : public indecorous::rpc_callback_t { \
         RPC(Class *parent); \
         ~RPC(); \
@@ -88,9 +88,9 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
         static const indecorous::rpc_id_t s_rpc_id; \
         Class * const m_parent; \
     } RPC ## _indecorous_rpc = RPC(this); \
-    auto RPC ## _indecorous_callback(__VA_ARGS__)
+    auto RPC ## _indecorous_callback
 
-#define IMPL_MEMBER_RPC(Class, RPC, ...) \
+#define IMPL_MEMBER_RPC(Class, RPC) \
     INDECOROUS_UNIQUE_RPC(Class::RPC); \
     Class::RPC::RPC(Class *parent) : m_parent(parent) { \
         indecorous::thread_t::self()->hub()->add_member_rpc(s_rpc_id, this); \
@@ -107,9 +107,9 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
     indecorous::rpc_id_t Class::RPC::id() const final { \
         return s_rpc_id; \
     } \
-    auto Class::RPC ## _indecorous_callback(__VA_ARGS__)
+    auto Class::RPC ## _indecorous_callback
 
-#define DECLARE_STATIC_RPC(RPC, ...) \
+#define DECLARE_STATIC_RPC(RPC) \
     struct RPC : public indecorous::static_rpc_t<RPC> { \
         RPC() = delete; \
         static indecorous::write_message_t static_handle(indecorous::read_message_t msg); \
@@ -118,9 +118,9 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
         static const indecorous::rpc_id_t s_rpc_id; \
         static const static_rpc_registration_t<RPC> s_registration; \
     }; \
-    static auto RPC ## _indecorous_callback(__VA_ARGS__)
+    static auto RPC ## _indecorous_callback
 
-#define IMPL_STATIC_RPC(RPC, ...) \
+#define IMPL_STATIC_RPC(RPC) \
     INDECOROUS_UNIQUE_RPC(RPC); \
     indecorous::write_message_t RPC::static_handle(indecorous::read_message_t msg) { \
         return indecorous::do_static_rpc(&RPC ## _indecorous_callback, \
@@ -132,7 +132,7 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
     } \
     const indecorous::static_rpc_registration_t<RPC> RPC::s_registration = \
         indecorous::static_rpc_registration_t<RPC>(); \
-    auto RPC ## _indecorous_callback(__VA_ARGS__)
+    auto RPC ## _indecorous_callback
 
 // Combine this arg-forwarding code with coro.hpp for smaller binaries?
 template <typename Res, size_t... N, typename... Args>
