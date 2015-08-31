@@ -84,4 +84,4 @@ private:
 
 } // namespace indecorous
 
-#endif
+#endif // SYNC_SEMAPHORE_HPP_
