@@ -136,7 +136,7 @@ static void accept_loop(std::function<void (tcp_conn_t, drainer_lock_t)> on_conn
             in.wait();       
             scoped_fd_t new_sock = ::accept(sock, (sockaddr *)&sa, &sa_len);
             GUARANTEE_ERR(new_sock.valid());
-            on_connect(tcp_conn_t(std::move(new_sock)), drain);
+            coro_t::spawn(on_connect, std::move(new_sock), drain);
         }
     } catch (const wait_interrupted_exc_t &ex) {
         assert(drain.draining());

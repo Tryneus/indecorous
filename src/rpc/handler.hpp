@@ -79,35 +79,36 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
 
 #define DECLARE_MEMBER_RPC(Class, RPC) \
     struct RPC : public indecorous::rpc_callback_t { \
-        RPC(Class *parent); \
+        typedef Class enclosing_t; \
+        RPC(enclosing_t *parent); \
         ~RPC(); \
         indecorous::write_message_t handle(indecorous::read_message_t msg) final; \
         void handle_noreply(indecorous::read_message_t msg) final; \
         indecorous::rpc_id_t id() const final; \
-        static auto fn_ptr() { return &Class::RPC ## _indecorous_callback; } \
+        static auto fn_ptr() { return &enclosing_t::RPC ## _indecorous_callback; } \
         static const indecorous::rpc_id_t s_rpc_id; \
-        Class * const m_parent; \
+        enclosing_t * const m_parent; \
     } RPC ## _indecorous_rpc = RPC(this); \
     auto RPC ## _indecorous_callback
 
-#define IMPL_MEMBER_RPC(Class, RPC) \
-    INDECOROUS_UNIQUE_RPC(Class::RPC); \
-    Class::RPC::RPC(Class *parent) : m_parent(parent) { \
+#define IMPL_MEMBER_RPC(RPC) \
+    INDECOROUS_UNIQUE_RPC(RPC); \
+    RPC::RPC(typename RPC::enclosing_t *parent) : m_parent(parent) { \
         indecorous::thread_t::self()->hub()->add_member_rpc(s_rpc_id, this); \
     } \
-    Class::RPC::~RPC() { \
+    RPC::~RPC() { \
         indecorous::thread_t::self()->hub()->remove_member_rpc(s_rpc_id); \
     } \
-    indecorous::write_message_t Class::RPC::handle(indecorous::read_message_t msg) final { \
-        return indecorous::do_member_rpc(&Class::RPC ## _indecorous_callback, m_parent, std::move(msg)); \
+    indecorous::write_message_t RPC::handle(indecorous::read_message_t msg) final { \
+        return indecorous::do_member_rpc(&RPC ## _indecorous_callback, m_parent, std::move(msg)); \
     } \
-    void Class::RPC::handle_noreply(indecorous::read_message_t msg) final { \
-        indecorous::do_member_rpc_noreply(&Class::RPC ## _indecorous_callback, m_parent, std::move(msg)); \
+    void RPC::handle_noreply(indecorous::read_message_t msg) final { \
+        indecorous::do_member_rpc_noreply(&RPC ## _indecorous_callback, m_parent, std::move(msg)); \
     } \
-    indecorous::rpc_id_t Class::RPC::id() const final { \
+    indecorous::rpc_id_t RPC::id() const final { \
         return s_rpc_id; \
     } \
-    auto Class::RPC ## _indecorous_callback
+    auto RPC ## _indecorous_callback
 
 #define DECLARE_STATIC_RPC(RPC) \
     struct RPC : public indecorous::static_rpc_t<RPC> { \

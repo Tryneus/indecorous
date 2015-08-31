@@ -59,11 +59,11 @@ private:
 
     template <typename RPC, typename... Args>
     request_id_t send_request(request_id_t request_id, Args &&...args) {
-        stream()->write(
-            decltype(rpc_bridge(RPC::fn_ptr()))::write_t::make(id(),
-                                                               RPC::s_rpc_id,
-                                                               request_id,
-                                                               std::forward<Args>(args)...));
+        typedef typename decltype(rpc_bridge(RPC::fn_ptr()))::write_t rpc_write_t;
+        stream()->write(rpc_write_t::make(id(),
+                                          RPC::s_rpc_id,
+                                          request_id,
+                                          std::forward<Args>(args)...));
         return request_id;
     }
 
