@@ -19,12 +19,14 @@ IMPL_STATIC_RPC(coro_pool_test_t::simple)() -> void {
 
     pool.run(
         [&] (waitable_t *) {
+            debugf("producer called");
             if (in == 0) {
                 throw wait_interrupted_exc_t();
             }
             return in--;
         },
         [&] (int x, waitable_t *interruptor) {
+            debugf("consumer called");
             single_timer_t timeout(10);
             wait_any_interruptible(interruptor, timeout);
             debugf("%d", x);

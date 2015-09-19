@@ -29,11 +29,16 @@ IMPL_STATIC_RPC(tcp_test_t::server_loop)() -> void {
     event_t done_event;
     tcp_listener_t listener(0,
         [&] (tcp_conn_t conn, drainer_lock_t) {
+            debugf("server got client");
             uint64_t val;
             conn.read(&val, sizeof(val), &done_event);
+            debugf("server setting done");
+            done_event.set();
         });
-    
+
+    debugf("starting client RPC");
     thread_t::self()->hub()->broadcast_local_sync<tcp_test_t::client>(listener.local_port());
+    debugf("waiting for done");
     done_event.wait();
 }
 

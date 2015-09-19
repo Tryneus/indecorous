@@ -10,12 +10,15 @@ template <typename gen_t>
 void random_t::fill_internal(void *buffer, size_t length, gen_t *generator) {
     typedef typename gen_t::val_t val_t;
     union wrapped_t { val_t t; char c[sizeof(val_t)]; } w;
-    for (size_t i = 0; i < length; ++i) {
-        size_t offset = i % sizeof(val_t);
-        if (offset == 0) {
-            w.t = generator->next();
-        }
-        reinterpret_cast<char *>(buffer)[i] = w.c[offset];
+    for (size_t i = 0; i < (length / sizeof(val_t)); i += sizeof(val_t)) {
+        w.t = generator->next();
+        memcpy(&static_cast<char *>(buffer)[i], &w.c[0], sizeof(val_t));
+    }
+
+    size_t remainder = length % sizeof(val_t);
+    if (remainder > 0) {
+        w.t = generator->next();
+        memcpy(&static_cast<char *>(buffer)[length - remainder], &w.c[0], remainder);
     }
 }
 
@@ -59,7 +62,7 @@ uuid_t uuid_t::nil() {
 
 // Perform a timing-sensitive comparison so if someone uses an ID as a security
 // measure, it won't be susceptible to timing attacks.
-// TODO: make sure the compiler isn't optimizing this
+// TODO: make sure the compiler isn't optimizing this - check libsodium sodium_memcmp
 bool uuid_t::operator ==(const uuid_t &other) const {
     bool res = true;
     for (size_t i = 0; i < sizeof(buffer); ++i) {

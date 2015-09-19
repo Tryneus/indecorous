@@ -3,6 +3,8 @@
 
 #include <unistd.h>
 
+#include "common.hpp"
+
 namespace indecorous {
 
 typedef int fd_t;
@@ -18,7 +20,9 @@ public:
     }
 
     ~scoped_fd_t() {
-        if (valid()) { close(m_fd); }
+        if (valid()) {
+            eintr_wrap([&] { return close(m_fd); });
+        }
     }
 
     fd_t get() const { return m_fd; };

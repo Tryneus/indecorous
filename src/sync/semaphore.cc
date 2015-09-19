@@ -10,6 +10,8 @@ semaphore_acq_t::semaphore_acq_t(semaphore_acq_t &&other) :
         m_owned(other.m_owned),
         m_pending(other.m_pending),
         m_waiters(std::move(other.m_waiters)) {
+    other.m_owned = 0;
+    other.m_pending = 0;
     other.m_parent = nullptr;
     m_waiters.each([this] (auto cb) { cb->object_moved(this); });
 }
@@ -29,6 +31,8 @@ semaphore_acq_t::semaphore_acq_t(size_t count, semaphore_t *parent) :
 }
 
 semaphore_acq_t::~semaphore_acq_t() {
+    debugf("semaphore_acq_t destroyed with %s- %zu owned",
+           m_parent == nullptr ? "no parent " : "", m_owned);
     if (m_parent != nullptr) {
         if (m_pending > 0) {
             m_parent->m_waiters.remove(this);
