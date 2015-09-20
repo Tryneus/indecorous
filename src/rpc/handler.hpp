@@ -75,7 +75,8 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
 // TODO: '__FILE__' is probably not safe for cross-compiler or build environment compatibility
 #define INDECOROUS_UNIQUE_RPC(RPC) \
     const indecorous::rpc_id_t RPC::s_rpc_id = \
-        rpc_id_t(std::hash<std::string>()(__FILE__ ":" INDECOROUS_STRINGIFY(__LINE__) ":" #RPC));
+        indecorous::rpc_id_t(std::hash<std::string>() \
+                             (__FILE__ ":" INDECOROUS_STRINGIFY(__LINE__) ":" #RPC));
 
 #define DECLARE_MEMBER_RPC(Class, RPC) \
     struct RPC : public indecorous::rpc_callback_t { \
@@ -117,7 +118,7 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
         static void static_handle_noreply(indecorous::read_message_t msg); \
         static auto fn_ptr() { return &RPC ## _indecorous_callback; } \
         static const indecorous::rpc_id_t s_rpc_id; \
-        static const static_rpc_registration_t<RPC> s_registration; \
+        static const indecorous::static_rpc_registration_t<RPC> s_registration; \
     }; \
     static auto RPC ## _indecorous_callback
 

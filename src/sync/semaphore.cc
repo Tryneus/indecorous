@@ -26,16 +26,14 @@ semaphore_acq_t::semaphore_acq_t(size_t count, semaphore_t *parent) :
         m_pending = 0;
         m_parent->m_acqs.push_back(this);
     } else {
-        m_parent->m_waiters.push_back(this);
+        m_parent->m_pending.push_back(this);
     }
 }
 
 semaphore_acq_t::~semaphore_acq_t() {
-    debugf("semaphore_acq_t destroyed with %s- %zu owned",
-           m_parent == nullptr ? "no parent " : "", m_owned);
     if (m_parent != nullptr) {
         if (m_pending > 0) {
-            m_parent->m_waiters.remove(this);
+            m_parent->m_pending.remove(this);
         } else {
             m_parent->m_acqs.remove(this);
         }
@@ -66,6 +64,7 @@ void semaphore_acq_t::combine(semaphore_acq_t &&other) {
 void semaphore_acq_t::release(size_t count) {
     assert(m_parent != nullptr);
     assert(m_owned >= count);
+    m_owned -= count;
     m_parent->m_available += count;
     m_parent->pump_waiters();
 }
@@ -83,24 +82,37 @@ void semaphore_acq_t::remove_wait(wait_callback_t *cb) {
     m_waiters.remove(cb);
 }
 
+void semaphore_acq_t::ready() {
+    assert(m_parent != nullptr);
+    assert(m_pending > 0);
+    m_owned += m_pending;
+    m_pending = 0;
+    m_waiters.each([] (auto w) { w->wait_done(wait_result_t::Success); });
+}
+
+void semaphore_acq_t::invalidate() {
+    m_parent = nullptr;
+    m_pending = 0;
+    m_owned = 0;
+    m_waiters.each([] (auto w) { w->wait_done(wait_result_t::ObjectLost); });
+}
+
 semaphore_t::semaphore_t(semaphore_t &&other) :
         m_capacity(other.m_capacity),
         m_available(other.m_available),
         m_acqs(std::move(other.m_acqs)),
-        m_waiters(std::move(other.m_waiters)) {
+        m_pending(std::move(other.m_pending)) {
     other.m_capacity = 0;
     other.m_available = 0;
     m_acqs.each([this] (auto s) { s->m_parent = this; });
-    m_waiters.each([this] (auto s) { s->m_parent = this; });
+    m_pending.each([this] (auto s) { s->m_parent = this; });
 }
 
-semaphore_t::semaphore_t(size_t _capacity) : m_capacity(_capacity), m_available(_capacity) { }
+semaphore_t::semaphore_t(size_t _capacity) :
+    m_capacity(_capacity), m_available(_capacity) { }
 
 semaphore_t::~semaphore_t() {
-    m_waiters.clear([] (auto s) {
-            s->m_waiters.each([] (auto w) { w->wait_done(wait_result_t::ObjectLost); });
-            s->m_parent = nullptr;
-        });
+    m_pending.clear([] (auto acq) { acq->invalidate(); });
 }
 
 size_t semaphore_t::capacity() const {
@@ -124,10 +136,10 @@ void semaphore_t::remove(semaphore_acq_t &&destroy) {
     }
 
     m_capacity -= destroy.m_owned;
-    destroy.m_parent = nullptr;
+    destroy.invalidate();
 
     // Scan waiting acqs, make sure none of them want more than we now have
-    DEBUG_ONLY(m_waiters.each([&] (auto s) { assert(m_capacity >= (s->m_owned + s->m_pending)); }));
+    DEBUG_ONLY(m_pending.each([&] (auto s) { assert(m_capacity >= (s->m_owned + s->m_pending)); }));
 }
 
 semaphore_acq_t semaphore_t::start_acq(size_t count) {
@@ -135,12 +147,12 @@ semaphore_acq_t semaphore_t::start_acq(size_t count) {
 }
 
 void semaphore_t::pump_waiters() {
-    while (!m_waiters.empty() &&
-           (m_waiters.front()->m_pending <= m_available)) {
-        semaphore_acq_t *acq = m_waiters.pop_front();
+    while (!m_pending.empty() &&
+           (m_pending.front()->m_pending <= m_available)) {
+        semaphore_acq_t *acq = m_pending.pop_front();
         m_acqs.push_back(acq);
         m_available -= acq->m_pending;
-        acq->m_waiters.each([] (auto cb) { cb->wait_done(wait_result_t::Success); });
+        acq->ready();
     }
 }
 

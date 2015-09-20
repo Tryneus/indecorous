@@ -49,6 +49,11 @@ private:
     friend class semaphore_t;
     semaphore_acq_t(size_t count, semaphore_t *parent);
 
+    // Callback from the parent semaphore_t when it can be fulfilled
+    void ready();
+    // Callback from the parent semaphore_t when it is destroyed
+    void invalidate();
+
     void add_wait(wait_callback_t *cb);
     void remove_wait(wait_callback_t *cb);
 
@@ -79,7 +84,7 @@ private:
     size_t m_capacity;
     size_t m_available;
     intrusive_list_t<semaphore_acq_t> m_acqs;
-    intrusive_list_t<semaphore_acq_t> m_waiters;
+    intrusive_list_t<semaphore_acq_t> m_pending;
 };
 
 } // namespace indecorous

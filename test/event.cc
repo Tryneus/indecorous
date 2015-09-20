@@ -1,8 +1,6 @@
-#include "catch.hpp"
-#include "coro/sched.hpp"
+#include "test.hpp"
 #include "sync/event.hpp"
 
-TEST_CASE("event/basic", "test basic event usage") {
-
+SIMPLE_TEST(event, simple, 4, "[sync][event]") {
 }
 
