@@ -14,7 +14,7 @@ template <typename callable_t>
 void coro_map(size_t start, size_t end, callable_t &&cb) {
     assert(start <= end);
     drainer_t drainer;
-    for (size_t i = 0; i < end; ++i) {
+    for (size_t i = start; i < end; ++i) {
         coro_t::spawn([&] (size_t inner_i, drainer_lock_t) {
                 cb(inner_i);
             }, i, drainer.lock());
@@ -43,7 +43,7 @@ void throttled_coro_map(size_t start, size_t end, callable_t &&cb, size_t limit)
     assert(start <= end);
     drainer_t drainer;
     semaphore_t sem(limit);
-    for (size_t i = 0; i < end; ++i) {
+    for (size_t i = start; i < end; ++i) {
         semaphore_acq_t acq = sem.start_acq(1);
         acq.wait();
         coro_t::spawn([&] (size_t inner_i, drainer_lock_t, semaphore_acq_t) {
