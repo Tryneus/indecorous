@@ -87,6 +87,7 @@ void semaphore_acq_t::ready() {
     assert(m_pending > 0);
     m_owned += m_pending;
     m_pending = 0;
+    debugf("notifying %zu waiters", m_waiters.size());
     m_waiters.each([] (auto w) { w->wait_done(wait_result_t::Success); });
 }
 

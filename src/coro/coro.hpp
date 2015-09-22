@@ -117,7 +117,7 @@ private:
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
         coro_t *context = coro_t::create();
-        std::tuple<promise_t<Res>, Callable, Args...> params(
+        std::tuple<promise_t<Res>, Callable, typename std::remove_reference<Args>::type... > params(
             std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)... );
         context->begin(&coro_t::hook<Res, decltype(params), 2>, this, &params, immediate);
         swap(context);
@@ -131,7 +131,7 @@ private:
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
         coro_t *context = coro_t::create();
-        std::tuple<promise_t<Res>, Callable, Args...> params(
+        std::tuple<promise_t<Res>, Callable, typename std::remove_reference<Args>::type... > params(
             std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)... );
         context->begin(&coro_t::hook<Res, decltype(params), 3>, this, &params, immediate);
         swap(context);

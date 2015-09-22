@@ -2,43 +2,34 @@
 #define SYNC_CORO_MAP_HPP_
 
 #include <cstdint>
-#include <vector>
 #include <type_traits>
 
 #include "coro/coro.hpp"
-#include "sync/promise.hpp"
+#include "sync/drainer.hpp"
+#include "sync/semaphore.hpp"
 
 namespace indecorous {
 
 template <typename callable_t>
 void coro_map(size_t start, size_t end, callable_t &&cb) {
     assert(start <= end);
-    std::vector<future_t<void> > futures;
-    futures.reserve(end - start);
+    drainer_t drainer;
     for (size_t i = 0; i < end; ++i) {
-        // TODO: high priority: coroutine spawning is passing 'i' down as a reference.
-        // It needs to store a copy because the callable we're passing to spawn takes
-        // a copy.
-        futures.emplace_back(coro_t::spawn(
-            [&] (size_t inner_i) {
+        coro_t::spawn([&] (size_t inner_i, drainer_lock_t) {
                 cb(inner_i);
-            }, i));
+            }, i, drainer.lock());
     }
-    wait_all_it(futures);
 }
 
 template <typename callable_t, typename iterable_t>
 typename std::enable_if<!std::is_integral<iterable_t>::value, void>::type
 coro_map(const iterable_t &iterable, callable_t &&cb) {
-    std::vector<future_t<void> > futures;
-    futures.reserve(iterable.size());
+    drainer_t drainer;
     for (auto const &item : iterable) {
-        futures.emplace_back(coro_t::spawn(
-            [&] (decltype(item) inner_item) {
+        coro_t::spawn([&] (decltype(item) inner_item, drainer_lock_t) {
                 cb(inner_item);
-            }, item));
+            }, item, drainer.lock());
     }
-    wait_all_it(futures);
 }
 
 template <typename callable_t, typename count_t>
@@ -49,13 +40,30 @@ coro_map(count_t count, callable_t &&cb) {
 
 template <typename callable_t>
 void throttled_coro_map(size_t start, size_t end, callable_t &&cb, size_t limit) {
-    // TODO
+    assert(start <= end);
+    drainer_t drainer;
+    semaphore_t sem(limit);
+    for (size_t i = 0; i < end; ++i) {
+        semaphore_acq_t acq = sem.start_acq(1);
+        acq.wait();
+        coro_t::spawn([&] (size_t inner_i, drainer_lock_t, semaphore_acq_t) {
+                cb(inner_i);
+            }, i, drainer.lock(), std::move(acq));
+    }
 }
 
 template <typename callable_t, typename iterable_t>
 typename std::enable_if<!std::is_integral<iterable_t>::value, void>::type
 throttled_coro_map(const iterable_t &iterable, callable_t &&cb, size_t limit) {
-    // TODO
+    drainer_t drainer;
+    semaphore_t sem(limit);
+    for (auto const &item : iterable) {
+        semaphore_acq_t acq = sem.start_acq(1);
+        acq.wait();
+        coro_t::spawn([&] (decltype(item) inner_item, drainer_lock_t, semaphore_acq_t) {
+                cb(inner_item);
+            }, item, drainer.lock(), std::move(acq));
+    }
 }
 
 template <typename callable_t, typename count_t>

@@ -48,7 +48,7 @@ public:
         }
     }
 
-    // Specialization for a producer that returns void
+    // Alternate version for a producer that returns void
     // producer signature: void(waitable_t *)
     // consumer signature: void(waitable_t *)
     template <typename callable_producer_t,
