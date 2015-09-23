@@ -87,15 +87,14 @@ void semaphore_acq_t::ready() {
     assert(m_pending > 0);
     m_owned += m_pending;
     m_pending = 0;
-    debugf("notifying %zu waiters", m_waiters.size());
-    m_waiters.each([] (auto w) { w->wait_done(wait_result_t::Success); });
+    m_waiters.clear([] (auto w) { w->wait_done(wait_result_t::Success); });
 }
 
 void semaphore_acq_t::invalidate() {
     m_parent = nullptr;
     m_pending = 0;
     m_owned = 0;
-    m_waiters.each([] (auto w) { w->wait_done(wait_result_t::ObjectLost); });
+    m_waiters.clear([] (auto w) { w->wait_done(wait_result_t::ObjectLost); });
 }
 
 semaphore_t::semaphore_t(semaphore_t &&other) :
@@ -113,6 +112,7 @@ semaphore_t::semaphore_t(size_t _capacity) :
     m_capacity(_capacity), m_available(_capacity) { }
 
 semaphore_t::~semaphore_t() {
+    m_acqs.clear([] (auto acq) { acq->invalidate(); });
     m_pending.clear([] (auto acq) { acq->invalidate(); });
 }
 
