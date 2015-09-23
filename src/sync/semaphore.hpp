@@ -48,6 +48,8 @@ public:
 private:
     friend class semaphore_t;
     semaphore_acq_t(size_t count, semaphore_t *parent);
+    semaphore_acq_t(const semaphore_acq_t &) = delete;
+    semaphore_acq_t &operator = (const semaphore_acq_t &) = delete;
 
     // Callback from the parent semaphore_t when it can be fulfilled
     void ready();
