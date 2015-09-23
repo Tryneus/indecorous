@@ -41,8 +41,8 @@ coro_map(count_t count, callable_t &&cb) {
 template <typename callable_t>
 void throttled_coro_map(size_t start, size_t end, callable_t &&cb, size_t limit) {
     assert(start <= end);
-    drainer_t drainer;
     semaphore_t sem(limit);
+    drainer_t drainer;
     for (size_t i = start; i < end; ++i) {
         semaphore_acq_t acq = sem.start_acq(1);
         acq.wait();
@@ -55,8 +55,8 @@ void throttled_coro_map(size_t start, size_t end, callable_t &&cb, size_t limit)
 template <typename callable_t, typename iterable_t>
 typename std::enable_if<!std::is_integral<iterable_t>::value, void>::type
 throttled_coro_map(const iterable_t &iterable, callable_t &&cb, size_t limit) {
-    drainer_t drainer;
     semaphore_t sem(limit);
+    drainer_t drainer;
     for (auto const &item : iterable) {
         semaphore_acq_t acq = sem.start_acq(1);
         acq.wait();

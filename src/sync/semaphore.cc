@@ -112,8 +112,9 @@ semaphore_t::semaphore_t(size_t _capacity) :
     m_capacity(_capacity), m_available(_capacity) { }
 
 semaphore_t::~semaphore_t() {
-    m_acqs.clear([] (auto acq) { acq->invalidate(); });
-    m_pending.clear([] (auto acq) { acq->invalidate(); });
+    // To discourage use-after-free errors, all acqs should be destroyed first
+    // This can be done by letting the acqs go out of scope or moving them into `destroy`
+    assert(m_capacity == m_available);
 }
 
 size_t semaphore_t::capacity() const {
