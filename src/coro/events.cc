@@ -101,16 +101,18 @@ void events_t::update_epoll() {
             cb = it->second.callbacks.next(cb);
         }
 
-        int task;
         if (event.events == 0) {
             assert(it->second.callbacks.empty());
             m_file_map.erase(it);
-            task = EPOLL_CTL_DEL;
+
+            // If the fd was closed, it may have been automatically removed from the set
+            int res = ::epoll_ctl(m_epoll_set.get(), EPOLL_CTL_DEL, fd, &event);
+            GUARANTEE_ERR(res == 0 || errno == EBADF);
         } else {
-            task = it->second.last_used_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+            int task = it->second.last_used_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
             it->second.last_used_events = event.events;
+            GUARANTEE_ERR(::epoll_ctl(m_epoll_set.get(), task, fd, &event) == 0);
         }
-        GUARANTEE_ERR(::epoll_ctl(m_epoll_set.get(), task, fd, &event) == 0);
     }
     m_epoll_changes.clear();
 }
