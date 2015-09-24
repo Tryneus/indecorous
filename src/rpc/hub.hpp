@@ -71,10 +71,16 @@ private:
     friend class local_target_t; // For spawning handlers of messages
     bool spawn(read_message_t msg);
 
+    friend class target_t; // For generating new request ids and promises
+    target_t::request_params_t new_request();
+
     local_target_t m_self_target;
     std::vector<local_target_t *> m_local_targets;
     std::unordered_map<target_id_t, target_t *> m_targets;
     std::unordered_map<rpc_id_t, rpc_callback_t *> m_rpcs;
+
+    id_generator_t<request_id_t> request_gen;
+    std::unordered_map<request_id_t, promise_t<read_message_t> > m_replies;
 };
 
 } // namespace indecorous

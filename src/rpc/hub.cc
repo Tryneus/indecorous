@@ -29,14 +29,21 @@ void handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg) {
     rpc->handle_noreply(std::move(msg));
 }
 
+target_t::request_params_t message_hub_t::new_request() {
+    request_id_t request_id = request_gen.next();
+    auto res = m_replies.emplace(request_id, promise_t<read_message_t>());
+    assert(res.second);
+    return { m_self_target.id(), request_id, res.first->second.get_future() };
+}
+
 bool message_hub_t::spawn(read_message_t msg) {
     assert(msg.buffer.has());
     if (msg.rpc_id == rpc_id_t::reply()) {
-        auto target_it = m_targets.find(msg.source_id);
-        if (target_it != m_targets.end()) {
-            target_it->second->handle_reply(std::move(msg));
+        auto reply_it = m_replies.find(msg.request_id);
+        if (reply_it != m_replies.end()) {
+            reply_it->second.fulfill(std::move(msg));
         } else {
-            debugf("Received a reply from a target we don't know of.");
+            debugf("Orphan reply encountered, no promise found.");
         }
     } else {
         if (msg.source_id.is_local()) {

@@ -26,26 +26,27 @@ public:
     template <typename RPC, typename... Args>
     void call_noreply(Args &&...args) {
         note_send();
-        send_request<RPC>(request_id_t::noreply(), std::forward<Args>(args)...);
+        // TODO: this is the wrong source id
+        send_request<RPC>(id(), request_id_t::noreply(), std::forward<Args>(args)...);
     }
 
     template <typename RPC, typename... Args,
               typename Res = typename decltype(rpc_bridge(RPC::fn_ptr()))::result_t>
     Res call_sync(Args &&...args) {
         note_send();
-        request_id_t request_id = send_request<RPC>(request_gen.next(), std::forward<Args>(args)...);
-        return serializer_t<Res>::read(get_response(request_id).release());
+        auto params = new_request();
+        send_request<RPC>(params.source_id, params.request_id, std::forward<Args>(args)...);
+        return serializer_t<Res>::read(params.future.release());
     }
 
     template <typename RPC, typename... Args,
               typename Res = typename decltype(rpc_bridge(RPC::fn_ptr()))::result_t>
     future_t<Res> call_async(Args &&...args) {
         note_send();
-        request_id_t request_id = send_request<RPC>(request_gen.next(), std::forward<Args>(args)...);
-        return get_response(request_id).then_release(&target_t::parse_result<Res>);
+        auto params = new_request();
+        send_request<RPC>(params.source_id, params.request_id, std::forward<Args>(args)...);
+        return params.future.then_release(&target_t::parse_result<Res>);
     }
-
-    void handle_reply(read_message_t &&msg);
 
     void send_reply(write_message_t &&msg);
 
@@ -57,27 +58,29 @@ protected:
     target_id_t target_id;
 
 private:
+    friend class message_hub_t;
+    struct request_params_t {
+        target_id_t source_id;
+        request_id_t request_id;
+        future_t<read_message_t> future;
+    };
+    request_params_t new_request() const;
+
     void note_send() const;
 
     template <typename RPC, typename... Args>
-    request_id_t send_request(request_id_t request_id, Args &&...args) {
+    void send_request(target_id_t source_id, request_id_t request_id, Args &&...args) {
         typedef typename decltype(rpc_bridge(RPC::fn_ptr()))::write_t rpc_write_t;
-        stream()->write(rpc_write_t::make(id(),
+        stream()->write(rpc_write_t::make(source_id,
                                           RPC::s_rpc_id,
                                           request_id,
                                           std::forward<Args>(args)...));
-        return request_id;
     }
 
     template <typename Res>
     static Res parse_result(read_message_t msg) {
         return serializer_t<Res>::read(&msg);
     }
-
-    future_t<read_message_t> get_response(request_id_t request_id);
-
-    id_generator_t<request_id_t> request_gen;
-    std::unordered_map<request_id_t, promise_t<read_message_t> > m_replies;
 };
 
 template <> void target_t::parse_result(read_message_t data);
