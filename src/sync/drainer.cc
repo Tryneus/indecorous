@@ -59,6 +59,7 @@ drainer_t::drainer_t(drainer_t &&other) :
 drainer_t::drainer_t() : m_finish_drain_waiter(nullptr) { }
 
 drainer_t::~drainer_t() {
+    assert(m_finish_drain_waiter == nullptr);
     coro_t *self = coro_t::self();
     m_finish_drain_waiter = self->wait_callback();
     if (!m_locks.empty()) {
