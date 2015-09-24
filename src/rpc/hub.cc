@@ -16,15 +16,6 @@ message_hub_t::message_hub_t() :
 
 message_hub_t::~message_hub_t() { }
 
-future_t<read_message_t> message_hub_t::get_response(request_id_t id) {
-    // TODO: need to clean up replies when losing connection to remote targets
-    auto it = m_replies.find(id);
-    if (it == m_replies.end()) {
-        it = m_replies.emplace(id, promise_t<read_message_t>()).first;
-    }
-    return it->second.get_future();
-}
-
 void handle_wrapper(message_hub_t *hub, rpc_callback_t *rpc, read_message_t msg) {
     target_id_t source_id = msg.source_id;
     write_message_t reply = rpc->handle(std::move(msg));
@@ -41,11 +32,11 @@ void handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg) {
 bool message_hub_t::spawn(read_message_t msg) {
     assert(msg.buffer.has());
     if (msg.rpc_id == rpc_id_t::reply()) {
-        auto reply_it = m_replies.find(msg.request_id);
-        if (reply_it != m_replies.end()) {
-            reply_it->second.fulfill(std::move(msg));
+        auto target_it = m_targets.find(msg.source_id);
+        if (target_it != m_targets.end()) {
+            target_it->second->handle_reply(std::move(msg));
         } else {
-            debugf("Orphan reply encountered, no promise found");
+            debugf("Received a reply from a target we don't know of.");
         }
     } else {
         if (msg.source_id.is_local()) {

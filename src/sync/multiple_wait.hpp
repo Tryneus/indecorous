@@ -54,7 +54,7 @@ private:
 // TODO: consider making interruptors a coro-level RAII type? - probably not worthwhile
 
 template <multiple_waiter_t::wait_type_t Type, typename Container>
-void wait_generic_it(Container &c, waitable_t *interruptor) {
+void wait_generic_it(waitable_t *interruptor, Container &c) {
     multiple_waiter_t waiter(Type, c.size(), interruptor);
     std::vector<multiple_wait_callback_t> waits;
     waits.reserve(c.size() + 1);
@@ -66,22 +66,32 @@ void wait_generic_it(Container &c, waitable_t *interruptor) {
 
 template <typename Container>
 void wait_any_it(Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(c, nullptr);
+    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(nullptr, c);
 }
 
 template <typename Container>
 void wait_any_it_interruptible(waitable_t *interruptor, Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(c, interruptor);
+    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(interruptor, c);
+}
+
+template <typename Container>
+void wait_any_it_interruptible(waitable_t &interruptor, Container &c) {
+    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(interruptor, c);
 }
 
 template <typename Container>
 void wait_all_it(Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(c, nullptr);
+    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(nullptr, c);
 }
 
 template <typename Container>
 void wait_all_it_interruptible(waitable_t *interruptor, Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(c, interruptor);
+    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(interruptor, c);
+}
+
+template <typename Container>
+void wait_all_it_interruptible(waitable_t &interruptor, Container &c) {
+    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(interruptor, c);
 }
 
 template <multiple_waiter_t::wait_type_t Type, typename... Args>
@@ -103,6 +113,11 @@ void wait_any_interruptible(waitable_t *interruptor, Args &&...args) {
 }
 
 template <typename... Args>
+void wait_any_interruptible(waitable_t &interruptor, Args &&...args) {
+    wait_generic<multiple_waiter_t::wait_type_t::ANY>(&interruptor, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
 void wait_all(Args &&...args) {
     wait_generic<multiple_waiter_t::wait_type_t::ALL>(nullptr, std::forward<Args>(args)...);
 }
@@ -110,6 +125,11 @@ void wait_all(Args &&...args) {
 template <typename... Args>
 void wait_all_interruptible(waitable_t *interruptor, Args &&...args) {
     wait_generic<multiple_waiter_t::wait_type_t::ALL>(interruptor, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void wait_all_interruptible(waitable_t &interruptor, Args &&...args) {
+    wait_generic<multiple_waiter_t::wait_type_t::ALL>(&interruptor, std::forward<Args>(args)...);
 }
 
 } // namespace indecorous

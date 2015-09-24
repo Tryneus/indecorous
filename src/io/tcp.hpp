@@ -46,7 +46,7 @@ private:
     static const size_t s_read_buffer_size;
 };
 
-// TODO: specify 0 or 1 interface to listen on?  multiple?
+// TODO: specify any number of interfaces to listen on?
 class tcp_listener_t {
 public:
     tcp_listener_t(uint16_t _local_port, std::function<void (tcp_conn_t, drainer_lock_t)> on_connect);

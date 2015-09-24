@@ -27,6 +27,15 @@ void target_t::note_send() const {
     }
 }
 
+void target_t::handle_reply(read_message_t &&msg) {
+    auto reply_it = m_replies.find(msg.request_id);
+    if (reply_it != m_replies.end()) {
+        reply_it->second.fulfill(std::move(msg));
+    } else {
+        debugf("Orphan reply encountered, no promise found");
+    }
+}
+
 void target_t::send_reply(write_message_t &&msg) {
     // Replies do not have to note a send - there should already be a coroutine waiting
     // to receive the reply - if not it gets discarded.
@@ -34,7 +43,11 @@ void target_t::send_reply(write_message_t &&msg) {
 }
 
 future_t<read_message_t> target_t::get_response(request_id_t request_id) {
-    return thread_t::self()->hub()->get_response(request_id);
+    auto it = m_replies.find(request_id);
+    if (it == m_replies.end()) {
+        it = m_replies.emplace(request_id, promise_t<read_message_t>()).first;
+    }
+    return it->second.get_future();
 }
 
 template <> void target_t::parse_result(read_message_t) { }

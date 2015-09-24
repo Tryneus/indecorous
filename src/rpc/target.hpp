@@ -45,6 +45,8 @@ public:
         return get_response(request_id).then_release(&target_t::parse_result<Res>);
     }
 
+    void handle_reply(read_message_t &&msg);
+
     void send_reply(write_message_t &&msg);
 
     void wait(waitable_t *interruptor);
@@ -75,6 +77,7 @@ private:
     future_t<read_message_t> get_response(request_id_t request_id);
 
     id_generator_t<request_id_t> request_gen;
+    std::unordered_map<request_id_t, promise_t<read_message_t> > m_replies;
 };
 
 template <> void target_t::parse_result(read_message_t data);

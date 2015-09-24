@@ -21,7 +21,6 @@ drainer_lock_t::drainer_lock_t(const drainer_lock_t &other) :
         intrusive_node_t<drainer_lock_t>(),
         m_parent(other.m_parent) {
     assert(m_parent != nullptr);
-    assert(!m_parent->draining()); // Cannot acquire new locks on a drainer being destroyed
     m_parent->m_locks.push_back(this);
 }
 

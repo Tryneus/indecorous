@@ -133,7 +133,7 @@ static void accept_loop(std::function<void (tcp_conn_t, drainer_lock_t)> on_conn
         while (true) {
             sockaddr_in6 sa;
             socklen_t sa_len = sizeof(sa);
-            in.wait();       
+            wait_any_interruptible(drain, in);
             scoped_fd_t new_sock = ::accept(sock, (sockaddr *)&sa, &sa_len);
             GUARANTEE_ERR(new_sock.valid());
             coro_t::spawn(on_connect, std::move(new_sock), drain);

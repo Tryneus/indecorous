@@ -29,27 +29,23 @@ IMPL_STATIC_RPC(tcp_test_t::server_loop)() -> void {
     event_t done_event;
     tcp_listener_t listener(0,
         [&] (tcp_conn_t conn, drainer_lock_t) {
-            debugf("server got client");
             uint64_t val;
             conn.read(&val, sizeof(val), &done_event);
-            debugf("server setting done");
             done_event.set();
         });
 
-    debugf("starting client RPC");
     thread_t::self()->hub()->broadcast_local_sync<tcp_test_t::client>(listener.local_port());
-    debugf("waiting for done");
     done_event.wait();
+}
+
+TEST_CASE("tcp/basic", "[tcp]") {
+    scheduler_t sched(4, shutdown_policy_t::Eager);
+    sched.threads().begin()->hub()->self_target()->call_noreply<tcp_test_t::server_loop>();
+    sched.run();
 }
 
 IMPL_STATIC_RPC(tcp_test_t::resolve)(std::string host) -> std::vector<ip_address_t> {
     return resolve_hostname(host);
-}
-
-TEST_CASE("tcp/basic", "[tcp][hide]") {
-    scheduler_t sched(2, shutdown_policy_t::Eager);
-    sched.threads().begin()->hub()->self_target()->call_noreply<tcp_test_t::server_loop>();
-    sched.run();
 }
 
 TEST_CASE("tcp/resolve", "[tcp][dns][hide]") {
