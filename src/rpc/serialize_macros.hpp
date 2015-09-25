@@ -12,7 +12,7 @@ class write_message_t;
         static size_t size(const Type &); \
         static int write(write_message_t *, const Type &); \
         static Type read(read_message_t *); \
-    };
+    }
 
 #include "rpc/serialize.hpp"
 
@@ -25,7 +25,7 @@ class write_message_t;
             return serializer_t<Value>::write(msg, static_cast<Value>(t)); } \
         static Type read(read_message_t *msg) { \
             return static_cast<Type>(serializer_t<Value>::read(msg)); } \
-    };
+    }
 
 // TODO: make construction move params (if possible)
 #define MAKE_MOVE_DECLTYPE_PARAM(x) decltype(x) const &arg_ ## x
@@ -38,7 +38,7 @@ class write_message_t;
     template <typename T, size_t... N, typename... Args> \
     friend T full_deserialize_internal(std::integer_sequence<size_t, N...>, std::tuple<Args...>); \
     template <typename T, typename... Args> \
-    friend T full_deserialize(read_message_t *); \
+    friend T full_deserialize(read_message_t *)
 
 #define CONCAT(a, b) a ## b
 
@@ -110,13 +110,15 @@ class write_message_t;
 #define IMPL_SERIALIZABLE_0(Type, ...) \
     DECLARE_SERIALIZED_SIZE_FN(Type::) { return 0; } \
     DECLARE_SERIALIZE_FN(Type::, ) { return 0; } \
-    DECLARE_DESERIALIZE_FN(Type, Type::, ) { return Type(); }
+    DECLARE_DESERIALIZE_FN(Type, Type::, ) { return Type(); } \
+    using dummy_ ## __LINE__ = int
 
 #define IMPL_SERIALIZABLE_N(Type, N, ...) \
     DECLARE_SERIALIZED_SIZE_FN(Type::) IMPL_SERIALIZED_SIZE_BODY(__VA_ARGS__) \
     DECLARE_SERIALIZE_FN(Type::, msg) IMPL_SERIALIZE_BODY(msg, __VA_ARGS__) \
     DECLARE_DESERIALIZE_FN(Type, Type::, msg) IMPL_DESERIALIZE_BODY(Type, msg, N, __VA_ARGS__) \
-    DECLARE_CONSTRUCTOR_FN(Type, Type::, N, __VA_ARGS__) IMPL_CONSTRUCTOR_BODY(N, __VA_ARGS__)
+    DECLARE_CONSTRUCTOR_FN(Type, Type::, N, __VA_ARGS__) IMPL_CONSTRUCTOR_BODY(N, __VA_ARGS__) \
+    using dummy_ ## __LINE__ = int
 
 // These macros allow SERIALIZABLE to be called with up to 32 member variables,
 // this can be extended by continuing the sequences in these macros.

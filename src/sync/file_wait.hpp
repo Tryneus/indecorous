@@ -25,7 +25,7 @@ private:
     DISABLE_COPYING(file_callback_t);
 };
 
-class file_wait_t : public waitable_t, private file_callback_t {
+class file_wait_t final : public waitable_t, private file_callback_t {
 public:
     file_wait_t(file_wait_t &&other);
 
@@ -37,8 +37,8 @@ public:
     static file_wait_t rdhup(int fd);
 
 private:
-    void add_wait(wait_callback_t* cb);
-    void remove_wait(wait_callback_t* cb);
+    void add_wait(wait_callback_t* cb) override final;
+    void remove_wait(wait_callback_t* cb) override final;
 
     file_wait_t(int _fd, uint32_t _event_mask);
 

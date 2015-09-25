@@ -43,7 +43,7 @@ private:
     DISABLE_COPYING(timer_callback_t);
 };
 
-class single_timer_t : public waitable_t, private timer_callback_t {
+class single_timer_t final : public waitable_t, private timer_callback_t {
 public:
     single_timer_t();
     single_timer_t(int64_t timeout_ms); // Starts the timer immediately
@@ -54,8 +54,8 @@ public:
     void stop();
 
 private:
-    void add_wait(wait_callback_t* cb);
-    void remove_wait(wait_callback_t* cb);
+    void add_wait(wait_callback_t* cb) override final;
+    void remove_wait(wait_callback_t* cb) override final;
 
     void timer_callback(wait_result_t result);
 
@@ -66,7 +66,7 @@ private:
     DISABLE_COPYING(single_timer_t);
 };
 
-class periodic_timer_t : public waitable_t, private timer_callback_t {
+class periodic_timer_t final : public waitable_t, private timer_callback_t {
 public:
     periodic_timer_t();
     periodic_timer_t(int64_t period_ms); // Starts the timer immediately
@@ -77,8 +77,8 @@ public:
     void stop();
 
 private:
-    void add_wait(wait_callback_t* cb);
-    void remove_wait(wait_callback_t* cb);
+    void add_wait(wait_callback_t* cb) override final;
+    void remove_wait(wait_callback_t* cb) override final;
 
     void stop_internal(wait_result_t result);
     void timer_callback(wait_result_t result);
@@ -90,6 +90,6 @@ private:
     DISABLE_COPYING(periodic_timer_t);
 };
 
-}; // namespace indecorous
+} // namespace indecorous
 
 #endif

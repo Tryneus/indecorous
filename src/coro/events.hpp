@@ -53,6 +53,6 @@ private:
     scoped_fd_t m_epoll_set;
 };
 
-};
+} // namespace indecorous
 
 #endif // CORO_EVENTS_HPP_

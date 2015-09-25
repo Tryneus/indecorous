@@ -12,7 +12,7 @@ class coro_t;
 
 // Be careful to avoid deadlock when using wait_all with semaphores
 
-class multiple_waiter_t : private wait_callback_t {
+class multiple_waiter_t final : private wait_callback_t {
 public:
     enum class wait_type_t { ANY, ALL };
     multiple_waiter_t(wait_type_t type, size_t total, waitable_t *interruptor);
@@ -22,9 +22,10 @@ public:
     void item_finished(wait_result_t result);
 
 private:
+    void wait_done(wait_result_t result) override final;
+    void object_moved(waitable_t *new_ptr) override final;
+
     void ready(wait_result_t result);
-    void wait_done(wait_result_t result);
-    void object_moved(waitable_t *new_ptr);
 
     coro_t *m_owner_coro;
     waitable_t *m_interruptor;
@@ -37,7 +38,7 @@ private:
     DISABLE_COPYING(multiple_waiter_t);
 };
 
-class multiple_wait_callback_t : private wait_callback_t {
+class multiple_wait_callback_t final : private wait_callback_t {
 public:
     multiple_wait_callback_t(waitable_t *obj,
                              multiple_waiter_t *waiter);
@@ -47,8 +48,8 @@ public:
     ~multiple_wait_callback_t();
 
 private:
-    void wait_done(wait_result_t result);
-    void object_moved(waitable_t *new_ptr);
+    void wait_done(wait_result_t result) override final;
+    void object_moved(waitable_t *new_ptr) override final;
 
     waitable_t *m_obj;
     multiple_waiter_t *m_waiter;

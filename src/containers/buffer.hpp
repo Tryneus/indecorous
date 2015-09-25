@@ -14,7 +14,7 @@ namespace indecorous {
 class linkable_buffer_t : public intrusive_node_t<linkable_buffer_t> {
 public:
     static linkable_buffer_t *create(size_t capacity) {
-        char *buffer = new char[sizeof(linkable_buffer_t) + capacity];
+        char *buffer = new char[sizeof(linkable_buffer_t) + capacity - 1];
         return new (buffer) linkable_buffer_t(capacity);
     }
 
@@ -41,7 +41,7 @@ private:
     ~linkable_buffer_t() { }
 
     size_t m_capacity;
-    char m_data[0];
+    char m_data[1];
 };
 
 class buffer_owner_t {

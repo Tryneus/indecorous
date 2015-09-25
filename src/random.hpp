@@ -27,10 +27,10 @@ protected:
     void fill_internal(void *buffer, size_t length, gen_t *generator);
 };
 
-class true_random_t : public random_t {
+class true_random_t final : public random_t {
 public:
     true_random_t();
-    void fill(void *buffer, size_t length);
+    void fill(void *buffer, size_t length) override final;
 private:
     friend class random_t;
     typedef std::random_device::result_type val_t;
@@ -40,10 +40,10 @@ private:
 };
 
 // TODO: make this a one-per-thread singleton?
-class pseudo_random_t : public random_t {
+class pseudo_random_t final : public random_t {
 public:
     pseudo_random_t();
-    void fill(void *buffer, size_t length);
+    void fill(void *buffer, size_t length) override final;
 private:
     friend class random_t;
     typedef std::mt19937::result_type val_t;

@@ -27,7 +27,7 @@ struct future_reducer_t<future_t<T> > {
 };
 
 template <typename T>
-class future_t : public intrusive_node_t<future_t<T> >, public waitable_t {
+class future_t final : public intrusive_node_t<future_t<T> >, public waitable_t {
 public:
     future_t(future_t<T> &&other);
     ~future_t();
@@ -61,8 +61,8 @@ private:
     friend class promise_data_t<T>;
     explicit future_t(promise_data_t<T> *data);
 
-    void add_wait(wait_callback_t *cb);
-    void remove_wait(wait_callback_t *cb);
+    void add_wait(wait_callback_t *cb) override final;
+    void remove_wait(wait_callback_t *cb) override final;
 
     void notify(wait_result_t result);
 
@@ -73,7 +73,7 @@ private:
 };
 
 template <>
-class future_t<void> : public intrusive_node_t<future_t<void> >, public waitable_t {
+class future_t<void> final : public intrusive_node_t<future_t<void> >, public waitable_t {
 public:
     future_t(future_t<void> &&other);
     ~future_t();
@@ -89,8 +89,8 @@ private:
     friend class promise_data_t<void>;
     explicit future_t(promise_data_t<void> *data);
 
-    void add_wait(wait_callback_t *cb);
-    void remove_wait(wait_callback_t *cb);
+    void add_wait(wait_callback_t *cb) override final;
+    void remove_wait(wait_callback_t *cb) override final;
 
     void notify(wait_result_t result);
 

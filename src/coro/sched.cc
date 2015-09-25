@@ -131,6 +131,8 @@ void scheduler_t::run() {
             m_shutdown.shutdown(m_threads.begin()->hub());
             m_barrier.wait();
         } break;
+    default:
+        UNREACHABLE();
     }
 }
 

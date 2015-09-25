@@ -58,14 +58,14 @@ size_t full_serialized_size(const Args &...args) {
     } acc;
 
     __attribute__((unused)) int dummy[] =
-        { acc.add(serializer_t<Args>::size(args))... };
+        { 0, acc.add(serializer_t<Args>::size(args))... };
     return acc.value;
 }
 
 template <typename... Args>
 int full_serialize(write_message_t *msg, const Args &...args) {
     __attribute__((unused)) int dummy[] =
-        { serializer_t<Args>::write(msg, args)... };
+        { 0, serializer_t<Args>::write(msg, args)... };
     return 0;
 }
 

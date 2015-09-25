@@ -26,13 +26,13 @@ std::unordered_map<rpc_id_t, rpc_callback_t *> &register_callback(rpc_callback_t
 template <typename T>
 struct static_rpc_t : public rpc_callback_t {
     static_rpc_t() { }
-    write_message_t handle(read_message_t msg) final {
+    write_message_t handle(read_message_t msg) override final {
         return T::static_handle(std::move(msg));
     };
-    void handle_noreply(read_message_t msg) final {
+    void handle_noreply(read_message_t msg) override final {
         T::static_handle_noreply(std::move(msg));
     }
-    rpc_id_t id() const final {
+    rpc_id_t id() const override final {
         return T::s_rpc_id;
     }
 };
@@ -76,16 +76,16 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
 #define INDECOROUS_UNIQUE_RPC(RPC) \
     const indecorous::rpc_id_t RPC::s_rpc_id = \
         indecorous::rpc_id_t(std::hash<std::string>() \
-                             (__FILE__ ":" INDECOROUS_STRINGIFY(__LINE__) ":" #RPC));
+                             (__FILE__ ":" INDECOROUS_STRINGIFY(__LINE__) ":" #RPC))
 
 #define DECLARE_MEMBER_RPC(Class, RPC) \
     struct RPC : public indecorous::rpc_callback_t { \
         typedef Class enclosing_t; \
         RPC(enclosing_t *parent); \
         ~RPC(); \
-        indecorous::write_message_t handle(indecorous::read_message_t msg) final; \
-        void handle_noreply(indecorous::read_message_t msg) final; \
-        indecorous::rpc_id_t id() const final; \
+        indecorous::write_message_t handle(indecorous::read_message_t msg) override final; \
+        void handle_noreply(indecorous::read_message_t msg) override final; \
+        indecorous::rpc_id_t id() const override final; \
         static auto fn_ptr() { return &enclosing_t::RPC ## _indecorous_callback; } \
         static const indecorous::rpc_id_t s_rpc_id; \
         enclosing_t * const m_parent; \

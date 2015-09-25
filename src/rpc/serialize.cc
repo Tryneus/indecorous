@@ -14,7 +14,8 @@ namespace indecorous {
     } \
     Type serializer_t<Type>::read(read_message_t *msg) { \
         return static_cast<Type>(msg->pop()); \
-    }
+    } \
+    using dummy_ ## __LINE__ = int
 
 #define IMPL_SERIALIZABLE_INTEGRAL(Type, Bits) \
     union Type##_wrapper_t { Type t; char c[sizeof(Type)]; }; \
@@ -35,7 +36,8 @@ namespace indecorous {
             u.c[i] = msg->pop(); \
         } \
         return be##Bits##toh(u.t); \
-    }
+    } \
+    using dummy_ ## __LINE__ = int
 
 IMPL_SERIALIZABLE_BYTE(bool);
 

@@ -50,11 +50,15 @@ UDNS_LIB = $(UDNS_PATH)/$(UDNS_LIB_FILENAME)
 
 CATCH_PATH = $(EXT_DIR)/catch
 
-CXX_FLAGS += -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -I$(BENCH_DIR) -Wall -Wextra -Werror -Weffc++
+CXX_FLAGS += -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -I$(BENCH_DIR)
 CXX_FLAGS += $(addprefix -I,$(UDNS_PATH) $(CATCH_PATH))
+CXX_FLAGS += -Wall -Wextra -Werror -Weffc++
 CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
-CXX_FLAGS += -Wformat=2 -Wswitch-enum
-CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
+CXX_FLAGS += -Wformat=2 -Wformat-nonliteral -Wformat-security
+CXX_FLAGS += -Wswitch-enum -Wswitch-default -Wundef -Wvla -Wshadow
+CXX_FLAGS += -Wuninitialized -Wmissing-include-dirs -Wmissing-noreturn
+CXX_FLAGS += -Wunused-parameter -Wstrict-aliasing
+#CXX_FLAGS += -Wpedantic
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
 CXX_FLAGS += -D__STDC_FORMAT_MACROS
 

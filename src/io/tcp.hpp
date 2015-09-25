@@ -19,15 +19,15 @@ namespace indecorous {
 
 class waitable_t;
 
-class tcp_conn_t : public read_stream_t, public write_stream_t {
+class tcp_conn_t final : public read_stream_t, public write_stream_t {
 public:
     tcp_conn_t(scoped_fd_t sock);
     tcp_conn_t(const ip_and_port_t &host_port, waitable_t *interruptor);
     tcp_conn_t(tcp_conn_t &&other);
 
-    void read(void *buf, size_t count, waitable_t *interruptor);
-    size_t read_until(char delim, void *buf, size_t count, waitable_t *interruptor);
-    void write(void *buf, size_t count, waitable_t *interruptor);
+    void read(void *buf, size_t count, waitable_t *interruptor) override final;
+    size_t read_until(char delim, void *buf, size_t count, waitable_t *interruptor) override final;
+    void write(void *buf, size_t count, waitable_t *interruptor) override final;
 
 private:
     scoped_fd_t init_socket(const ip_and_port_t &ip_port);

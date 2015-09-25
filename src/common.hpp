@@ -25,19 +25,29 @@
     // #define ASSERT(x) do { assert(x); } while (0)
 #endif
 
+#define UNREACHABLE() do { \
+        debugf("Unreachable code " __FILE__ ":%d", __LINE__); \
+        ::abort(); \
+    } while (0)
+
 #define GUARANTEE(x) do { \
-    if (!(x)) { \
-        debugf("Guarantee failed [" #x "] " __FILE__ ":%d", __LINE__); \
-        ::abort(); \
-    } } while (0)
+        if (!(x)) { \
+            debugf("Guarantee failed [" #x "] " __FILE__ ":%d", __LINE__); \
+            ::abort(); \
+        } \
+    } while (0)
 #define GUARANTEE_ERR(x) do { \
-    if (!(x)) { \
-        char errno_buffer[100]; \
-        char *err_str = strerror_r(errno, errno_buffer, sizeof(errno_buffer)); \
-        debugf("Guarantee failed [" #x "] errno = %d (%s) " __FILE__ ":%d", \
-               errno, err_str, __LINE__); \
-        ::abort(); \
-    } } while (0)
+        if (!(x)) { \
+            char errno_buffer[100]; \
+            char *err_str = strerror_r(errno, errno_buffer, sizeof(errno_buffer)); \
+            debugf("Guarantee failed [" #x "] errno = %d (%s) " __FILE__ ":%d", \
+                   errno, err_str, __LINE__); \
+            ::abort(); \
+        } \
+    } while (0)
+
+// Disable this so we can use -Wpedantic in clang
+//#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 
 #define debugf(format, ...) printf("Thread %" PRIi32 " - " format "\n", indecorous::thread_self_id(), ##__VA_ARGS__)
 

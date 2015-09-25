@@ -34,7 +34,7 @@ class semaphore_t;
 // sem.remove(acq); // permanently remove the owned resources from the semaphore and invalidate the acq
 // sem.capacity(); // == 2
 
-class semaphore_acq_t : public waitable_t, public intrusive_node_t<semaphore_acq_t> {
+class semaphore_acq_t final : public waitable_t, public intrusive_node_t<semaphore_acq_t> {
 public:
     semaphore_acq_t(semaphore_acq_t &&other);
     ~semaphore_acq_t();
@@ -56,8 +56,8 @@ private:
     // Callback from the parent semaphore_t when it is destroyed
     void invalidate();
 
-    void add_wait(wait_callback_t *cb);
-    void remove_wait(wait_callback_t *cb);
+    void add_wait(wait_callback_t *cb) override final;
+    void remove_wait(wait_callback_t *cb) override final;
 
     semaphore_t *m_parent;
     size_t m_owned;

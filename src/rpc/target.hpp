@@ -92,11 +92,11 @@ public:
     // Returns true if a message was processed, false otherwise
     bool handle(message_hub_t *local_hub);
 
-    bool is_local() const;
+    bool is_local() const override final;
 private:
     friend class scheduler_t; // To get the initial stream size
     friend class thread_t; // To check empty at the end of a run
-    stream_t *stream();
+    stream_t *stream() override final;
     local_stream_t m_stream;
 };
 
@@ -104,9 +104,9 @@ private:
 class remote_target_t : public target_t {
 public:
     explicit remote_target_t();
-    bool is_local() const;
+    bool is_local() const override final;
 private:
-    stream_t *stream();
+    stream_t *stream() override final;
     tcp_stream_t m_stream;
 };
 

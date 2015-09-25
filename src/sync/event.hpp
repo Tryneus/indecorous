@@ -6,7 +6,7 @@
 
 namespace indecorous {
 
-class event_t : public waitable_t {
+class event_t final : public waitable_t {
 public:
     event_t(event_t &&other);
     event_t();
@@ -17,8 +17,8 @@ public:
     void reset();
 
 protected:
-    void add_wait(wait_callback_t* cb);
-    void remove_wait(wait_callback_t* cb);
+    void add_wait(wait_callback_t* cb) override final;
+    void remove_wait(wait_callback_t* cb) override final;
 
 private:
     bool m_triggered;
