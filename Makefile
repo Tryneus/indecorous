@@ -35,9 +35,10 @@ endif
 SRC_DIR = src
 TEST_DIR = test
 BENCH_DIR = bench
-OBJ_DIR = bin/obj_$(BUILD_TYPE)
-TEST_OBJ_DIR = bin/test_obj_$(BUILD_TYPE)
-BENCH_OBJ_DIR = bin/bench_obj_$(BUILD_TYPE)
+OBJ_DIR = bin/obj
+CORE_OBJ_DIR = $(OBJ_DIR)/core_$(BUILD_TYPE)
+TEST_OBJ_DIR = $(OBJ_DIR)/test_$(BUILD_TYPE)
+BENCH_OBJ_DIR = $(OBJ_DIR)/bench_$(BUILD_TYPE)
 BIN_DIR = bin
 EXT_DIR = external
 
@@ -56,7 +57,6 @@ CXX_FLAGS += -Wformat=2 -Wswitch-enum
 CXX_FLAGS += -Wundef -Wvla -Wshadow -Wmissing-noreturn
 CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
 CXX_FLAGS += -D__STDC_FORMAT_MACROS
-#CXX_FLAGS += -DINDECOROUS_STRICT
 
 LD_FLAGS += -lstdc++ -Wl,--gc-sections -lpthread -lrt
 
@@ -64,8 +64,8 @@ TEST_BIN = coro_test_$(BUILD_TYPE)
 BENCH_BIN = coro_bench_$(BUILD_TYPE)
 
 ALL_SOURCES := $(shell find $(SRC_DIR) -name '*.cc' -not -name '\.*')
-SRC_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.o,$(ALL_SOURCES))
-SRC_DEPS := $(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.d,$(ALL_SOURCES))
+SRC_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(CORE_OBJ_DIR)/%.o,$(ALL_SOURCES))
+SRC_DEPS := $(patsubst $(SRC_DIR)/%.cc,$(CORE_OBJ_DIR)/%.d,$(ALL_SOURCES))
 
 ALL_TESTS := $(shell find $(TEST_DIR) -name '*.cc' -not -name '\.*')
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.cc,$(TEST_OBJ_DIR)/%.o,$(ALL_TESTS))
@@ -111,9 +111,9 @@ $(BIN_DIR)/$(BENCH_BIN): $(ALL_BENCH_OBJS) Makefile
 	@mkdir -p $(dir $@)
 	@$(CXX) $(ALL_BENCH_OBJS) $(LD_FLAGS) -o $@
 
-$(OBJ_DIR)/%.d: $(SRC_DIR)/%.cc
+$(CORE_OBJ_DIR)/%.d: $(SRC_DIR)/%.cc
 	@mkdir -p $(dir $@)
-	@$(CXX) $(CXX_FLAGS) -MM -MT '$(patsubst $(SRC_DIR)/%.cc,$(OBJ_DIR)/%.o,$<)' $< -MF $@
+	@$(CXX) $(CXX_FLAGS) -MM -MT '$(patsubst $(SRC_DIR)/%.cc,$(CORE_OBJ_DIR)/%.o,$<)' $< -MF $@
 
 $(TEST_OBJ_DIR)/%.d: $(TEST_DIR)/%.cc
 	@mkdir -p $(dir $@)
@@ -123,7 +123,7 @@ $(BENCH_OBJ_DIR)/%.d: $(BENCH_DIR)/%.cc
 	@mkdir -p $(dir $@)
 	@$(CXX) $(CXX_FLAGS) -MM -MT '$(patsubst $(BENCH_DIR)/%.cc,$(BENCH_OBJ_DIR)/%.o,$<)' $< -MF $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cc $(OBJ_DIR)/%.d Makefile
+$(CORE_OBJ_DIR)/%.o: $(SRC_DIR)/%.cc $(CORE_OBJ_DIR)/%.d Makefile
 	@echo "  $(CXX) $@"
 	@mkdir -p $(dir $@)
 	@$(CXX) $(CXX_FLAGS) -c -o $@ $<

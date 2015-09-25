@@ -1,4 +1,4 @@
-/bin
+/bin/*
 /external/*/*.o
 /external/*/*.a
 /external/udns-0.4/Makefile

@@ -33,9 +33,9 @@
 #       pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
 #    endif
 #elif defined __GNUC__
+#    pragma GCC diagnostic push
 #    pragma GCC diagnostic ignored "-Wvariadic-macros"
 #    pragma GCC diagnostic ignored "-Wunused-variable"
-#    pragma GCC diagnostic push
 #    pragma GCC diagnostic ignored "-Wswitch-default"
 #    pragma GCC diagnostic ignored "-Wswitch-enum"
 #    pragma GCC diagnostic ignored "-Wsuggest-attribute=noreturn"

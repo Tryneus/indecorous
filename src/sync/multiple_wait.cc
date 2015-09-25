@@ -59,9 +59,6 @@ void multiple_waiter_t::ready(wait_result_t result) {
 
 // Called by the interruptor - could be before waiting
 void multiple_waiter_t::wait_done(wait_result_t result) {
-#ifdef INDECOROUS_STRICT
-    GUARANTEE(result != wait_result_t::ObjectLost);
-#endif
     if (!m_ready) {
         if (result == wait_result_t::Success) {
             ready(wait_result_t::Interrupted);
@@ -94,9 +91,6 @@ multiple_wait_callback_t::~multiple_wait_callback_t() {
 }
 
 void multiple_wait_callback_t::wait_done(wait_result_t result) {
-#ifdef INDECOROUS_STRICT
-    GUARANTEE(result != wait_result_t::ObjectLost);
-#endif
     m_waiter->item_finished(result);
 }
 
