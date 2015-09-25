@@ -33,8 +33,8 @@ public:
 private:
     friend class scheduler_t; // To get the initial queue size
     friend class thread_t; // To check empty at the end of a run
-    scoped_fd_t fd;
-    mpsc_queue_t<linkable_buffer_t> message_queue;
+    scoped_fd_t m_fd;
+    mpsc_queue_t<linkable_buffer_t> m_message_queue;
 };
 
 class tcp_stream_t : public stream_t {
@@ -47,7 +47,7 @@ private:
     friend class read_message_t;
     void read_exactly(char *buffer, size_t data);
     void write_exactly(char *buffer, size_t data);
-    int fd;
+    int m_fd;
 };
 
 } // namespace indecorous

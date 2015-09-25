@@ -5,24 +5,29 @@
 
 #include <cstring>
 
+#include "utils.hpp"
+
 namespace indecorous {
 
 const size_t tcp_conn_t::s_read_buffer_size = 65536;
 
 // TODO: this probably isn't safe if someone has a read or write lock (or is acquiring one)
 tcp_conn_t::tcp_conn_t(tcp_conn_t &&other) :
-    m_socket(std::move(other.m_socket)),
-    m_in(std::move(other.m_in)),
-    m_out(std::move(other.m_out)),
-    m_read_mutex(std::move(other.m_read_mutex)),
-    m_write_mutex(std::move(other.m_write_mutex)),
-    m_read_buffer(std::move(other.m_read_buffer)),
-    m_read_buffer_offset(other.m_read_buffer_offset) { }
+        m_socket(std::move(other.m_socket)),
+        m_in(std::move(other.m_in)),
+        m_out(std::move(other.m_out)),
+        m_read_mutex(std::move(other.m_read_mutex)),
+        m_write_mutex(std::move(other.m_write_mutex)),
+        m_read_buffer(std::move(other.m_read_buffer)),
+        m_read_buffer_offset(other.m_read_buffer_offset) { }
 
 tcp_conn_t::tcp_conn_t(scoped_fd_t sock) :
         m_socket(std::move(sock)),
         m_in(file_wait_t::in(m_socket.get())),
         m_out(file_wait_t::out(m_socket.get())),
+        m_read_mutex(),
+        m_write_mutex(),
+        m_read_buffer(),
         m_read_buffer_offset(0) {
     m_read_buffer.reserve(s_read_buffer_size);
 }
@@ -31,6 +36,9 @@ tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, waitable_t *interruptor) :
         m_socket(init_socket(ip_port)),
         m_in(file_wait_t::in(m_socket.get())),
         m_out(file_wait_t::out(m_socket.get())),
+        m_read_mutex(),
+        m_write_mutex(),
+        m_read_buffer(),
         m_read_buffer_offset(0) {
     m_read_buffer.reserve(s_read_buffer_size);
 
@@ -151,7 +159,8 @@ tcp_listener_t::tcp_listener_t(tcp_listener_t &&other) :
 tcp_listener_t::tcp_listener_t(uint16_t _local_port,
                                std::function<void (tcp_conn_t, drainer_lock_t)> on_connect) :
         m_local_port(_local_port),
-        m_socket(init_socket()) {
+        m_socket(init_socket()),
+        m_drainer() {
     coro_t::spawn(&accept_loop,
                   std::move(on_connect), m_socket.get(), m_drainer.lock());
 }

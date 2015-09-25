@@ -12,7 +12,11 @@ namespace indecorous {
 // This constructor copies the statically-initialized set of rpcs
 message_hub_t::message_hub_t() :
     m_self_target(),
-    m_rpcs(register_callback(nullptr)) { }
+    m_local_targets(),
+    m_targets(),
+    m_rpcs(register_callback(nullptr)),
+    m_request_gen(),
+    m_replies() { }
 
 message_hub_t::~message_hub_t() { }
 
@@ -30,7 +34,7 @@ void handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg) {
 }
 
 target_t::request_params_t message_hub_t::new_request() {
-    request_id_t request_id = request_gen.next();
+    request_id_t request_id = m_request_gen.next();
     auto res = m_replies.emplace(request_id, promise_t<read_message_t>());
     assert(res.second);
     return { m_self_target.id(), request_id, res.first->second.get_future() };

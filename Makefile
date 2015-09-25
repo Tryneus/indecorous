@@ -49,7 +49,7 @@ UDNS_LIB = $(UDNS_PATH)/$(UDNS_LIB_FILENAME)
 
 CATCH_PATH = $(EXT_DIR)/catch
 
-CXX_FLAGS += -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -I$(BENCH_DIR) -Wall -Wextra -Werror
+CXX_FLAGS += -std=c++14 -I$(SRC_DIR) -I$(TEST_DIR) -I$(BENCH_DIR) -Wall -Wextra -Werror -Weffc++
 CXX_FLAGS += $(addprefix -I,$(UDNS_PATH) $(CATCH_PATH))
 CXX_FLAGS += -Wnon-virtual-dtor -Wno-deprecated-declarations
 CXX_FLAGS += -Wformat=2 -Wswitch-enum

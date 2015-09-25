@@ -12,7 +12,8 @@ namespace indecorous {
 
 class coro_pool_t {
 public:
-    coro_pool_t(size_t pool_size) : m_semaphore(pool_size) { }
+    coro_pool_t(size_t pool_size) :
+            m_semaphore(pool_size), m_drainer() { }
 
     // The producer should return a value that can be passed into the consumer.  The
     // producer may throw a wait_interrupted_exc_t to indicate the end of the loop.  The

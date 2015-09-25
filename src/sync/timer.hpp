@@ -39,6 +39,8 @@ public:
     virtual void timer_callback(wait_result_t result) = 0;
 protected:
     absolute_time_t m_timeout;
+private:
+    DISABLE_COPYING(timer_callback_t);
 };
 
 class single_timer_t : public waitable_t, private timer_callback_t {
@@ -60,6 +62,8 @@ private:
     bool m_triggered;
     intrusive_list_t<wait_callback_t> m_waiters;
     events_t *m_thread_events;
+
+    DISABLE_COPYING(single_timer_t);
 };
 
 class periodic_timer_t : public waitable_t, private timer_callback_t {
@@ -82,6 +86,8 @@ private:
     int64_t m_period_ms;
     intrusive_list_t<wait_callback_t> m_waiters;
     events_t *m_thread_events;
+
+    DISABLE_COPYING(periodic_timer_t);
 };
 
 }; // namespace indecorous

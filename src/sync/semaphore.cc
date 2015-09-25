@@ -19,7 +19,8 @@ semaphore_acq_t::semaphore_acq_t(semaphore_acq_t &&other) :
 semaphore_acq_t::semaphore_acq_t(size_t count, semaphore_t *parent) :
         m_parent(parent),
         m_owned(0),
-        m_pending(count) {
+        m_pending(count),
+        m_waiters() {
     if (m_parent->m_available >= m_pending) {
         m_parent->m_available -= m_pending;
         m_owned = m_pending;
@@ -109,7 +110,8 @@ semaphore_t::semaphore_t(semaphore_t &&other) :
 }
 
 semaphore_t::semaphore_t(size_t _capacity) :
-    m_capacity(_capacity), m_available(_capacity) { }
+        m_capacity(_capacity), m_available(_capacity),
+        m_acqs(), m_pending() { }
 
 semaphore_t::~semaphore_t() {
     // To discourage use-after-free errors, all acqs should be destroyed first

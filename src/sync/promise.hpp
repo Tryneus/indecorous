@@ -68,6 +68,8 @@ private:
 
     promise_data_t<T> *m_data;
     intrusive_list_t<wait_callback_t> m_waiters;
+
+    DISABLE_COPYING(future_t);
 };
 
 template <>
@@ -94,6 +96,8 @@ private:
 
     promise_data_t<void> *m_data;
     intrusive_list_t<wait_callback_t> m_waiters;
+
+    DISABLE_COPYING(future_t);
 };
 
 template <typename T>
@@ -124,6 +128,8 @@ private:
     friend class promise_chain_void_impl_t;
 
     promise_data_t<T> *m_data;
+
+    DISABLE_COPYING(promise_t);
 };
 
 template <> class promise_t<void> {
@@ -145,6 +151,8 @@ private:
     friend class promise_chain_void_impl_t;
 
     promise_data_t<void> *m_data;
+
+    DISABLE_COPYING(promise_t);
 };
 
 } // namespace indecorous

@@ -109,6 +109,8 @@ private:
 
     alloc_info_t m_alloc;
     linkable_buffer_t *m_buffer;
+
+    DISABLE_COPYING(buffer_owner_t);
 };
 
 } // namespace indecorous

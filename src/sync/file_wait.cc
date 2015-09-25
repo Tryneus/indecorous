@@ -26,6 +26,7 @@ uint32_t file_callback_t::event_mask() const {
 
 file_wait_t::file_wait_t(int _fd, uint32_t _event_mask) :
         file_callback_t(_fd, _event_mask),
+        m_waiters(),
         m_thread_events(thread_t::self()->events()) { }
 
 file_wait_t::file_wait_t(file_wait_t &&other) :

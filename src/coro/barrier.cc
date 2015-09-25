@@ -3,7 +3,9 @@
 namespace indecorous {
 
 thread_barrier_t::thread_barrier_t(size_t total) :
-    m_total(total), m_side(side_t::A), m_count_a(0), m_count_b(0) { }
+    m_total(total), m_side(side_t::A),
+    m_count_a(0), m_count_b(0),
+    m_lock(), m_cond() { }
 
 void thread_barrier_t::wait_internal(size_t *count, size_t *reset,
                                      std::unique_lock<std::mutex> &lock) {

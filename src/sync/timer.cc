@@ -9,7 +9,8 @@ namespace indecorous {
 
 absolute_time_t::absolute_time_t() : sec(0), nsec(0) { }
 
-absolute_time_t::absolute_time_t(int64_t delta_ms) {
+absolute_time_t::absolute_time_t(int64_t delta_ms) :
+        sec(), nsec() {
     struct timespec t;
     GUARANTEE_ERR(clock_gettime(CLOCK_MONOTONIC, &t) == 0);
     sec = t.tv_sec;
@@ -56,7 +57,9 @@ bool absolute_time_t::operator < (const absolute_time_t &other) const {
     return (sec < other.sec) ? true : ((sec == other.sec) ? (nsec < other.nsec) : false);
 }
 
-timer_callback_t::timer_callback_t() { }
+// TODO: timers are incomplete, especially this object
+timer_callback_t::timer_callback_t() :
+    m_timeout() { }
 
 timer_callback_t::timer_callback_t(timer_callback_t &&other) :
     intrusive_node_t<timer_callback_t>(std::move(other)),
@@ -67,18 +70,23 @@ const absolute_time_t &timer_callback_t::timeout() const {
 }
 
 single_timer_t::single_timer_t() :
-    m_thread_events(thread_t::self()->events()) { }
+        m_triggered(false),
+        m_waiters(),
+        m_thread_events(thread_t::self()->events()) { }
 
 single_timer_t::single_timer_t(int64_t timeout_ms) :
+        m_triggered(false),
+        m_waiters(),
         m_thread_events(thread_t::self()->events()) {
     start(timeout_ms);
 }
 
 single_timer_t::single_timer_t(single_timer_t &&other) :
         timer_callback_t(std::move(other)),
-        m_triggered(false),
+        m_triggered(std::move(other.m_triggered)),
         m_waiters(std::move(other.m_waiters)),
         m_thread_events(other.m_thread_events) {
+    other.m_triggered = false;
     other.m_thread_events = nullptr;
     m_waiters.each([this] (auto cb) { cb->object_moved(this); });
 }
@@ -128,20 +136,23 @@ void single_timer_t::timer_callback(wait_result_t result) {
 }
 
 periodic_timer_t::periodic_timer_t() :
-    m_period_ms(-1),
-    m_thread_events(thread_t::self()->events()) { }
+        m_period_ms(-1),
+        m_waiters(),
+        m_thread_events(thread_t::self()->events()) { }
 
 periodic_timer_t::periodic_timer_t(int64_t period_ms) :
         m_period_ms(-1),
+        m_waiters(),
         m_thread_events(thread_t::self()->events()) {
     start(period_ms);
 }
 
 periodic_timer_t::periodic_timer_t(periodic_timer_t &&other) :
         timer_callback_t(std::move(other)),
-        m_period_ms(other.m_period_ms),
+        m_period_ms(std::move(other.m_period_ms)),
         m_waiters(std::move(other.m_waiters)),
-        m_thread_events(other.m_thread_events) {
+        m_thread_events(std::move(other.m_thread_events)) {
+    other.m_period_ms = 0;
     other.m_thread_events = nullptr;
     m_waiters.each([this] (auto w) { w->object_moved(this); });
 }

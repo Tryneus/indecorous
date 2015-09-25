@@ -34,6 +34,8 @@ private:
     dispatcher_t *m_dispatch;
     size_t m_extant;
     intrusive_list_t<coro_t> m_cache;
+
+    DISABLE_COPYING(coro_cache_t);
 };
 
 // Not thread-safe, exactly one dispatcher_t per thread
@@ -42,10 +44,6 @@ class dispatcher_t
 public:
     dispatcher_t();
     ~dispatcher_t();
-
-    // Used by synchronization primitives with callbacks to fail an assert if the callback attempts
-    // to swap coroutines
-    bool m_swap_permitted;
 
     // Returns the delta in active local coroutines
     int64_t run();
@@ -57,6 +55,10 @@ public:
     void note_accepted_task();
 
     void enqueue_release(coro_t *coro);
+
+    // Used by synchronization primitives with callbacks to fail an assert if the callback attempts
+    // to swap coroutines
+    bool m_swap_permitted;
 
     coro_cache_t m_coro_cache; // arena used to cache coro allocations
     intrusive_list_t<coro_t> m_run_queue; // queue of contexts to run
@@ -73,6 +75,8 @@ public:
 private:
     coro_t *m_rpc_consumer;
     int64_t m_coro_delta;
+
+    DISABLE_COPYING(dispatcher_t);
 };
 
 class coro_t : public intrusive_node_t<coro_t> {
@@ -192,6 +196,8 @@ private:
         void wait_done(wait_result_t result);
         void object_moved(waitable_t *new_ptr);
         coro_t *m_parent;
+
+        DISABLE_COPYING(coro_wait_callback_t);
     };
 
     static const size_t s_page_size;
@@ -203,6 +209,8 @@ private:
     int m_valgrind_stack_id;
     coro_wait_callback_t m_wait_callback;
     wait_result_t m_wait_result;
+
+    DISABLE_COPYING(coro_t);
 };
 
 // Specialization for void-returning functions

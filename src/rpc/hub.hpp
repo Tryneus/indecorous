@@ -79,7 +79,7 @@ private:
     std::unordered_map<target_id_t, target_t *> m_targets;
     std::unordered_map<rpc_id_t, rpc_callback_t *> m_rpcs;
 
-    id_generator_t<request_id_t> request_gen;
+    id_generator_t<request_id_t> m_request_gen;
     std::unordered_map<request_id_t, promise_t<read_message_t> > m_replies;
 };
 

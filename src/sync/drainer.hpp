@@ -13,6 +13,7 @@ class drainer_lock_t : public waitable_t, public intrusive_node_t<drainer_lock_t
 public:
     drainer_lock_t(drainer_lock_t &&other);
     drainer_lock_t(const drainer_lock_t &other);
+    drainer_lock_t &operator = (const drainer_lock_t &other);
     ~drainer_lock_t();
 
     bool draining() const;
@@ -50,6 +51,8 @@ private:
 
     // Waiters waiting for the drainer to finish draining (in the destructor)
     wait_callback_t *m_finish_drain_waiter;
+
+    DISABLE_COPYING(drainer_t);
 };
 
 } // namespace indecorous

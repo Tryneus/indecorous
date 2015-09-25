@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "common.hpp"
 #include "sync/wait_object.hpp"
 
 namespace indecorous {
@@ -32,6 +33,8 @@ private:
     bool m_waiting;
     size_t m_needed;
     wait_result_t m_error_result;
+
+    DISABLE_COPYING(multiple_waiter_t);
 };
 
 class multiple_wait_callback_t : private wait_callback_t {
@@ -49,6 +52,8 @@ private:
 
     waitable_t *m_obj;
     multiple_waiter_t *m_waiter;
+
+    DISABLE_COPYING(multiple_wait_callback_t);
 };
 
 // TODO: consider making interruptors a coro-level RAII type? - probably not worthwhile

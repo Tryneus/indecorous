@@ -5,7 +5,8 @@
 namespace indecorous {
 
 mutex_t::mutex_t() :
-    m_lock(nullptr) { }
+    m_lock(nullptr),
+    m_pending_locks() { }
 
 mutex_t::mutex_t(mutex_t &&other) :
         m_lock(other.m_lock),

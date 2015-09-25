@@ -7,6 +7,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "common.hpp"
+
 namespace indecorous {
 
 // TODO: add strong asserts to all this stuff
@@ -43,6 +45,8 @@ public:
 private:
     intrusive_node_t* m_next;
     intrusive_node_t* m_prev;
+
+    DISABLE_COPYING(intrusive_node_t);
 };
 
 template <typename T>
@@ -169,6 +173,8 @@ private:
     }
 
     size_t m_size;
+
+    DISABLE_COPYING(intrusive_list_t);
 };
 
 // This is a singly-linked list and does not use 'prev'
@@ -251,6 +257,8 @@ private:
 
     intrusive_node_t<T> *m_front;
     std::atomic<intptr_t> m_back; // intrusive_node_t<T> *
+
+    DISABLE_COPYING(mpsc_queue_t);
 };
 
 } // namespace indecorous

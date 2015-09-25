@@ -21,6 +21,8 @@ public:
 private:
     int m_fd;
     uint32_t m_event_mask;
+
+    DISABLE_COPYING(file_callback_t);
 };
 
 class file_wait_t : public waitable_t, private file_callback_t {
@@ -44,6 +46,8 @@ private:
 
     intrusive_list_t<wait_callback_t> m_waiters;
     events_t *m_thread_events;
+
+    DISABLE_COPYING(file_wait_t);
 };
 
 } // namespace indecorous

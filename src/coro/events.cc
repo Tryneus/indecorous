@@ -8,14 +8,20 @@
 
 namespace indecorous {
 
-events_t::file_info_t::file_info_t() : last_used_events(0) { }
+events_t::file_info_t::file_info_t() :
+        m_callbacks(), m_last_used_events(0) { }
 
 events_t::file_info_t::file_info_t(file_info_t &&other) :
-        callbacks(std::move(other.callbacks)), last_used_events(other.last_used_events) {
-    other.last_used_events = 0;
+        m_callbacks(std::move(other.m_callbacks)),
+        m_last_used_events(other.m_last_used_events) {
+    other.m_last_used_events = 0;
 }
 
-events_t::events_t() : m_epoll_set(::epoll_create1(EPOLL_CLOEXEC)) {
+events_t::events_t() :
+        m_timer_list(),
+        m_epoll_changes(),
+        m_file_map(),
+        m_epoll_set(::epoll_create1(EPOLL_CLOEXEC)) {
     assert(m_epoll_set.valid());
 }
 
@@ -49,14 +55,14 @@ void events_t::add_file_wait(file_callback_t *cb) {
         assert(res.second);
         it = res.first;
     }
-    it->second.callbacks.push_back(cb);
+    it->second.m_callbacks.push_back(cb);
     m_epoll_changes.insert(cb->fd());
 }
 
 void events_t::remove_file_wait(file_callback_t *cb) {
     auto it = m_file_map.find(cb->fd());
     assert(it != m_file_map.end());
-    it->second.callbacks.remove(cb);
+    it->second.m_callbacks.remove(cb);
     m_epoll_changes.insert(cb->fd());
 }
 
@@ -94,23 +100,23 @@ void events_t::update_epoll() {
 
         event.events = 0;
         event.data.fd = fd;
-        file_callback_t *cb = it->second.callbacks.front();
+        file_callback_t *cb = it->second.m_callbacks.front();
         while (cb != nullptr) {
             event.events |= cb->event_mask();
             assert(cb->event_mask() != 0);
-            cb = it->second.callbacks.next(cb);
+            cb = it->second.m_callbacks.next(cb);
         }
 
         if (event.events == 0) {
-            assert(it->second.callbacks.empty());
+            assert(it->second.m_callbacks.empty());
             m_file_map.erase(it);
 
             // If the fd was closed, it may have been automatically removed from the set
             int res = ::epoll_ctl(m_epoll_set.get(), EPOLL_CTL_DEL, fd, &event);
             GUARANTEE_ERR(res == 0 || errno == EBADF);
         } else {
-            int task = it->second.last_used_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
-            it->second.last_used_events = event.events;
+            int task = it->second.m_last_used_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+            it->second.m_last_used_events = event.events;
             GUARANTEE_ERR(::epoll_ctl(m_epoll_set.get(), task, fd, &event) == 0);
         }
     }
@@ -136,7 +142,7 @@ void events_t::do_epoll_wait(int timeout) {
         auto it = m_file_map.find(fd);
         assert(it != m_file_map.end());
 
-        intrusive_list_t<file_callback_t> *cbs = &it->second.callbacks;
+        intrusive_list_t<file_callback_t> *cbs = &it->second.m_callbacks;
         file_callback_t *cursor = cbs->front();
 
         while (cursor != nullptr) {

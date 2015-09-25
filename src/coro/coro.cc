@@ -34,7 +34,8 @@ coro_cache_t::coro_cache_t(size_t max_cache_size,
                            dispatcher_t *dispatch) :
     m_max_cache_size(max_cache_size),
     m_dispatch(dispatch),
-    m_extant(0) { }
+    m_extant(0),
+    m_cache() { }
 
 coro_cache_t::~coro_cache_t() {
     m_extant -= m_cache.size();
@@ -128,9 +129,12 @@ void coro_pull() {
 dispatcher_t::dispatcher_t() :
         m_swap_permitted(true),
         m_coro_cache(32, this),
+        m_run_queue(),
         m_running(nullptr),
         m_release(nullptr),
         m_swap_count(0),
+        m_close_event(),
+        m_main_context(),
         m_rpc_consumer(m_coro_cache.get()),
         m_coro_delta(0) {
     // Save the currently running context
@@ -199,6 +203,9 @@ void dispatcher_t::enqueue_release(coro_t *coro) {
 
 coro_t::coro_t(dispatcher_t *dispatch) :
         m_dispatch(dispatch),
+        m_context(),
+        m_stack(nullptr),
+        m_valgrind_stack_id(-1),
         m_wait_callback(this),
         m_wait_result(wait_result_t::Success) {
     m_stack = (char *)mmap(nullptr, s_stack_size,

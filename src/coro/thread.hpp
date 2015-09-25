@@ -38,8 +38,6 @@ public:
     void join();
 
 private:
-    friend class shutdown_t; // For updating the stop event and stop flag
-
     void main();
 
     size_t m_id;
@@ -50,6 +48,7 @@ private:
 
     std::thread m_thread;
 
+    friend class shutdown_t; // For updating the stop event and stop flag
     event_t m_stop_event;
     bool m_stop_immediately;
 
@@ -58,6 +57,8 @@ private:
     dispatcher_t m_dispatch;
 
     thread_local static thread_t *s_instance;
+
+    DISABLE_COPYING(thread_t);
 };
 
 } // namespace indecorous

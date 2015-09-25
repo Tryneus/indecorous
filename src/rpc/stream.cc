@@ -13,34 +13,35 @@ namespace indecorous {
 stream_t::~stream_t() { }
 
 local_stream_t::local_stream_t() :
-        fd(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)) {
-    assert(fd.valid());
+        m_fd(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)),
+        m_message_queue() {
+    assert(m_fd.valid());
 }
 
 void local_stream_t::write(write_message_t &&msg) {
-    message_queue.push(std::move(msg).release().release());
+    m_message_queue.push(std::move(msg).release().release());
 
     // TODO: would be nice to batch these, reduce system call overhead
     // don't want to increase latency, though =(
     uint64_t value = 1;
-    GUARANTEE_ERR(::write(fd.get(), &value, sizeof(value)) == sizeof(value));
+    GUARANTEE_ERR(::write(m_fd.get(), &value, sizeof(value)) == sizeof(value));
 }
 
 void local_stream_t::wait(waitable_t *interruptor) {
     // TODO: this involves a TLS-lookup, but it's only used from a place that
     // already has the TLS value.
-    file_wait_t in = file_wait_t::in(fd.get());
+    file_wait_t in = file_wait_t::in(m_fd.get());
     wait_any_interruptible(interruptor, &in);
 
     // Clear the eventfd now - this may result in a spurious wakeup later, but
     // better than missing a message.
     uint64_t value;
-    GUARANTEE_ERR(::read(fd.get(), &value, sizeof(value)) == sizeof(value));
+    GUARANTEE_ERR(::read(m_fd.get(), &value, sizeof(value)) == sizeof(value));
     assert(value > 0);
 }
 
 read_message_t local_stream_t::read() {
-    buffer_owner_t buffer = buffer_owner_t::from_heap(message_queue.pop());
+    buffer_owner_t buffer = buffer_owner_t::from_heap(m_message_queue.pop());
 
     if (buffer.has()) {
         return read_message_t::parse(std::move(buffer));
@@ -49,7 +50,7 @@ read_message_t local_stream_t::read() {
     return read_message_t::empty();
 }
 
-tcp_stream_t::tcp_stream_t(int _fd) : fd(_fd) { }
+tcp_stream_t::tcp_stream_t(int fd) : m_fd(fd) { }
 
 read_message_t tcp_stream_t::read() {
     return read_message_t::parse(this);

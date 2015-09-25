@@ -25,7 +25,8 @@ void timespec_subtract(struct timespec *x,
 
 bench_timer_t::bench_timer_t(std::string test_name, size_t count) :
         m_test_name(std::move(test_name)),
-        m_count(count) {
+        m_count(count),
+        m_start_time() {
     int res = clock_gettime(CLOCK_MONOTONIC, &m_start_time);
     GUARANTEE(res == 0);
 }

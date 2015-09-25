@@ -18,6 +18,8 @@ private:
 
     mutex_t *m_parent;
     wait_callback_t *m_coro_cb;
+
+    DISABLE_COPYING(mutex_lock_t);
 };
 
 // The mutex is not publicly implemented as a waitable_t so you cannot
@@ -35,6 +37,8 @@ private:
     friend class mutex_lock_t;
     mutex_lock_t *m_lock;
     intrusive_list_t<mutex_lock_t> m_pending_locks;
+
+    DISABLE_COPYING(mutex_t);
 };
 
 } // namespace indecorous

@@ -22,7 +22,7 @@ void random_t::fill_internal(void *buffer, size_t length, gen_t *generator) {
     }
 }
 
-true_random_t::true_random_t() { }
+true_random_t::true_random_t() : dev() { }
 
 void true_random_t::fill(void *buffer, size_t length) {
     fill_internal(buffer, length, this);
@@ -32,7 +32,7 @@ true_random_t::val_t true_random_t::next() {
     return dev();
 }
 
-pseudo_random_t::pseudo_random_t() {
+pseudo_random_t::pseudo_random_t() : dev() {
     true_random_t r;
     dev.seed(r.generate<val_t>());
 }

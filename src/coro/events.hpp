@@ -39,11 +39,14 @@ private:
     std::unordered_set<int> m_epoll_changes;
 
     struct file_info_t {
+    public:
         file_info_t();
         file_info_t(file_info_t &&other);
 
-        intrusive_list_t<file_callback_t> callbacks;
-        uint32_t last_used_events;
+        intrusive_list_t<file_callback_t> m_callbacks;
+        uint32_t m_last_used_events;
+    private:
+        DISABLE_COPYING(file_info_t);
     };
     std::unordered_map<int, file_info_t> m_file_map;
 

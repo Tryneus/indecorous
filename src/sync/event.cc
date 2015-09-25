@@ -12,7 +12,9 @@ event_t::event_t(event_t &&other) :
 }
 
 // TODO: consider adding auto-reset and/or wake-one modes or separate class(es)
-event_t::event_t() : m_triggered(false) { }
+event_t::event_t() :
+        m_triggered(false),
+        m_waiters() { }
 
 event_t::~event_t() {
     m_waiters.clear([] (auto cb) { cb->wait_done(wait_result_t::ObjectLost); });

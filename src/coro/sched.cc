@@ -8,6 +8,7 @@
 #include "coro/coro.hpp"
 #include "coro/shutdown.hpp"
 #include "coro/thread.hpp"
+#include "utils.hpp"
 
 namespace indecorous {
 
@@ -15,7 +16,8 @@ scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
         m_shutdown_policy(policy),
         m_shutdown(num_threads),
         m_close_flag(false),
-        m_barrier(num_threads + 1) {
+        m_barrier(num_threads + 1),
+        m_threads() {
     assert(num_threads > 0);
 
     // Block signals on child threads (this will be inherited)
@@ -59,7 +61,11 @@ std::list<thread_t> &scheduler_t::threads() {
 
 class scoped_sigaction_t {
 public:
-    scoped_sigaction_t() {
+    scoped_sigaction_t() :
+            m_old_sigint(),
+            m_old_sigterm(),
+            m_old_sigpipe(),
+            m_semaphore() {
         s_instance = this;
 
         struct sigaction sigact;
@@ -109,7 +115,7 @@ void scheduler_t::run() {
     // Count the number of initial calls into the threads
     m_shutdown.reset(std::accumulate(m_threads.begin(), m_threads.end(), size_t(0),
         [] (size_t res, thread_t &t) -> size_t {
-            return res + t.hub()->self_target()->m_stream.message_queue.size();
+            return res + t.hub()->self_target()->m_stream.m_message_queue.size();
         }));
 
     switch (m_shutdown_policy) {

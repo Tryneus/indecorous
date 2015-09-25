@@ -10,7 +10,9 @@
 #include <cstdint>
 #include <inttypes.h>
 
-#include "sync/multiple_wait.hpp"
+#define DISABLE_COPYING(T) \
+    T(const T &) = delete; \
+    T &operator = (const T &) = delete
 
 // TODO: make sure these aren't exposed to users
 #ifdef NDEBUG
@@ -40,29 +42,7 @@
 #define debugf(format, ...) printf("Thread %" PRIi32 " - " format "\n", indecorous::thread_self_id(), ##__VA_ARGS__)
 
 namespace indecorous {
-
-int32_t thread_self_id();
-
-template <typename Callable>
-auto eintr_wrap(Callable &&c) {
-    while (true) {
-        auto res = c();
-        if (res != -1) { return res; }
-        GUARANTEE_ERR(errno == EINTR);
-    }
+    int32_t thread_self_id();
 }
-
-// Same as above, except it handles EAGAIN by waiting on the specified wait object
-template <typename Callable>
-auto eintr_wrap(Callable &&c, waitable_t *w, waitable_t *interruptor) {
-    while (true) {
-        auto res = c();
-        if (res != -1) { return res; }
-        GUARANTEE_ERR(errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK);
-        wait_all_interruptible(interruptor, w);
-    }
-}
-
-} // namespace indecorous
 
 #endif // COMMON_HPP_

@@ -10,7 +10,9 @@ future_t<void>::future_t(future_t<void> &&other) :
     other.m_data = nullptr;
 }
 
-future_t<void>::future_t(promise_data_t<void> *data) : m_data(data) { }
+future_t<void>::future_t(promise_data_t<void> *data) :
+        m_data(data),
+        m_waiters() { }
 
 future_t<void>::~future_t() {
     if (m_data != nullptr && m_data->remove_future(this)) {
@@ -41,7 +43,11 @@ void future_t<void>::notify(wait_result_t result) {
     m_waiters.clear([result] (auto cb) { cb->wait_done(result); });
 }
 
-promise_data_t<void>::promise_data_t() : m_fulfilled(false), m_abandoned(false) { }
+promise_data_t<void>::promise_data_t() :
+        m_fulfilled(false),
+        m_abandoned(false),
+        m_futures(),
+        m_chain() { }
 
 promise_data_t<void>::~promise_data_t() {
     m_chain.clear([] (auto p) { delete p; });

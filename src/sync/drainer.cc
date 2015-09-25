@@ -56,7 +56,10 @@ drainer_t::drainer_t(drainer_t &&other) :
     m_start_drain_waiters.each([this] (auto w) { w->object_moved(this); });
 }
 
-drainer_t::drainer_t() : m_finish_drain_waiter(nullptr) { }
+drainer_t::drainer_t() :
+        m_locks(),
+        m_start_drain_waiters(),
+        m_finish_drain_waiter(nullptr) { }
 
 drainer_t::~drainer_t() {
     assert(m_finish_drain_waiter == nullptr);

@@ -251,7 +251,9 @@ future_t<Reduced> future_t<void>::then(Callable cb) {
 }
 
 template <typename T>
-future_t<T>::future_t(promise_data_t<T> *data) : m_data(data) { }
+future_t<T>::future_t(promise_data_t<T> *data) :
+    m_data(data),
+    m_waiters() { }
 
 template <typename T>
 void future_t<T>::add_wait(wait_callback_t *cb) {
@@ -279,7 +281,10 @@ void future_t<T>::notify(wait_result_t result) {
 template <typename T>
 promise_data_t<T>::promise_data_t() :
     m_state(state_t::unfulfilled),
-    m_abandoned(false) { }
+    m_abandoned(false),
+    m_futures(),
+    m_ref_chain(),
+    m_move_chain() { }
 
 template <typename T>
 promise_data_t<T>::~promise_data_t() {
@@ -405,7 +410,8 @@ bool promise_data_t<T>::abandon() {
 }
 
 template <typename T>
-promise_t<T>::promise_t() : m_data(new promise_data_t<T>()) { }
+promise_t<T>::promise_t() : 
+    m_data(new promise_data_t<T>()) { }
 
 template <typename T>
 promise_t<T>::promise_t(promise_t &&other) : m_data(other.m_data) {
@@ -508,7 +514,8 @@ struct chain_fulfillment_move_t<T, Callable, future_t<Reduced>, Reduced> {
 template <typename T, typename Callable, typename Res, typename Reduced>
 class promise_chain_ref_impl_t : public promise_data_t<T>::promise_chain_ref_t {
 public:
-    promise_chain_ref_impl_t(Callable cb) : m_callback(std::move(cb)) { }
+    promise_chain_ref_impl_t(Callable cb) :
+        m_callback(std::move(cb)), m_promise() { }
     void handle(const T &value) {
         chain_fulfillment_ref_t<T, Callable, Res, Reduced>::run(m_callback, value, &m_promise);
     }
@@ -521,7 +528,8 @@ private:
 template <typename T, typename Callable, typename Res, typename Reduced>
 class promise_chain_move_impl_t : public promise_data_t<T>::promise_chain_move_t {
 public:
-    promise_chain_move_impl_t(Callable cb) : m_callback(std::move(cb)) { }
+    promise_chain_move_impl_t(Callable cb) :
+        m_callback(std::move(cb)), m_promise() { }
     void handle(T &&value) {
         chain_fulfillment_move_t<T, Callable, Res, Reduced>::run(m_callback, std::move(value), &m_promise);
     }
@@ -535,7 +543,8 @@ private:
 template <typename Callable, typename Res, typename Reduced>
 class promise_chain_void_impl_t : public promise_data_t<void>::promise_chain_t {
 public:
-    promise_chain_void_impl_t(Callable cb) : m_callback(std::move(cb)) { }
+    promise_chain_void_impl_t(Callable cb) :
+        m_callback(std::move(cb)), m_promise() { }
     void handle() { m_promise.fulfill(m_callback()); }
     future_t<Reduced> get_future() { return m_promise.get_future(); }
 private:
@@ -548,7 +557,8 @@ template <typename Callable>
 class promise_chain_void_impl_t<Callable, void, void> :
         public promise_data_t<void>::promise_chain_t {
 public:
-    promise_chain_void_impl_t(Callable cb) : m_callback(std::move(cb)) { }
+    promise_chain_void_impl_t(Callable cb) :
+        m_callback(std::move(cb)), m_promise() { }
     void handle() { m_callback(); m_promise.fulfill(); }
     future_t<void> get_future() { return m_promise.get_future(); }
 private:
@@ -561,7 +571,8 @@ template <typename Callable, typename Reduced>
 class promise_chain_void_impl_t<Callable, future_t<Reduced>, Reduced> :
         public promise_data_t<void>::promise_chain_t {
 public:
-    promise_chain_void_impl_t(Callable cb) : m_callback(std::move(cb)) { }
+    promise_chain_void_impl_t(Callable cb) :
+        m_callback(std::move(cb)), m_dummy_promise() { }
     void handle() {
         future_t<Reduced> real_future = m_callback();
         m_dummy_promise.m_data->reassign_futures(&real_future);

@@ -41,6 +41,7 @@
 #    pragma GCC diagnostic ignored "-Wsuggest-attribute=noreturn"
 #    pragma GCC diagnostic ignored "-Wshadow"
 #    pragma GCC diagnostic ignored "-Wpadded"
+#    pragma GCC diagnostic ignored "-Weffc++"
 #endif
 
 #if defined(CATCH_CONFIG_MAIN) || defined(CATCH_CONFIG_RUNNER)

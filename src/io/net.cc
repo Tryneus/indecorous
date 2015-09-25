@@ -5,6 +5,7 @@
 #include "rpc/message.hpp"
 #include "sync/drainer.hpp"
 #include "sync/file_wait.hpp"
+#include "sync/multiple_wait.hpp"
 #include "sync/mutex.hpp"
 #include "sync/timer.hpp"
 
@@ -38,14 +39,22 @@ void udns_init() {
 }
 
 class udns_ctx_t {
+private:
     enum class result_t { Pending, Error, Success };
-    struct resolve_data_t {
+    class resolve_data_t {
+    public:
+        resolve_data_t() : addrs(), result(result_t::Pending) { }
+
         std::vector<ip_address_t> addrs;
         result_t result;
+    private:
+        DISABLE_COPYING(resolve_data_t);
     };
 public:
     udns_ctx_t() :
-            m_ctx(dns_new(nullptr)) {
+            m_ctx(dns_new(nullptr)),
+            m_mutex(),
+            m_drainer() {
         dns_open(m_ctx);
         assert(dns_sock(m_ctx) != -1);
     }
@@ -58,7 +67,6 @@ public:
     std::vector<ip_address_t> resolve(const std::string &host) {
         drainer_lock_t drain = m_drainer.lock();
         resolve_data_t data;
-        data.result = result_t::Pending;
         GUARANTEE(dns_submit_a6(m_ctx, host.c_str(), 0,
                                 &udns_ctx_t::resolve_callback_ipv6, &data) != nullptr);
 
@@ -132,6 +140,8 @@ private:
     dns_ctx *m_ctx;
     mutex_t m_mutex;
     drainer_t m_drainer;
+
+    DISABLE_COPYING(udns_ctx_t);
 };
 
 std::vector<ip_address_t> resolve_hostname(const std::string &host) {

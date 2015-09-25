@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "common.hpp"
+#include "utils.hpp"
 
 namespace indecorous {
 
@@ -31,6 +32,8 @@ public:
 private:
     static const fd_t s_invalid_fd = -1;
     fd_t m_fd;
+
+    DISABLE_COPYING(scoped_fd_t);
 };
 
 } // namespace indecorous
