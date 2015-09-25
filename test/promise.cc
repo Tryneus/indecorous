@@ -375,39 +375,24 @@ private:
     uint64_t m_value;
 };
 
-struct promise_test_t {
-    DECLARE_STATIC_RPC(non_movable)() -> void;
-    DECLARE_STATIC_RPC(non_copyable)() -> void;
-    DECLARE_STATIC_RPC(movable_copyable)() -> void;
-    DECLARE_STATIC_RPC(common)() -> void;
-};
-
-IMPL_STATIC_RPC(promise_test_t::non_movable)() -> void {
+SIMPLE_TEST(promise, non_movable, 1, "[sync][promise]") {
     test_void_promise();
     test_nested_promise();
     test_copy_promise<non_movable_t>();
 }
 
-IMPL_STATIC_RPC(promise_test_t::non_copyable)() -> void {
+SIMPLE_TEST(promise, non_copyable, 1, "[sync][promise]") {
     test_move_promise<non_copyable_t>();
-};
+}
 
-IMPL_STATIC_RPC(promise_test_t::movable_copyable)() -> void {
+SIMPLE_TEST(promise, movable_copyable, 1, "[sync][promise]") {
     test_copy_promise<movable_copyable_t>();
     test_move_promise<movable_copyable_t>();
 }
 
-IMPL_STATIC_RPC(promise_test_t::common)() -> void {
+SIMPLE_TEST(promise, common, 1, "[sync][promise]") {
     test_void_promise();
     test_nested_promise();
     test_callable_promise();
 }
 
-TEST_CASE("promise", "[sync][promise]") {
-    scheduler_t sched(1, shutdown_policy_t::Eager);
-    sched.broadcast_local<promise_test_t::common>();
-    sched.broadcast_local<promise_test_t::non_movable>();
-    sched.broadcast_local<promise_test_t::non_copyable>();
-    sched.broadcast_local<promise_test_t::movable_copyable>();
-    sched.run();
-}
