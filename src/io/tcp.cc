@@ -32,7 +32,7 @@ tcp_conn_t::tcp_conn_t(scoped_fd_t sock) :
     m_read_buffer.reserve(s_read_buffer_size);
 }
 
-tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, waitable_t *interruptor) :
+tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port) :
         m_socket(init_socket(ip_port)),
         m_in(file_wait_t::in(m_socket.get())),
         m_out(file_wait_t::out(m_socket.get())),
@@ -43,7 +43,7 @@ tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, waitable_t *interruptor) :
     m_read_buffer.reserve(s_read_buffer_size);
 
     // Wait for the socket to become writable and check the result
-    wait_all_interruptible(interruptor, m_out);
+    m_out.wait();
 
     int err;
     socklen_t err_size = sizeof(err);
@@ -51,7 +51,7 @@ tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port, waitable_t *interruptor) :
     assert(err == 0); // TODO: exception
 }
 
-void tcp_conn_t::read(void *buffer, size_t count, waitable_t *interruptor) {
+void tcp_conn_t::read(void *buffer, size_t count) {
     char *buf = reinterpret_cast<char *>(buffer);
     auto lock = m_read_mutex.lock();
 
@@ -68,17 +68,17 @@ void tcp_conn_t::read(void *buffer, size_t count, waitable_t *interruptor) {
             if (count > s_read_buffer_size / 2) {
                 ssize_t res = eintr_wrap([&] {
                         return ::read(m_socket.get(), buf, count);
-                    }, &m_in, interruptor);
+                    }, &m_in);
                 count -= res;
                 buf += res;
             } else {
-                read_into_buffer(interruptor);
+                read_into_buffer();
             }
         }
     }
 }
 
-size_t tcp_conn_t::read_until(char delim, void *buffer, size_t count, waitable_t *interruptor) {
+size_t tcp_conn_t::read_until(char delim, void *buffer, size_t count) {
     char *buf = reinterpret_cast<char *>(buffer);
     auto lock = m_read_mutex.lock();
     size_t original_count = count;
@@ -91,19 +91,19 @@ size_t tcp_conn_t::read_until(char delim, void *buffer, size_t count, waitable_t
             *buf++ = m_read_buffer[m_read_buffer_offset++];
             if (*(buf - 1) == delim) { return original_count - count; }
         }
-        read_into_buffer(interruptor);
+        read_into_buffer();
     }
     return original_count;
 }
 
-void tcp_conn_t::write(void *buffer, size_t count, waitable_t *interruptor) {
+void tcp_conn_t::write(void *buffer, size_t count) {
     char *buf = reinterpret_cast<char *>(buffer);
     auto lock = m_write_mutex.lock();
 
     while (count > 0) {
         ssize_t res = eintr_wrap([&] {
                 return ::write(m_socket.get(), buf, count);
-            }, &m_out, interruptor);
+            }, &m_out);
         count -= res;
         buf += res;
     }
@@ -120,7 +120,7 @@ scoped_fd_t tcp_conn_t::init_socket(const ip_and_port_t &ip_port) {
     return sock;
 }
 
-void tcp_conn_t::read_into_buffer(waitable_t *interruptor) {
+void tcp_conn_t::read_into_buffer() {
     assert(m_read_buffer_offset == m_read_buffer.size());
     ssize_t res = 0;
     m_read_buffer_offset = 0;
@@ -129,21 +129,24 @@ void tcp_conn_t::read_into_buffer(waitable_t *interruptor) {
     while (res == 0) {
         res = eintr_wrap([&] {
                 return ::read(m_socket.get(), &m_read_buffer[0], s_read_buffer_size);
-            }, &m_in, interruptor);
+            }, &m_in);
     }
     m_read_buffer.resize(res);
 }
 
 static void accept_loop(std::function<void (tcp_conn_t, drainer_lock_t)> on_connect,
                         fd_t sock, drainer_lock_t drain) {
+    interruptor_t socket_closed(&drain);
     try {
         file_wait_t in = file_wait_t::in(sock);
         while (true) {
+            in.wait();
+
             sockaddr_in6 sa;
             socklen_t sa_len = sizeof(sa);
-            wait_any_interruptible(drain, in);
             scoped_fd_t new_sock(::accept(sock, (sockaddr *)&sa, &sa_len));
             GUARANTEE_ERR(new_sock.valid());
+
             coro_t::spawn(on_connect, tcp_conn_t(std::move(new_sock)), drain);
         }
     } catch (const wait_interrupted_exc_t &ex) {

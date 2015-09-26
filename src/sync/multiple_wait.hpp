@@ -9,13 +9,14 @@
 namespace indecorous {
 
 class coro_t;
+class interruptor_t;
 
 // Be careful to avoid deadlock when using wait_all with semaphores
 
 class multiple_waiter_t final : private wait_callback_t {
 public:
     enum class wait_type_t { ANY, ALL };
-    multiple_waiter_t(wait_type_t type, size_t total, waitable_t *interruptor);
+    multiple_waiter_t(wait_type_t type, size_t total);
     ~multiple_waiter_t();
 
     void wait();
@@ -57,13 +58,11 @@ private:
     DISABLE_COPYING(multiple_wait_callback_t);
 };
 
-// TODO: consider making interruptors a coro-level RAII type? - probably not worthwhile
-
 template <multiple_waiter_t::wait_type_t Type, typename Container>
-void wait_generic_it(waitable_t *interruptor, Container &c) {
-    multiple_waiter_t waiter(Type, c.size(), interruptor);
+void wait_generic_it(Container &c) {
+    multiple_waiter_t waiter(Type, c.size());
     std::vector<multiple_wait_callback_t> waits;
-    waits.reserve(c.size() + 1);
+    waits.reserve(c.size());
     for (auto &&item : c) {
         waits.emplace_back(item, &waiter);
     }
@@ -72,37 +71,17 @@ void wait_generic_it(waitable_t *interruptor, Container &c) {
 
 template <typename Container>
 void wait_any_it(Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(nullptr, c);
-}
-
-template <typename Container>
-void wait_any_it_interruptible(waitable_t *interruptor, Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(interruptor, c);
-}
-
-template <typename Container>
-void wait_any_it_interruptible(waitable_t &interruptor, Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(interruptor, c);
+    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(c);
 }
 
 template <typename Container>
 void wait_all_it(Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(nullptr, c);
-}
-
-template <typename Container>
-void wait_all_it_interruptible(waitable_t *interruptor, Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(interruptor, c);
-}
-
-template <typename Container>
-void wait_all_it_interruptible(waitable_t &interruptor, Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(interruptor, c);
+    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(c);
 }
 
 template <multiple_waiter_t::wait_type_t Type, typename... Args>
-void wait_generic(waitable_t *interruptor, Args &&...args) {
-    multiple_waiter_t waiter(Type, sizeof...(Args), interruptor);
+void wait_generic(Args &&...args) {
+    multiple_waiter_t waiter(Type, sizeof...(Args));
     __attribute__((unused)) multiple_wait_callback_t waits[] =
         { multiple_wait_callback_t(std::forward<Args>(args), &waiter)... };
     waiter.wait();
@@ -110,32 +89,12 @@ void wait_generic(waitable_t *interruptor, Args &&...args) {
 
 template <typename... Args>
 void wait_any(Args &&...args) {
-    wait_generic<multiple_waiter_t::wait_type_t::ANY>(nullptr, std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-void wait_any_interruptible(waitable_t *interruptor, Args &&...args) {
-    wait_generic<multiple_waiter_t::wait_type_t::ANY>(interruptor, std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-void wait_any_interruptible(waitable_t &interruptor, Args &&...args) {
-    wait_generic<multiple_waiter_t::wait_type_t::ANY>(&interruptor, std::forward<Args>(args)...);
+    wait_generic<multiple_waiter_t::wait_type_t::ANY>(std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 void wait_all(Args &&...args) {
-    wait_generic<multiple_waiter_t::wait_type_t::ALL>(nullptr, std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-void wait_all_interruptible(waitable_t *interruptor, Args &&...args) {
-    wait_generic<multiple_waiter_t::wait_type_t::ALL>(interruptor, std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-void wait_all_interruptible(waitable_t &interruptor, Args &&...args) {
-    wait_generic<multiple_waiter_t::wait_type_t::ALL>(&interruptor, std::forward<Args>(args)...);
+    wait_generic<multiple_waiter_t::wait_type_t::ALL>(std::forward<Args>(args)...);
 }
 
 } // namespace indecorous

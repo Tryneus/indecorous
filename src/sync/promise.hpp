@@ -26,6 +26,9 @@ struct future_reducer_t<future_t<T> > {
     static T reduce();
 };
 
+// TODO: ability to cancel promises via future.cancel() - this may need to send messages cross-core
+// TODO: ability to get errored results from futures
+
 template <typename T>
 class future_t final : public intrusive_node_t<future_t<T> >, public waitable_t {
 public:

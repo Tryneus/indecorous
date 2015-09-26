@@ -20,6 +20,8 @@ private:
     const std::string m_info;
 };
 
+// TODO: seriously consider having wait functions return the result rather than throw
+
 class wait_error_exc_t : public coro_exc_t {
 public:
     explicit wait_error_exc_t(const std::string& info) :

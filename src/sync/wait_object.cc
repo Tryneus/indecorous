@@ -13,8 +13,7 @@ const char *wait_result_str(wait_result_t res) {
         return "Interrupted";
     case wait_result_t::ObjectLost:
         return "ObjectLost";
-    default:
-        throw wait_error_exc_t("unrecognized error while waiting");
+    default: UNREACHABLE();
     }
 }
 
@@ -27,26 +26,15 @@ void check_wait_result(wait_result_t result) {
         throw wait_interrupted_exc_t();
     case wait_result_t::ObjectLost:
         throw wait_object_lost_exc_t();
-    default:
-        throw wait_error_exc_t("unrecognized error while waiting");
+    default: UNREACHABLE();
     }
 }
 
 void waitable_t::wait() {
-    dispatcher_t *dispatch = thread_t::self()->dispatcher();
-    coro_t *self = dispatch->m_running;
-    assert(!self->in_a_list());
-    add_wait(self->wait_callback());
-    if (self->in_a_list()) {
-        // The wait object was immediately ready, just unenqueue ourselves and continue
-        dispatch->m_run_queue.remove(self);
-        wait_result_t result = self->m_wait_result;
-        self->m_wait_result = wait_result_t::Success;
-        check_wait_result(result);
-    } else {
-        // We have to wait until the object is ready, after which we'll be reenqueued
-        self->wait();
-    }
+    // This will mix in the interruptor (if set for this coroutine)
+    multiple_waiter_t multiple_wait(multiple_waiter_t::wait_type_t::ANY, 1);
+    multiple_wait_callback_t self_wait(this, &multiple_wait);
+    multiple_wait.wait();
 }
 
 } // namespace indecorous

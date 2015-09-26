@@ -1,18 +1,19 @@
 #include "sync/multiple_wait.hpp"
 
 #include "coro/coro.hpp"
+#include "sync/interruptor.hpp"
 
 namespace indecorous {
 
 multiple_waiter_t::multiple_waiter_t(multiple_waiter_t::wait_type_t type,
-                                     size_t total,
-                                     waitable_t *interruptor) :
+                                     size_t total) :
         m_owner_coro(coro_t::self()),
-        m_interruptor(interruptor),
+        m_interruptor(m_owner_coro->get_interruptor()),
         m_ready(false),
         m_waiting(false),
         m_needed(type == wait_type_t::ALL ? total : 1),
         m_error_result(wait_result_t::Success) {
+
     if (m_interruptor != nullptr) {
         m_interruptor->add_wait(this);
     }

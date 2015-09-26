@@ -27,11 +27,10 @@ void local_stream_t::write(write_message_t &&msg) {
     GUARANTEE_ERR(::write(m_fd.get(), &value, sizeof(value)) == sizeof(value));
 }
 
-void local_stream_t::wait(waitable_t *interruptor) {
+void local_stream_t::wait() {
     // TODO: this involves a TLS-lookup, but it's only used from a place that
     // already has the TLS value.
-    file_wait_t in = file_wait_t::in(m_fd.get());
-    wait_any_interruptible(interruptor, &in);
+    file_wait_t::in(m_fd.get()).wait();
 
     // Clear the eventfd now - this may result in a spurious wakeup later, but
     // better than missing a message.
@@ -61,7 +60,7 @@ void tcp_stream_t::write(write_message_t &&msg) {
     write_exactly(buffer.data(), buffer.capacity());
 }
 
-void tcp_stream_t::wait(waitable_t *) {
+void tcp_stream_t::wait() {
     // TODO: implement;
 }
 

@@ -29,9 +29,10 @@ class waitable_t {
 public:
     virtual ~waitable_t() { }
 
-    void wait();
     virtual void add_wait(wait_callback_t* waiter) = 0;
     virtual void remove_wait(wait_callback_t* waiter) = 0;
+
+    void wait();
 };
 
 } // namespace indecorous

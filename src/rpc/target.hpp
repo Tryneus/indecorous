@@ -50,7 +50,7 @@ public:
 
     void send_reply(write_message_t &&msg);
 
-    void wait(waitable_t *interruptor);
+    void wait();
 
 protected:
     virtual stream_t *stream() = 0;

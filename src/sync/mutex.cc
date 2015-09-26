@@ -19,14 +19,11 @@ mutex_t::~mutex_t() {
 }
 
 mutex_lock_t mutex_t::lock() {
-    return mutex_lock_t(this, nullptr);
+    return mutex_lock_t(this);
 }
 
-mutex_lock_t mutex_t::lock(waitable_t *interruptor) {
-    return mutex_lock_t(this, interruptor);
-}
-
-mutex_lock_t::mutex_lock_t(mutex_t *parent, waitable_t *) :
+// TODO: integrate this with interruptors
+mutex_lock_t::mutex_lock_t(mutex_t *parent) :
         m_parent(parent), m_coro_cb(nullptr) {
     if (m_parent->m_lock == nullptr) {
         m_parent->m_lock = this;

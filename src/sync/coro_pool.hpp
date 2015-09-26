@@ -29,17 +29,15 @@ public:
     typename std::enable_if<!std::is_void<val_t>::value, void>::type
     run(callable_producer_t &&producer, callable_consumer_t &&consumer) {
         drainer_lock_t keepalive = m_drainer.lock();
-        drainer_t local_drainer;
-
         interruptor_t pool_interruptor(&keepalive);
-        interruptor_t run_interruptor(&local_drainer);
+
+        drainer_t local_drainer;
 
         try {
             while (true) {
                 val_t val = producer();
                 semaphore_acq_t acq = m_semaphore.start_acq(1);
                 acq.wait();
-                wait_any_interruptible(&keepalive, acq);
                 coro_t::spawn(
                     [&] (val_t inner_val, semaphore_acq_t, drainer_lock_t) {
                         consumer(std::move(inner_val));
@@ -59,10 +57,9 @@ public:
     typename std::enable_if<std::is_void<val_t>::value, void>::type
     run(callable_producer_t &&producer, callable_consumer_t &&consumer) {
         drainer_lock_t keepalive = m_drainer.lock();
-        drainer_t local_drainer;
-
         interruptor_t pool_interruptor(&keepalive);
-        interruptor_t run_interruptor(&local_drainer);
+
+        drainer_t local_drainer;
 
         try {
             while (true) {

@@ -14,7 +14,7 @@ public:
     ~mutex_lock_t();
 private:
     friend class mutex_t;
-    mutex_lock_t(mutex_t *parent, waitable_t *interruptor);
+    explicit mutex_lock_t(mutex_t *parent);
 
     mutex_t *m_parent;
     wait_callback_t *m_coro_cb;
@@ -31,7 +31,6 @@ public:
     ~mutex_t();
 
     mutex_lock_t lock();
-    mutex_lock_t lock(waitable_t *interruptor);
 
 private:
     friend class mutex_lock_t;

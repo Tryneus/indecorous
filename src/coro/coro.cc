@@ -113,10 +113,13 @@ void coro_pull() {
     dispatcher_t *dispatch = thread->dispatcher();
     message_hub_t *hub = thread->hub();
     local_target_t *target = hub->self_target();
+
+    interruptor_t shutdown(&dispatch->m_close_event);
+
     try {
         while (true) {
             while (target->handle(hub)) { }
-            target->wait(&dispatch->m_close_event);
+            target->wait();
         }
     } catch (const wait_interrupted_exc_t &ex) {
         // pass
@@ -364,6 +367,10 @@ interruptor_t *coro_t::add_interruptor(interruptor_t *interruptor) {
 
 void coro_t::remove_interruptor(interruptor_t *interruptor) {
     m_interruptors.remove(interruptor);
+}
+
+interruptor_t *coro_t::get_interruptor() {
+    return m_interruptors.back();
 }
 
 } // namespace indecorous

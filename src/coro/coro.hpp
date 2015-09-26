@@ -193,6 +193,10 @@ private:
     interruptor_t *add_interruptor(interruptor_t *interruptor);
     void remove_interruptor(interruptor_t *interruptor);
 
+    // When waiting on things, we need to check the current interruptors
+    friend class multiple_waiter_t;
+    interruptor_t *get_interruptor();
+
     // Use this rather than inherit from it directly to avoid ugly multiple inheritance
     // of intrusive_node_t.
     class coro_wait_callback_t : public wait_callback_t {
