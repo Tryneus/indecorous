@@ -41,7 +41,7 @@ void interruptor_t::remove_wait(wait_callback_t *cb) {
     m_waiters.remove(cb);
 }
 
-void interruptor_t::wait_done(wait_result_t result) {
+void interruptor_t::wait_done(DEBUG_VAR wait_result_t result) {
     assert(result == wait_result_t::Success);
     handle_triggered();
 }
@@ -78,7 +78,7 @@ interruptor_t::prev_waiter_t::~prev_waiter_t() {
     }
 }
 
-void interruptor_t::prev_waiter_t::wait_done(wait_result_t result) {
+void interruptor_t::prev_waiter_t::wait_done(DEBUG_VAR wait_result_t result) {
     assert(result == wait_result_t::Interrupted);
     m_parent->handle_triggered();
 }
