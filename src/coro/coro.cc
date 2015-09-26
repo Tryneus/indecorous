@@ -69,6 +69,8 @@ void coro_cache_t::release(coro_t *coro) {
     }
 }
 
+// TODO: coroutines should inherit the parent's interruptor chain as well
+// TODO: users should be able to discard (all?) inherited interruptors
 // Used to hand over parameters to a new coroutine - since we can't safely pass pointers
 struct handover_params_t {
     void init(coro_t *_self,
@@ -207,7 +209,8 @@ coro_t::coro_t(dispatcher_t *dispatch) :
         m_stack(nullptr),
         m_valgrind_stack_id(-1),
         m_wait_callback(this),
-        m_wait_result(wait_result_t::Success) {
+        m_wait_result(wait_result_t::Success),
+        m_interruptors() {
     m_stack = (char *)mmap(nullptr, s_stack_size,
                            PROT_READ | PROT_WRITE,
                            MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK,
@@ -351,6 +354,16 @@ void coro_t::coro_wait_callback_t::wait_done(wait_result_t result) {
 
 void coro_t::coro_wait_callback_t::object_moved(waitable_t *) {
     // We don't actually care where the wait object is, do nothing
+}
+
+interruptor_t *coro_t::add_interruptor(interruptor_t *interruptor) {
+    interruptor_t *back = m_interruptors.back();
+    m_interruptors.push_back(interruptor);
+    return back;
+}
+
+void coro_t::remove_interruptor(interruptor_t *interruptor) {
+    m_interruptors.remove(interruptor);
 }
 
 } // namespace indecorous

@@ -11,6 +11,7 @@
 #include "containers/arena.hpp"
 #include "containers/intrusive.hpp"
 #include "sync/event.hpp"
+#include "sync/interruptor.hpp"
 #include "sync/promise.hpp"
 #include "sync/wait_object.hpp"
 
@@ -187,6 +188,11 @@ private:
 
     static const size_t s_stackSize = 65535; // TODO: This is probably way too small
 
+    // Interface for interruptors to register/deregister themselves
+    friend class interruptor_t;
+    interruptor_t *add_interruptor(interruptor_t *interruptor);
+    void remove_interruptor(interruptor_t *interruptor);
+
     // Use this rather than inherit from it directly to avoid ugly multiple inheritance
     // of intrusive_node_t.
     class coro_wait_callback_t : public wait_callback_t {
@@ -209,6 +215,7 @@ private:
     int m_valgrind_stack_id;
     coro_wait_callback_t m_wait_callback;
     wait_result_t m_wait_result;
+    intrusive_list_t<interruptor_t> m_interruptors;
 
     DISABLE_COPYING(coro_t);
 };

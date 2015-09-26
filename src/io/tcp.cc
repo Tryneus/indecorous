@@ -142,9 +142,9 @@ static void accept_loop(std::function<void (tcp_conn_t, drainer_lock_t)> on_conn
             sockaddr_in6 sa;
             socklen_t sa_len = sizeof(sa);
             wait_any_interruptible(drain, in);
-            scoped_fd_t new_sock = ::accept(sock, (sockaddr *)&sa, &sa_len);
+            scoped_fd_t new_sock(::accept(sock, (sockaddr *)&sa, &sa_len));
             GUARANTEE_ERR(new_sock.valid());
-            coro_t::spawn(on_connect, std::move(new_sock), drain);
+            coro_t::spawn(on_connect, tcp_conn_t(std::move(new_sock)), drain);
         }
     } catch (const wait_interrupted_exc_t &ex) {
         assert(drain.draining());
@@ -179,7 +179,7 @@ uint16_t tcp_listener_t::local_port() {
 }
 
 scoped_fd_t tcp_listener_t::init_socket() {
-    scoped_fd_t sock = ::socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+    scoped_fd_t sock(::socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
     GUARANTEE_ERR(sock.valid());
 
     sockaddr_in6 sa;

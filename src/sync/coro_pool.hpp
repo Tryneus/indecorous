@@ -21,28 +21,29 @@ public:
     // completion, as well as allow the functions to check if they should be interrupted.
     // The consumer should not throw a wait_interrupted_exc_t.
     //
-    // producer signature: T(waitable_t *)
-    // consumer signature: void(T, waitable_t *)
+    // producer signature: T()
+    // consumer signature: void(T)
     template <typename callable_producer_t,
               typename callable_consumer_t,
-              typename val_t = typename std::result_of<callable_producer_t(waitable_t *)>::type >
+              typename val_t = typename std::result_of<callable_producer_t()>::type >
     typename std::enable_if<!std::is_void<val_t>::value, void>::type
     run(callable_producer_t &&producer, callable_consumer_t &&consumer) {
         drainer_lock_t keepalive = m_drainer.lock();
         drainer_t local_drainer;
 
+        interruptor_t pool_interruptor(&keepalive);
+        interruptor_t run_interruptor(&local_drainer);
+
         try {
             while (true) {
-                val_t val = producer(&m_drainer);
+                val_t val = producer();
                 semaphore_acq_t acq = m_semaphore.start_acq(1);
+                acq.wait();
                 wait_any_interruptible(&keepalive, acq);
                 coro_t::spawn(
-                    [&] (val_t inner_val,
-                         semaphore_acq_t, // acq
-                         drainer_lock_t, // local_keepalive
-                         drainer_lock_t inner_keepalive) {
-                        consumer(std::move(inner_val), &inner_keepalive);
-                    }, std::move(val), std::move(acq), local_drainer.lock(), keepalive);
+                    [&] (val_t inner_val, semaphore_acq_t, drainer_lock_t) {
+                        consumer(std::move(inner_val));
+                    }, std::move(val), std::move(acq), local_drainer.lock());
             }
         } catch (const wait_interrupted_exc_t &) {
             // Do nothing, either the drainer is draining or the producer is finished
@@ -54,23 +55,24 @@ public:
     // consumer signature: void(waitable_t *)
     template <typename callable_producer_t,
               typename callable_consumer_t,
-              typename val_t = typename std::result_of<callable_producer_t(waitable_t *)>::type >
+              typename val_t = typename std::result_of<callable_producer_t()>::type >
     typename std::enable_if<std::is_void<val_t>::value, void>::type
     run(callable_producer_t &&producer, callable_consumer_t &&consumer) {
         drainer_lock_t keepalive = m_drainer.lock();
         drainer_t local_drainer;
 
+        interruptor_t pool_interruptor(&keepalive);
+        interruptor_t run_interruptor(&local_drainer);
+
         try {
             while (true) {
-                producer(&m_drainer);
+                producer();
                 semaphore_acq_t acq = m_semaphore.start_acq(1);
-                wait_any_interruptible(&keepalive, acq);
+                acq.wait();
                 coro_t::spawn(
-                    [&] (semaphore_acq_t, // acq
-                         drainer_lock_t, // local_keepalive
-                         drainer_lock_t inner_keepalive) {
-                        consumer(&inner_keepalive);
-                    }, std::move(acq), local_drainer.lock(), keepalive);
+                    [&] (semaphore_acq_t, drainer_lock_t) {
+                        consumer();
+                    }, std::move(acq), local_drainer.lock());
             }
         } catch (const wait_interrupted_exc_t &) {
             // Do nothing, either the drainer is draining or the producer is finished

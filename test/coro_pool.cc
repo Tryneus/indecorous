@@ -9,15 +9,14 @@ SIMPLE_TEST(coro_pool, simple, 4, "[sync][coro_pool]") {
     size_t in = 100;
     size_t out = 0;
     pool.run(
-        [&] (waitable_t *) {
+        [&] {
             if (in == 0) {
                 throw wait_interrupted_exc_t();
             }
             --in;
         },
-        [&] (waitable_t *interruptor) {
-            single_timer_t timeout(1);
-            wait_any_interruptible(interruptor, timeout);
+        [&] {
+            single_timer_t(1).wait();
             ++out;
         });
     REQUIRE(in == 0);
