@@ -81,7 +81,7 @@ rpc_bridge_t<Res, Args...> rpc_bridge(Res(*fn)(Args...));
 #define DECLARE_MEMBER_RPC(Class, RPC) \
     struct RPC : public indecorous::rpc_callback_t { \
         typedef Class enclosing_t; \
-        RPC(enclosing_t *parent); \
+        explicit RPC(enclosing_t *parent); \
         ~RPC(); \
         indecorous::write_message_t handle(indecorous::read_message_t msg) override final; \
         void handle_noreply(indecorous::read_message_t msg) override final; \

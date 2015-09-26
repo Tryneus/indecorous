@@ -21,7 +21,7 @@ class waitable_t;
 
 class tcp_conn_t final : public read_stream_t, public write_stream_t {
 public:
-    tcp_conn_t(scoped_fd_t sock);
+    explicit tcp_conn_t(scoped_fd_t sock);
     tcp_conn_t(const ip_and_port_t &host_port, waitable_t *interruptor);
     tcp_conn_t(tcp_conn_t &&other);
 

@@ -16,7 +16,7 @@ class waitable_t;
 
 class target_t {
 public:
-    explicit target_t();
+    target_t();
     virtual ~target_t();
 
     target_id_t id() const;
@@ -103,7 +103,7 @@ private:
 // TODO: need to be able to address multiple targets in a remote process
 class remote_target_t : public target_t {
 public:
-    explicit remote_target_t();
+    remote_target_t();
     bool is_local() const override final;
 private:
     stream_t *stream() override final;

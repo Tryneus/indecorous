@@ -171,7 +171,7 @@ int64_t dispatcher_t::run() {
     assert(m_running == nullptr);
     m_swap_count = 0;
     m_coro_delta = 0;
-    
+
     // Kick off the coroutines, they will give us back execution later
     m_running = m_run_queue.pop_front();
     if (m_running != nullptr) {

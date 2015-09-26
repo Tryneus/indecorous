@@ -12,7 +12,7 @@ typedef int fd_t;
 
 class scoped_fd_t {
 public:
-    scoped_fd_t(fd_t fd) :
+    explicit scoped_fd_t(fd_t fd) :
             m_fd(fd) { }
 
     scoped_fd_t(scoped_fd_t &&other) :

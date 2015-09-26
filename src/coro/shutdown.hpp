@@ -13,7 +13,7 @@ class message_hub_t;
 
 class shutdown_t {
 public:
-    shutdown_t(size_t thread_count);
+    explicit shutdown_t(size_t thread_count);
     void shutdown(message_hub_t *hub);
     void update(int64_t active_delta, message_hub_t *hub);
     void reset(uint64_t initial_count);

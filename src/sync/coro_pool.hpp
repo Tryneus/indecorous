@@ -12,7 +12,7 @@ namespace indecorous {
 
 class coro_pool_t {
 public:
-    coro_pool_t(size_t pool_size) :
+    explicit coro_pool_t(size_t pool_size) :
             m_semaphore(pool_size), m_drainer() { }
 
     // The producer should return a value that can be passed into the consumer.  The

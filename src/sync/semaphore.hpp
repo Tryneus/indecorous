@@ -68,7 +68,7 @@ private:
 class semaphore_t {
 public:
     semaphore_t(semaphore_t &&other);
-    semaphore_t(size_t _capacity);
+    explicit semaphore_t(size_t _capacity);
     ~semaphore_t();
 
     size_t capacity() const;

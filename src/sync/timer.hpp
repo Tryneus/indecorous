@@ -15,7 +15,7 @@ public:
     static int64_t ms_diff(const absolute_time_t &a, const absolute_time_t &b);
 
     absolute_time_t();
-    absolute_time_t(int64_t delta_ms);
+    explicit absolute_time_t(int64_t delta_ms);
     absolute_time_t(const absolute_time_t &other);
 
     // Add delta_ms to the absolute time until it is in the future
@@ -46,7 +46,7 @@ private:
 class single_timer_t final : public waitable_t, private timer_callback_t {
 public:
     single_timer_t();
-    single_timer_t(int64_t timeout_ms); // Starts the timer immediately
+    explicit single_timer_t(int64_t timeout_ms); // Starts the timer immediately
     single_timer_t(single_timer_t &&other);
     ~single_timer_t();
 
@@ -69,7 +69,7 @@ private:
 class periodic_timer_t final : public waitable_t, private timer_callback_t {
 public:
     periodic_timer_t();
-    periodic_timer_t(int64_t period_ms); // Starts the timer immediately
+    explicit periodic_timer_t(int64_t period_ms); // Starts the timer immediately
     periodic_timer_t(periodic_timer_t &&other);
     ~periodic_timer_t();
 

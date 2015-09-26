@@ -20,7 +20,7 @@ public:
 
 private:
     friend class drainer_t;
-    drainer_lock_t(drainer_t *parent);
+    explicit drainer_lock_t(drainer_t *parent);
 
     void add_wait(wait_callback_t *cb) override final;
     void remove_wait(wait_callback_t *cb) override final;

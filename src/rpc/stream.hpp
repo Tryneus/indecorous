@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <mutex>
 #include <queue>
 
 #include "containers/buffer.hpp"
@@ -26,7 +25,7 @@ public:
 
 class local_stream_t final : public stream_t {
 public:
-    explicit local_stream_t();
+    local_stream_t();
     void write(write_message_t &&msg) override final;
     read_message_t read() override final;
     void wait(waitable_t *interruptor) override final;

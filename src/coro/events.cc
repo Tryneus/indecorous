@@ -82,7 +82,7 @@ void events_t::check(bool wait) {
 
     update_epoll();
     do_epoll_wait(timeout);
-    
+
     absolute_time_t end_time(0);
     while (!m_timer_list.empty() && m_timer_list.front()->timeout() < end_time) {
         timer_callback_t *cb = m_timer_list.pop_front();

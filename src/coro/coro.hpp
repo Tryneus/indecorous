@@ -174,7 +174,7 @@ private:
         }
     };
 
-    coro_t(dispatcher_t *dispatch);
+    explicit coro_t(dispatcher_t *dispatch);
     ~coro_t();
 
     void begin(hook_fn_t, coro_t *parent, void *params, bool immediate);
@@ -191,7 +191,7 @@ private:
     // of intrusive_node_t.
     class coro_wait_callback_t : public wait_callback_t {
     public:
-        coro_wait_callback_t(coro_t *parent);
+        explicit coro_wait_callback_t(coro_t *parent);
     private:
         void wait_done(wait_result_t result);
         void object_moved(waitable_t *new_ptr);

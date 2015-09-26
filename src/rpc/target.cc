@@ -22,7 +22,7 @@ void target_t::note_send() const {
     if (is_local()) {
         thread_t *t = thread_t::self();
         if (t != nullptr) {
-            t->dispatcher()->note_new_task(); 
+            t->dispatcher()->note_new_task();
         }
     }
 }

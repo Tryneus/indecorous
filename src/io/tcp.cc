@@ -125,7 +125,7 @@ void tcp_conn_t::read_into_buffer(waitable_t *interruptor) {
     ssize_t res = 0;
     m_read_buffer_offset = 0;
     m_read_buffer.resize(s_read_buffer_size);
-                         
+
     while (res == 0) {
         res = eintr_wrap([&] {
                 return ::read(m_socket.get(), &m_read_buffer[0], s_read_buffer_size);

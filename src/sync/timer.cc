@@ -27,7 +27,7 @@ absolute_time_t &absolute_time_t::operator = (const absolute_time_t &other) {
     return *this;
 }
 
-void absolute_time_t::update_periodic(int64_t delta_ms) {   
+void absolute_time_t::update_periodic(int64_t delta_ms) {
     absolute_time_t now(0);
 
     // TODO: this is slow for small delta_ms values, especially if a

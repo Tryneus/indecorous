@@ -33,7 +33,7 @@ in6_addr serializer_t<in6_addr>::read(read_message_t *msg) {
 IMPL_SERIALIZABLE(ip_address_t, m_addr, m_scope_id);
 IMPL_SERIALIZABLE(ip_and_port_t, m_addr, m_port);
 
-__attribute__((constructor)) 
+__attribute__((constructor))
 void udns_init() {
     GUARANTEE(dns_init(nullptr, false) == 0);
 }
@@ -82,7 +82,7 @@ public:
             dns_ioevent(m_ctx, current_time);
 
             if (data.result != result_t::Pending) break; // TODO: simplify loop
-            
+
             wait_any(timer, in);
         }
 
@@ -97,7 +97,7 @@ private:
     static void resolve_callback_ipv4(dns_ctx *ctx, dns_rr_a4 *result, void *param) {
         resolve_data_t *out = reinterpret_cast<resolve_data_t *>(param);
         if (result == nullptr) {
-            switch(dns_status(ctx)) {
+            switch (dns_status(ctx)) {
             case DNS_E_TEMPFAIL: debugf("DNS_E_TEMPFAIL"); break;
             case DNS_E_PROTOCOL: debugf("DNS_E_PROTOCOL"); break;
             case DNS_E_NXDOMAIN: debugf("DNS_E_NXDOMAIN"); break;
@@ -117,7 +117,7 @@ private:
     static void resolve_callback_ipv6(dns_ctx *ctx, dns_rr_a6 *result, void *param) {
         resolve_data_t *out = reinterpret_cast<resolve_data_t *>(param);
         if (result == nullptr) {
-            switch(dns_status(ctx)) {
+            switch (dns_status(ctx)) {
             case DNS_E_TEMPFAIL: debugf("DNS_E_TEMPFAIL"); break;
             case DNS_E_PROTOCOL: debugf("DNS_E_PROTOCOL"); break;
             case DNS_E_NXDOMAIN: debugf("DNS_E_NXDOMAIN"); break;
