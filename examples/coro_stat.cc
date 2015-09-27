@@ -1,11 +1,9 @@
 #include <ncurses.h>
 #include <unistd.h>
 
-#include <atomic>
 #include <deque>
-#include <mutex>
-#include <thread>
 #include <vector>
+#include <sstream>
 
 struct stats_frame_t {
     double timestamp;
@@ -19,24 +17,26 @@ struct stats_frame_t {
 class windowed_t {
 public:
     windowed_t() :
-        m_height(0), m_width(0), m_window(newwin(m_height, m_width, 0, 0)) { }
+        m_height(0), m_width(0), m_window(nullptr) { }
 
     void resize(size_t height, size_t width, size_t top, size_t left) {
-        wborder(m_window, ' ', ' ', ' ',' ',' ',' ',' ',' ');
-        wrefresh(m_window);
-        delwin(m_window);
+        if (m_window != nullptr) {
+            wborder(m_window, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+            wrefresh(m_window);
+            delwin(m_window);
+        }
 
         m_height = height;
         m_width = width;
         m_window = newwin(m_height, m_width, top, left);
-        wborder(m_window, '|', '|', '-','-','.','.','.','.');
+        wborder(m_window, '|','|','-','-','+','+','+','+');
     }
 
     virtual void refresh() {
         wnoutrefresh(m_window);
     }
 
-private:
+protected:
     size_t m_height;
     size_t m_width;
     WINDOW *m_window;
@@ -96,6 +96,7 @@ public:
             m_thread_graphs[i].add_frame(frames[i]);
         }
         m_thread_stats.add_frames(std::move(frames));
+        this->redraw();
     }
 
     void redraw() {
@@ -111,8 +112,6 @@ public:
         size_t stats_height = LINES;
         size_t stats_width = COLS - graph_width;
         m_thread_stats.resize(stats_height, stats_width, 0, graph_width);
-
-        refresh();
     }
 
     void refresh() {
@@ -157,39 +156,25 @@ int main(int argc, char *argv[]) {
     initscr(); // Start curses mode
     cbreak(); // Line buffering disabled, Pass on everything to me
     noecho();
+    halfdelay(10); // Wake up every second and update frames
 
     coro_stats_t coro_stats;
-
-    std::mutex ncurses_mutex;
-    std::atomic<bool> shutdown_flag(false);
-
-    std::thread update_thread([&] {
-            while (!shutdown_flag.load()) {
-                dummy_conn_t dummy_conn;
-                std::vector<stats_frame_t> frames;
-                while (!(frames = dummy_conn.get_frames()).empty()) {
-                    coro_stats.add_frames(std::move(frames));
-                    std::lock_guard<std::mutex> lock(ncurses_mutex);
-                    printw("writing frame");
-                    coro_stats.refresh();
-                }
-            }
-        });
+    dummy_conn_t dummy_conn;
 
     char ch;
     while((ch = getch()) != 'q') {
         switch(ch) {
         case KEY_RESIZE: {
-            std::lock_guard<std::mutex> lock(ncurses_mutex);
             coro_stats.redraw();
         } break;
         default:
-            break;
+        case ERR: {
+            std::vector<stats_frame_t> frames = dummy_conn.get_frames();
+            coro_stats.add_frames(std::move(frames));
+            coro_stats.refresh();
+        } break;
         }
     }
-
-    shutdown_flag.store(true);
-    update_thread.join();
 
     endwin(); // End curses mode
     return 0;
