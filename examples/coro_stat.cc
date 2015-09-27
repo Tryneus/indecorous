@@ -5,7 +5,11 @@
 #include <vector>
 #include <sstream>
 
-struct stats_frame_t {
+#include "rpc/handler.hpp"
+
+using namespace indecorous;
+
+struct record_t {
     double timestamp;
     size_t thread_id;
     size_t messages_sent;
@@ -21,7 +25,7 @@ public:
 
     void resize(size_t height, size_t width, size_t top, size_t left) {
         if (m_window != nullptr) {
-            wborder(m_window, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+            wborder(m_window,' ',' ',' ',' ',' ',' ',' ',' ');
             wrefresh(m_window);
             delwin(m_window);
         }
@@ -29,7 +33,7 @@ public:
         m_height = height;
         m_width = width;
         m_window = newwin(m_height, m_width, top, left);
-        wborder(m_window, '|','|','-','-','+','+','+','+');
+        wborder(m_window,'|','|','-','-','+','+','+','+');
     }
 
     virtual void refresh() {
@@ -46,7 +50,7 @@ class thread_graph_t final : public windowed_t {
 public:
     thread_graph_t() : windowed_t(), m_cache() { }
 
-    void add_frame(const stats_frame_t &data) {
+    void add_frame(const record_t &data) {
         m_cache.push_back(data);
         while (m_cache.front().timestamp < data.timestamp - s_cache_time) {
             m_cache.pop_front();
@@ -60,7 +64,7 @@ public:
     }
 
     static const double s_cache_time;
-    std::deque<stats_frame_t> m_cache;
+    std::deque<record_t> m_cache;
 };
 
 const double thread_graph_t::s_cache_time = 10.0;
@@ -70,17 +74,24 @@ public:
     thread_stats_t() :
         windowed_t(), m_cache() { }
 
-    void add_frames(std::vector<stats_frame_t> data) {
+    void add_frames(std::vector<record_t> data) {
         m_cache = std::move(data);
     }
 
+    std::string truncate(const std::string s) {
+        return (s.size() > m_width - 2) ? s.substr(0, m_width - 2) : s;
+    }
+
     void refresh() override final {
-        // Write the new state of the window
-        // ...
+        std::string header(" Thread |  Sent  |  Recv  |  Coro  |  Swap  \n");
+        std::string divider("--------------------------------------------\n");
+
+        mvwaddstr(m_window, 1, 1, truncate(header).c_str());
+        mvwaddstr(m_window, 2, 1, truncate(divider).c_str());
         windowed_t::refresh();
     }
 
-    std::vector<stats_frame_t> m_cache;
+    std::vector<record_t> m_cache;
 
 };
 
@@ -88,7 +99,7 @@ class coro_stats_t {
 public:
     coro_stats_t() { }
 
-    void add_frames(std::vector<stats_frame_t> frames) {
+    void add_frames(std::vector<record_t> frames) {
         if (frames.size() != m_thread_graphs.size()) {
             m_thread_graphs.resize(frames.size());
         }
@@ -127,54 +138,50 @@ private:
     thread_stats_t m_thread_stats;
 };
 
-// TODO: implement a real connection to the server
-class dummy_conn_t {
-public:
-    dummy_conn_t() : m_last_timestamp(0.0) { }   
-    
-    std::vector<stats_frame_t> get_frames() {
-        sleep(1);
-        m_last_timestamp += 1.0;
-        std::vector<stats_frame_t> frames;
-        for (size_t i = 0; i < 10; ++i) {
-            stats_frame_t frame;
-            frame.timestamp = m_last_timestamp;
-            frame.thread_id = i;
-            frame.messages_sent = (int)m_last_timestamp % 100;
-            frame.messages_received = ((int)m_last_timestamp + 25) % 100;
-            frame.coroutines_alive = ((int)m_last_timestamp + 50) % 100;
-            frame.coroutine_swaps = ((int)m_last_timestamp + 75) % 100;
-            frames.push_back(frame);
-        }
-        return frames;
-    }
+class coro_stats_t {
+    DECLARE_STATIC_RPC(coro_stats_t::main)(std::string, uint16_t) -> void;
+}
 
-    double m_last_timestamp;
-};
+IMPL_STATIC_RPC(coro_stats_t::main)(std::string host, uint16_t port) -> void {
+    event_t done_event;
+    interruptor_t done_interruptor(&done_event);
+
+    file_wait_t input = file_wait_t::in(STDIN_FILENO);
+
+    coro_stats_t stats;
+
+    coro_t::spawn([&] {
+            // TODO: handle disconnections
+            tcp_conn_t conn(host, port);
+            while (true) {
+                record_t record;
+                conn.read(&record, sizeof(record)),
+                stats.insert(record);
+            }
+        });
+
+    while (true) {
+        input.wait();
+        switch (getch()) {
+        case KEY_RESIZE: coro_stats.redraw(); break;
+        case 'Q':
+        case 'q': done_event.set(); break;
+        default: break;
+        }
+    }
+}
 
 int main(int argc, char *argv[]) {
     initscr(); // Start curses mode
     cbreak(); // Line buffering disabled, Pass on everything to me
     noecho();
-    halfdelay(10); // Wake up every second and update frames
+    nodelay();
 
-    coro_stats_t coro_stats;
-    dummy_conn_t dummy_conn;
+    // TODO: parse out host and port from args
 
-    char ch;
-    while((ch = getch()) != 'q') {
-        switch(ch) {
-        case KEY_RESIZE: {
-            coro_stats.redraw();
-        } break;
-        default:
-        case ERR: {
-            std::vector<stats_frame_t> frames = dummy_conn.get_frames();
-            coro_stats.add_frames(std::move(frames));
-            coro_stats.refresh();
-        } break;
-        }
-    }
+    scheduler_t sched(1, shutdown_policy_t::Eager);
+    sched.target(0)->call_noreply<coro_stats_t::main>(host, port);
+    sched.run();
 
     endwin(); // End curses mode
     return 0;
