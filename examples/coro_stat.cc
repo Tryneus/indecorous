@@ -171,13 +171,38 @@ IMPL_STATIC_RPC(coro_stats_t::main)(std::string host, uint16_t port) -> void {
     }
 }
 
+void print_usage() {
+    printf("Usage: coro_stat HOST PORT");
+}
+
 int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        printf("Error: Expected 2 arguments.");
+        print_usage();
+        exit(1);
+    }
+
+    std::string host(argv[1]);
+    int raw_port = atoi(argv[2]);
+
+    if (host.empty()) {
+        printf("Error: invalid hostname.");
+        print_usage();
+        exit(1);
+    }
+
+    if (raw_port == 0 || raw_port > std::numeric_limits<uint16_t>::max()) {
+        printf("Error: invalid port, expected a number between 1 and %d.",
+               std::numeric_limits<uint16_t>::max());
+        print_usage();
+        exit(1);
+    }
+    uint16_t port = static_cast<uint16_t>(raw_port);
+
     initscr(); // Start curses mode
     cbreak(); // Line buffering disabled, Pass on everything to me
     noecho();
     nodelay();
-
-    // TODO: parse out host and port from args
 
     scheduler_t sched(1, shutdown_policy_t::Eager);
     sched.target(0)->call_noreply<coro_stats_t::main>(host, port);
