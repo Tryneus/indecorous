@@ -38,15 +38,13 @@ coro_cache_t::coro_cache_t(size_t max_cache_size,
     m_cache() { }
 
 coro_cache_t::~coro_cache_t() {
-    m_extant -= m_cache.size();
     assert(m_extant == 0);
-
     m_cache.clear([] (auto c) { delete c; });
 }
 
 coro_t *coro_cache_t::get() {
+    ++m_extant;
     if (m_cache.empty()) {
-        ++m_extant;
         return new coro_t(m_dispatch);
     }
 
@@ -55,6 +53,7 @@ coro_t *coro_cache_t::get() {
 
 void coro_cache_t::release(coro_t *coro) {
     assert(!coro->in_a_list());
+    --m_extant;
     if (m_cache.size() >= m_max_cache_size) {
         delete coro;
     } else {
@@ -148,6 +147,8 @@ dispatcher_t::dispatcher_t() :
     // Set up the rpc consumer coroutine
     makecontext(&m_rpc_consumer->m_context, coro_pull, 0);
     m_run_queue.push_back(m_rpc_consumer);
+
+    assert(m_coro_cache.extant() == 1);
 }
 
 dispatcher_t::~dispatcher_t() {
@@ -159,6 +160,7 @@ dispatcher_t::~dispatcher_t() {
 void dispatcher_t::close() {
     assert(m_running == nullptr);
     assert(m_run_queue.size() == 0);
+    assert(m_coro_cache.extant() == 1);
 
     m_close_event.set();
     assert(m_run_queue.size() == 1);

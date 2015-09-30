@@ -13,7 +13,6 @@ multiple_waiter_t::multiple_waiter_t(multiple_waiter_t::wait_type_t type,
         m_waiting(false),
         m_needed(type == wait_type_t::ALL ? total : 1),
         m_error_result(wait_result_t::Success) {
-
     if (m_interruptor != nullptr) {
         m_interruptor->add_wait(this);
     }
@@ -38,6 +37,7 @@ void multiple_waiter_t::wait() {
 }
 
 void multiple_waiter_t::item_finished(wait_result_t result) {
+    assert(m_needed > 0);
     if (!m_ready) {
         if (result != wait_result_t::Success) {
             ready(result);

@@ -28,6 +28,8 @@ public:
                  dispatcher_t *dispatch);
     ~coro_cache_t();
 
+    size_t extant() const { return m_extant; }
+
     coro_t *get();
     void release(coro_t *stack);
 private:

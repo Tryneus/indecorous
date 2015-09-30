@@ -48,7 +48,7 @@ private:
     };
 
     bool m_triggered;
-    const waitable_t *m_waitable;
+    waitable_t *m_waitable;
     intrusive_list_t<wait_callback_t> m_waiters;
     prev_waiter_t m_prev_waiter;
 

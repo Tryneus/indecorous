@@ -7,7 +7,9 @@ namespace indecorous {
 interruptor_t::interruptor_t(waitable_t *waitable) :
         m_triggered(false),
         m_waitable(waitable), m_waiters(),
-        m_prev_waiter(this, coro_t::self()->add_interruptor(this)) { }
+        m_prev_waiter(this, coro_t::self()->add_interruptor(this)) {
+    m_waitable->add_wait(this);
+}
 
 interruptor_t::interruptor_t(interruptor_t &&other) :
         wait_callback_t(std::move(other)),
@@ -21,6 +23,9 @@ interruptor_t::interruptor_t(interruptor_t &&other) :
 }
 
 interruptor_t::~interruptor_t() {
+    if (intrusive_node_t<wait_callback_t>::in_a_list()) {
+        m_waitable->remove_wait(this);
+    }
     coro_t::self()->remove_interruptor(this);
     m_waiters.clear([&] (auto cb) { cb->wait_done(wait_result_t::ObjectLost); });
 }
