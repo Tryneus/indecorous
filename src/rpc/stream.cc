@@ -35,7 +35,10 @@ void local_stream_t::wait() {
     // Clear the eventfd now - this may result in a spurious wakeup later, but
     // better than missing a message.
     uint64_t value;
-    GUARANTEE_ERR(::read(m_fd.get(), &value, sizeof(value)) == sizeof(value));
+    auto res = ::read(m_fd.get(), &value, sizeof(value));
+    if (res != sizeof(value)) {
+        GUARANTEE_ERR(errno == EAGAIN);
+    }
     assert(value > 0);
 }
 
