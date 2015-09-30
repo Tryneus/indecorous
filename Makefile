@@ -43,10 +43,9 @@ BIN_DIR = bin
 EXT_DIR = external
 
 UDNS_PATH = $(EXT_DIR)/udns-0.4
-UDNS_CONFIGURE = $(UDNS_PATH)/configure
 UDNS_MAKEFILE = $(UDNS_PATH)/Makefile
-UDNS_LIB_FILENAME = libudns.a
-UDNS_LIB = $(UDNS_PATH)/$(UDNS_LIB_FILENAME)
+UDNS_LIB_FILE = libudns.a
+UDNS_LIB = $(UDNS_PATH)/$(UDNS_LIB_FILE)
 
 CATCH_PATH = $(EXT_DIR)/catch
 
@@ -144,7 +143,8 @@ $(BENCH_OBJ_DIR)/%.o: $(BENCH_DIR)/%.cc $(BENCH_OBJ_DIR)/%.d Makefile
 
 $(UDNS_LIB): $(UDNS_MAKEFILE)
 	@echo "  $(MAKE) $@"
-	@$(MAKE) -C $(UDNS_PATH) $(UDNS_LIB_FILENAME)
+	@$(MAKE) -C $(UDNS_PATH) $(UDNS_LIB_FILE)
 
-$(UDNS_MAKEFILE): $(UDNS_CONFIGURE)
-	$(UDNS_CONFIGURE)
+$(UDNS_MAKEFILE): $(UDNS_PATH)/configure
+	@echo "  configure $@"
+	cd $(UDNS_PATH); ./configure
