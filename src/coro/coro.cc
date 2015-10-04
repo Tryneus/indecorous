@@ -113,9 +113,9 @@ void coro_pull() {
     message_hub_t *hub = thread->hub();
     local_target_t *target = hub->self_target();
 
-    interruptor_t shutdown(&dispatch->m_close_event);
-
     try {
+        interruptor_t shutdown(&dispatch->m_close_event);
+
         while (true) {
             while (target->handle(hub)) { }
             target->wait();
