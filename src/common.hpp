@@ -52,6 +52,7 @@
 #define debugf(format, ...) printf("Thread %" PRIi32 " - " format "\n", indecorous::thread_self_id(), ##__VA_ARGS__)
 
 namespace indecorous {
+    typedef int fd_t;
     int32_t thread_self_id();
 }
 

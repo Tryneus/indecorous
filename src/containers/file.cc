@@ -1,4 +1,7 @@
 #include "containers/file.hpp"
+
+#include <unistd.h>
+
 #include "utils.hpp"
 
 namespace indecorous {

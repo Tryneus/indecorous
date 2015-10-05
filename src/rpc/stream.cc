@@ -1,6 +1,7 @@
 #include "rpc/stream.hpp"
 
 #include <sys/eventfd.h>
+#include <unistd.h>
 
 #include <cassert>
 

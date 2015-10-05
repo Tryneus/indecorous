@@ -1,13 +1,9 @@
 #ifndef CONTAINERS_FILE_HPP_
 #define CONTAINERS_FILE_HPP_
 
-#include <unistd.h>
-
 #include "common.hpp"
 
 namespace indecorous {
-
-typedef int fd_t;
 
 class scoped_fd_t {
 public:

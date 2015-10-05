@@ -4,7 +4,6 @@
 #include <type_traits>
 
 #include "common.hpp"
-#include "errors.hpp"
 #include "containers/intrusive.hpp"
 #include "sync/wait_object.hpp"
 

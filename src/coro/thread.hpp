@@ -50,7 +50,7 @@ private:
 
     std::thread m_thread;
 
-    friend class shutdown_t; // For updating the stop event and stop flag
+    friend class shutdown_rpc_t; // For updating the stop event and stop flag
     event_t m_stop_event;
     bool m_stop_immediately;
 

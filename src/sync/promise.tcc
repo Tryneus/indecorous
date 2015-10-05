@@ -3,6 +3,8 @@
 
 #include <functional>
 
+#include "errors.hpp"
+
 namespace indecorous {
 
 // Internal type used by promise_t and future_t
