@@ -1,11 +1,13 @@
 #ifndef SYNC_CORO_POOL_HPP_
 #define SYNC_CORO_POOL_HPP_
 
-#include <cstdint>
+#include <cstddef>
 #include <type_traits>
 
+#include "common.hpp"
 #include "coro/coro.hpp"
 #include "sync/drainer.hpp"
+#include "sync/interruptor.hpp"
 #include "sync/semaphore.hpp"
 
 namespace indecorous {
@@ -81,6 +83,8 @@ public:
 private:
     semaphore_t m_semaphore;
     drainer_t m_drainer;
+
+    DISABLE_COPYING(coro_pool_t);
 };
 
 } // namespace indecorous

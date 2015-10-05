@@ -1,8 +1,6 @@
 #ifndef CORO_EVENTS_HPP_
 #define CORO_EVENTS_HPP_
 
-#include <sys/epoll.h>
-
 #include <unordered_map>
 #include <unordered_set>
 

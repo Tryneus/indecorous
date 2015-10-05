@@ -2,12 +2,12 @@
 #define SYNC_MUTEX_HPP_
 
 #include "common.hpp"
-#include "sync/wait_object.hpp"
 #include "containers/intrusive.hpp"
 
 namespace indecorous {
 
 class mutex_t;
+class wait_callback_t;
 
 class mutex_lock_t : public intrusive_node_t<mutex_lock_t> {
 public:
@@ -25,6 +25,7 @@ private:
 
 // The mutex is not publicly implemented as a waitable_t so you cannot
 // wait_all on them and unintentionally deadlock.
+// TODO: double check this to see if anything can be done
 class mutex_t {
 public:
     mutex_t(mutex_t &&other);

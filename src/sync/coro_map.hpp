@@ -1,7 +1,7 @@
 #ifndef SYNC_CORO_MAP_HPP_
 #define SYNC_CORO_MAP_HPP_
 
-#include <cstdint>
+#include <cstddef>
 #include <type_traits>
 
 #include "coro/coro.hpp"

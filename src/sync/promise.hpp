@@ -1,7 +1,6 @@
 #ifndef SYNC_PROMISE_HPP_
 #define SYNC_PROMISE_HPP_
 
-#include <memory>
 #include <type_traits>
 
 #include "common.hpp"

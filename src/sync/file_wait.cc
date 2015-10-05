@@ -1,5 +1,7 @@
 #include "sync/file_wait.hpp"
 
+#include <sys/epoll.h>
+
 #include "common.hpp"
 #include "coro/coro.hpp"
 #include "coro/events.hpp"

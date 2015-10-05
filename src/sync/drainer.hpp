@@ -1,9 +1,8 @@
 #ifndef SYNC_DRAINER_HPP_
 #define SYNC_DRAINER_HPP_
 
-#include <cstddef>
-
 #include "common.hpp"
+#include "containers/intrusive.hpp"
 #include "sync/wait_object.hpp"
 
 namespace indecorous {

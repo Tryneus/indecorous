@@ -1,6 +1,8 @@
 #ifndef SYNC_MULTIPLE_WAIT_HPP_
 #define SYNC_MULTIPLE_WAIT_HPP_
 
+#include <cstddef>
+#include <type_traits>
 #include <vector>
 
 #include "common.hpp"

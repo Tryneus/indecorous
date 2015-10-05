@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cstring>
+#include <memory>
+#include <sys/epoll.h>
 
 #include "sync/file_wait.hpp"
 #include "sync/timer.hpp"
