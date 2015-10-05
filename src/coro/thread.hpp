@@ -42,6 +42,7 @@ private:
 
     size_t m_id;
 
+    friend class target_t; // For immediately noting a local RPC
     shutdown_t *m_shutdown;
     thread_barrier_t *m_barrier;
     std::atomic<bool> *m_close_flag;

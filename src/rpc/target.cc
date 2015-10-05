@@ -22,7 +22,8 @@ void target_t::note_send() const {
     if (is_local()) {
         thread_t *t = thread_t::self();
         if (t != nullptr) {
-            t->dispatcher()->note_new_task();
+            // TODO: this does an atomic operation - check if we can do this otherwise
+            t->m_shutdown->update(1, &t->m_hub);
         }
     }
 }
