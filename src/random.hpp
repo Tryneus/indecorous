@@ -22,6 +22,13 @@ public:
         return res;
     }
 
+    template <>
+    bool generate() {
+        char buffer;
+        fill(&buffer, 1);
+        return static_cast<bool>(buffer & 0x1);
+    }
+
 protected:
     template <typename gen_t>
     void fill_internal(void *buffer, size_t length, gen_t *generator);
