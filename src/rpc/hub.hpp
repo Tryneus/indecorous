@@ -25,6 +25,8 @@ public:
     local_target_t *self_target();
     target_t *target(target_id_t id);
 
+    const std::vector<local_target_t *> &local_targets();
+
     template <typename RPC, typename... Args>
     size_t broadcast_local_noreply(Args &&...args) {
         for (auto &&t : m_local_targets) {

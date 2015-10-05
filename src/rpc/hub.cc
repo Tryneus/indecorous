@@ -75,6 +75,10 @@ target_t *message_hub_t::target(target_id_t id) {
     return (it == m_targets.end()) ? nullptr : it->second;
 }
 
+const std::vector<local_target_t *> &message_hub_t::local_targets() {
+    return m_local_target;
+}
+
 void message_hub_t::set_local_targets(std::list<thread_t> *threads) {
     // This should be done once and only once during startup of the thread pool
     assert(m_local_targets.empty());
