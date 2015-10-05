@@ -3,6 +3,7 @@
 
 #include <cstddef>
 
+#include "common.hpp"
 #include "sync/wait_object.hpp"
 
 namespace indecorous {

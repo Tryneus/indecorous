@@ -1,6 +1,7 @@
 #ifndef SYNC_MUTEX_HPP_
 #define SYNC_MUTEX_HPP_
 
+#include "common.hpp"
 #include "sync/wait_object.hpp"
 #include "containers/intrusive.hpp"
 

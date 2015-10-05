@@ -1,6 +1,7 @@
 #ifndef SYNC_FILE_WAIT_HPP_
 #define SYNC_FILE_WAIT_HPP_
 
+#include "common.hpp"
 #include "sync/wait_object.hpp"
 #include "containers/intrusive.hpp"
 

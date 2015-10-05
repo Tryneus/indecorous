@@ -4,6 +4,7 @@
 #include <atomic>
 #include <thread>
 
+#include "common.hpp"
 #include "containers/intrusive.hpp"
 #include "coro/coro.hpp"
 #include "coro/events.hpp"

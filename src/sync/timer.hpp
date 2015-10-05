@@ -1,9 +1,10 @@
 #ifndef SYNC_TIMER_HPP_
 #define SYNC_TIMER_HPP_
 
-#include "sync/wait_object.hpp"
+#include "common.hpp"
 #include "containers/intrusive.hpp"
 #include "coro/coro.hpp"
+#include "sync/wait_object.hpp"
 
 namespace indecorous {
 

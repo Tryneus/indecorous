@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <type_traits>
 
+#include "common.hpp"
 #include "containers/arena.hpp"
 #include "containers/intrusive.hpp"
 #include "sync/event.hpp"

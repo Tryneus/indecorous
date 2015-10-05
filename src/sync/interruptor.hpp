@@ -1,6 +1,7 @@
 #ifndef SYNC_INTERRUPTOR_HPP_
 #define SYNC_INTERRUPTOR_HPP_
 
+#include "common.hpp"
 #include "containers/intrusive.hpp"
 #include "sync/wait_object.hpp"
 

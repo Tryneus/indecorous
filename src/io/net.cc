@@ -2,6 +2,7 @@
 
 #include "udns.h"
 
+#include "common.hpp"
 #include "rpc/message.hpp"
 #include "sync/drainer.hpp"
 #include "sync/file_wait.hpp"

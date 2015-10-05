@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "common.hpp"
 #include "containers/file.hpp"
 #include "containers/intrusive.hpp"
 
