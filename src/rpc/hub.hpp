@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "sync/multiple_wait.hpp"
 #include "rpc/handler.hpp"
 #include "rpc/id.hpp"
 #include "rpc/target.hpp"
@@ -50,7 +51,7 @@ public:
               typename Res = typename decltype(rpc_bridge(RPC::fn_ptr()))::result_t>
     typename std::enable_if<std::is_void<Res>::value, void>::type broadcast_local_sync(Args &&...args) {
         std::vector<future_t<Res> > futures = broadcast_local_async<RPC>(std::forward<Args>(args)...);
-        wait_all_it(futures);
+        wait_all(futures);
     }
 
     template <typename RPC, typename... Args,
@@ -59,7 +60,7 @@ public:
         std::vector<future_t<Res> > futures = broadcast_local_async<RPC>(std::forward<Args>(args)...);
         std::vector<Res> res;
         res.reserve(futures.size());
-        wait_all_it(futures);
+        wait_all(futures);
         for (auto &&f : futures) {
             res.emplace_back(f.release());
         }

@@ -2,6 +2,7 @@
 
 #include "coro/coro.hpp"
 #include "coro/thread.hpp"
+#include "sync/multiple_wait.hpp"
 
 namespace indecorous {
 

@@ -76,7 +76,7 @@ target_t *message_hub_t::target(target_id_t id) {
 }
 
 const std::vector<local_target_t *> &message_hub_t::local_targets() {
-    return m_local_target;
+    return m_local_targets;
 }
 
 void message_hub_t::set_local_targets(std::list<thread_t> *threads) {

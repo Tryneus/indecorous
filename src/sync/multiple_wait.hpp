@@ -59,7 +59,7 @@ private:
 };
 
 template <multiple_waiter_t::wait_type_t Type, typename Container>
-void wait_generic_it(Container &c) {
+void wait_generic_container(Container &c) {
     multiple_waiter_t waiter(Type, c.size());
     std::vector<multiple_wait_callback_t> waits;
     waits.reserve(c.size());
@@ -70,13 +70,15 @@ void wait_generic_it(Container &c) {
 }
 
 template <typename Container>
-void wait_any_it(Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ANY>(c);
+typename std::enable_if<!std::is_base_of<waitable_t, Container>::value, void>::type
+wait_any(Container &c) {
+    wait_generic_container<multiple_waiter_t::wait_type_t::ANY>(c);
 }
 
 template <typename Container>
-void wait_all_it(Container &c) {
-    wait_generic_it<multiple_waiter_t::wait_type_t::ALL>(c);
+typename std::enable_if<!std::is_base_of<waitable_t, Container>::value, void>::type
+wait_all(Container &c) {
+    wait_generic_container<multiple_waiter_t::wait_type_t::ALL>(c);
 }
 
 template <multiple_waiter_t::wait_type_t Type, typename... Args>
@@ -87,13 +89,25 @@ void wait_generic(Args &&...args) {
     waiter.wait();
 }
 
+template <bool val>
+constexpr bool variadic_and() {
+    return val;
+}
+
+template <bool val, bool val2, bool... Args>
+constexpr bool variadic_and() {
+    return val && variadic_and<val2, Args...>();
+}
+
 template <typename... Args>
-void wait_any(Args &&...args) {
+typename std::enable_if<!variadic_and<std::is_base_of<waitable_t, Args>::value...>(), void>::type
+wait_any(Args &&...args) {
     wait_generic<multiple_waiter_t::wait_type_t::ANY>(std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void wait_all(Args &&...args) {
+typename std::enable_if<!variadic_and<std::is_base_of<waitable_t, Args>::value...>(), void>::type
+wait_all(Args &&...args) {
     wait_generic<multiple_waiter_t::wait_type_t::ALL>(std::forward<Args>(args)...);
 }
 

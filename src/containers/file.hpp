@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 #include "common.hpp"
-#include "utils.hpp"
 
 namespace indecorous {
 
@@ -12,22 +11,13 @@ typedef int fd_t;
 
 class scoped_fd_t {
 public:
-    explicit scoped_fd_t(fd_t fd) :
-            m_fd(fd) { }
+    explicit scoped_fd_t(fd_t fd);
+    scoped_fd_t(scoped_fd_t &&other);
 
-    scoped_fd_t(scoped_fd_t &&other) :
-            m_fd(other.m_fd) {
-        other.m_fd = s_invalid_fd;
-    }
+    ~scoped_fd_t();
 
-    ~scoped_fd_t() {
-        if (valid()) {
-            eintr_wrap([&] { return close(m_fd); });
-        }
-    }
-
-    fd_t get() const { return m_fd; };
-    bool valid() const { return m_fd != s_invalid_fd; }
+    fd_t get() const;
+    bool valid() const;
 
 private:
     static const fd_t s_invalid_fd = -1;
