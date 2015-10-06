@@ -3,11 +3,12 @@
 #include "coro/coro.hpp"
 #include "coro/sched.hpp"
 #include "errors.hpp"
+#include "io/tcp.hpp"
 #include "rpc/handler.hpp"
+#include "rpc/serialize_stl.hpp"
 #include "rpc/target.hpp"
 #include "sync/event.hpp"
-#include "io/tcp.hpp"
-#include "rpc/serialize_stl.hpp"
+#include "sync/interruptor.hpp"
 
 const size_t num_threads = 2;
 
@@ -26,19 +27,17 @@ IMPL_STATIC_RPC(tcp_test_t::client)(uint16_t server_port) -> void {
 }
 
 IMPL_STATIC_RPC(tcp_test_t::server_loop)() -> void {
-    {
-        event_t done_event;
-        tcp_listener_t listener(0,
-            [&] (tcp_conn_t conn, drainer_lock_t) {
-                interruptor_t done(&done_event);
-                uint64_t val;
-                conn.read(&val, sizeof(val));
-                done_event.set();
-            });
+    event_t done_event;
+    tcp_listener_t listener(0,
+        [&] (tcp_conn_t conn, drainer_lock_t) {
+            interruptor_t done(&done_event);
+            uint64_t val;
+            conn.read(&val, sizeof(val));
+            done_event.set();
+        });
 
-        thread_t::self()->hub()->broadcast_local_sync<tcp_test_t::client>(listener.local_port());
-        done_event.wait();
-    }
+    thread_t::self()->hub()->broadcast_local_sync<tcp_test_t::client>(listener.local_port());
+    done_event.wait();
 }
 
 TEST_CASE("tcp/basic", "[tcp]") {

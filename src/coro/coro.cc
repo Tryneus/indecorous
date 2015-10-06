@@ -6,11 +6,12 @@
 #include <unistd.h>
 #include <valgrind/valgrind.h>
 
-#include "sync/event.hpp"
 #include "coro/sched.hpp"
 #include "coro/thread.hpp"
-#include "rpc/target.hpp"
 #include "errors.hpp"
+#include "rpc/target.hpp"
+#include "sync/event.hpp"
+#include "sync/interruptor.hpp"
 
 namespace indecorous {
 

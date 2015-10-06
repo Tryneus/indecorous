@@ -9,10 +9,8 @@
 #include <type_traits>
 
 #include "common.hpp"
-#include "containers/arena.hpp"
 #include "containers/intrusive.hpp"
 #include "sync/event.hpp"
-#include "sync/interruptor.hpp"
 #include "sync/promise.hpp"
 #include "sync/wait_object.hpp"
 
@@ -22,6 +20,7 @@ namespace indecorous {
 
 class coro_t;
 class dispatcher_t;
+class interruptor_t;
 
 class coro_cache_t {
 public:

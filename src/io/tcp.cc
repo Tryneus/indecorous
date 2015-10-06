@@ -7,6 +7,7 @@
 #include <cstring>
 
 #include "utils.hpp"
+#include "sync/interruptor.hpp"
 
 namespace indecorous {
 
