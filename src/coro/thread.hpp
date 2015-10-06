@@ -8,15 +8,13 @@
 #include "containers/intrusive.hpp"
 #include "coro/coro.hpp"
 #include "coro/events.hpp"
-#include "coro/shutdown.hpp"
-#include "rpc/id.hpp"
 #include "rpc/hub.hpp"
 #include "sync/event.hpp"
 
 namespace indecorous {
 
-class message_hub_t;
 class scheduler_t;
+class shutdown_t;
 class thread_barrier_t;
 
 class thread_t {

@@ -1,5 +1,6 @@
 #include "rpc/target.hpp"
 
+#include "coro/shutdown.hpp"
 #include "coro/thread.hpp"
 #include "rpc/hub.hpp"
 

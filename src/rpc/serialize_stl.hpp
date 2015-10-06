@@ -1,8 +1,6 @@
 #ifndef RPC_SERIALIZE_STL_HPP_
 #define RPC_SERIALIZE_STL_HPP_
 
-#include "rpc/serialize.hpp"
-
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -18,6 +16,8 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+#include "rpc/serialize.hpp"
 
 namespace indecorous {
 

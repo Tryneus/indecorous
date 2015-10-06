@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "rpc/serialize_macros.hpp"
+#include "rpc/serialize.hpp"
 
 namespace indecorous {
 

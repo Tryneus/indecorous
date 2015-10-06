@@ -14,8 +14,6 @@ class write_message_t;
         static Type read(read_message_t *); \
     }
 
-#include "rpc/serialize.hpp"
-
 #define SERIALIZABLE_ENUM(Type) \
     template <> struct serializer_t<Type> { \
         typedef std::underlying_type<Type>::type Value; \

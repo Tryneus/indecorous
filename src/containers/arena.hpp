@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <utility>
 
+#include "common.hpp"
 #include "containers/intrusive.hpp"
 
 namespace indecorous {
@@ -72,6 +73,8 @@ public:
             m_free_nodes.push_back(node);
         }
     }
+
+    DISABLE_COPYING(arena_t);
 };
 
 } // namespace indecorous
