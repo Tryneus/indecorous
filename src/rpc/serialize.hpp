@@ -6,6 +6,7 @@
 #include <tuple>
 #include <utility>
 
+#include "common.hpp"
 #include "rpc/serialize_macros.hpp"
 
 namespace indecorous {
@@ -57,15 +58,13 @@ size_t full_serialized_size(const Args &...args) {
         size_t value;
     } acc;
 
-    __attribute__((unused)) int dummy[] =
-        { 0, acc.add(serializer_t<Args>::size(args))... };
+    UNUSED int dummy[] = { 0, acc.add(serializer_t<Args>::size(args))... };
     return acc.value;
 }
 
 template <typename... Args>
 int full_serialize(write_message_t *msg, const Args &...args) {
-    __attribute__((unused)) int dummy[] =
-        { 0, serializer_t<Args>::write(msg, args)... };
+    UNUSED int dummy[] = { 0, serializer_t<Args>::write(msg, args)... };
     return 0;
 }
 

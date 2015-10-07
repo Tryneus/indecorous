@@ -379,7 +379,7 @@ template <typename T> struct serializer_t<std::forward_list<T> > {
         size_t size = 0;
         // TODO: size isn't known - have to traverse twice?
         // Other option - reserve space in the stream and rewrite it later?
-        for (__attribute__((unused)) auto const &i : item) { size += 1; }
+        for (UNUSED auto const &i : item) { size += 1; }
         serializer_t<uint64_t>::write(msg, std::move(size));
         return serialize_container(msg, item);
     }
@@ -414,8 +414,7 @@ struct serializer_t<std::priority_queue<T, U, C> > {
     }
 };
 
-// std::array - uses templates to push evaluation to compile-time
-// TODO: is this necessary, or will the compiler do this automatically?
+// std::array
 template <typename T, size_t N> struct serializer_t<std::array<T, N> > {
     template <size_t... X>
     static size_t size_internal(std::integer_sequence<size_t, X...>,
@@ -425,8 +424,7 @@ template <typename T, size_t N> struct serializer_t<std::array<T, N> > {
             int add(size_t value) { total += value; return 0; }
             size_t total;
         } acc;
-        __attribute__((unused)) int dummy[] =
-            { acc.add(serializer_t<T>::size(std::get<X>(item)))... };
+        UNUSED int dummy[] = { acc.add(serializer_t<T>::size(std::get<X>(item)))... };
         return acc.total;
     }
     static size_t size(const std::array<T, N> &item) {
@@ -435,8 +433,7 @@ template <typename T, size_t N> struct serializer_t<std::array<T, N> > {
     template <size_t... X>
     static int write_internal(std::integer_sequence<size_t, X...>,
                               write_message_t *msg, const std::array<T, N> &item) {
-        __attribute__((unused)) int dummy[] =
-            { serializer_t<T>::write(msg, std::get<X>(item))... };
+        UNUSED int dummy[] = { serializer_t<T>::write(msg, std::get<X>(item))... };
         return 0;
     }
     static int write(write_message_t *msg, const std::array<T, N> &item) {

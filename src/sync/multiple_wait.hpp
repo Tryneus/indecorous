@@ -86,7 +86,7 @@ wait_all(Container &c) {
 template <multiple_waiter_t::wait_type_t Type, typename... Args>
 void wait_generic(Args &&...args) {
     multiple_waiter_t waiter(Type, sizeof...(Args));
-    __attribute__((unused)) multiple_wait_callback_t waits[] =
+    UNUSED multiple_wait_callback_t waits[] =
         { multiple_wait_callback_t(std::forward<Args>(args), &waiter)... };
     waiter.wait();
 }

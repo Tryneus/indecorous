@@ -10,14 +10,16 @@
 #include <cstdint>
 #include <inttypes.h>
 
+// TODO: make sure macros aren't exposed to users
 #define DISABLE_COPYING(T) \
     T(const T &) = delete; \
     T &operator = (const T &) = delete
 
-// TODO: make sure these aren't exposed to users
+#define UNUSED __attribute__((unused))
+
 #ifdef NDEBUG
     #define DEBUG_ONLY(...)
-    #define DEBUG_VAR __attribute__((unused))
+    #define DEBUG_VAR UNUSED
     // #define ASSERT(x) do { (void)sizeof(x); } while (0)
 #else
     #define DEBUG_ONLY(...) __VA_ARGS__
