@@ -14,6 +14,7 @@ class interruptor_t final : public waitable_t,
                             public intrusive_node_t<interruptor_t> {
 public:
     explicit interruptor_t(waitable_t *waitable);
+    explicit interruptor_t(interruptor_t *parent_interruptor);
     interruptor_t(interruptor_t &&other);
     ~interruptor_t();
 

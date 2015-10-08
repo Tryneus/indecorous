@@ -11,6 +11,15 @@ interruptor_t::interruptor_t(waitable_t *waitable) :
     m_waitable->add_wait(this);
 }
 
+// Constructor used when inheriting interruptors from the parent coroutine
+interruptor_t::interruptor_t(interruptor_t *parent_interruptor) :
+        m_triggered(false),
+        m_waitable(nullptr), m_waiters(),
+        m_prev_waiter(this, parent_interruptor) {
+   interruptor_t *prev_interruptor = coro_t::self()->add_interruptor(this); 
+   assert(prev_interruptor == nullptr);
+}
+
 interruptor_t::interruptor_t(interruptor_t &&other) :
         wait_callback_t(std::move(other)),
         intrusive_node_t<interruptor_t>(std::move(other)),
@@ -26,7 +35,9 @@ interruptor_t::~interruptor_t() {
     if (intrusive_node_t<wait_callback_t>::in_a_list()) {
         m_waitable->remove_wait(this);
     }
-    coro_t::self()->remove_interruptor(this);
+    if (intrusive_node_t<interruptor_t>::in_a_list()) {
+        coro_t::self()->remove_interruptor(this);
+    }
     m_waiters.clear([&] (auto cb) { cb->wait_done(wait_result_t::ObjectLost); });
 }
 
@@ -78,7 +89,7 @@ interruptor_t::prev_waiter_t::prev_waiter_t(prev_waiter_t &&other) :
 }
 
 interruptor_t::prev_waiter_t::~prev_waiter_t() {
-    if (m_prev_interruptor != nullptr) {
+    if (in_a_list()) {
         m_prev_interruptor->remove_wait(this);
     }
 }

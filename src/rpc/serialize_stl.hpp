@@ -377,8 +377,6 @@ template <typename T> struct serializer_t<std::forward_list<T> > {
     }
     static int write(write_message_t *msg, const std::forward_list<T> &item) {
         size_t size = 0;
-        // TODO: size isn't known - have to traverse twice?
-        // Other option - reserve space in the stream and rewrite it later?
         for (UNUSED auto const &i : item) { size += 1; }
         serializer_t<uint64_t>::write(msg, std::move(size));
         return serialize_container(msg, item);
@@ -386,7 +384,6 @@ template <typename T> struct serializer_t<std::forward_list<T> > {
     static std::forward_list<T> read(read_message_t *msg) {
         std::forward_list<T> res;
         size_t size = serializer_t<uint64_t>::read(msg);
-        // TODO: see if this can be simplified
         if (size > 0) {
             res.emplace_front(serializer_t<T>::read(msg));
         }

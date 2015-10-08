@@ -257,7 +257,21 @@ void launch_coro() {
 
     // Reset the handover parameters for the next coroutine to be spawned
     handover_params.clear();
-    (self->*fn)(parent, params, immediate);
+
+    // Set the base interruptor (inherit interruption from parent coroutine)
+    interruptor_t *parent_interruptor = parent->get_interruptor();
+    debugf("new coroutine (%p), parent: %p, parent interruptor: %p, len(parent->m_interruptors): %zu",
+           self, parent, parent_interruptor, parent->m_interruptors.size());
+    if (parent_interruptor == nullptr) {
+        (self->*fn)(parent, params, immediate);
+    } else {
+        interruptor_t inherited_interruptor(parent_interruptor);       
+        (self->*fn)(parent, params, immediate);
+    }
+
+    assert(self->m_interruptors.size() == 0);
+    self->m_dispatch->enqueue_release(self);
+    self->swap(nullptr);
     ::abort();
 }
 
@@ -284,13 +298,9 @@ void coro_t::maybe_swap_parent(coro_t *parent, bool immediate) {
 
 coro_t *coro_t::create() {
     dispatcher_t *dispatch = thread_t::self()->dispatcher();
-    return dispatch->m_coro_cache.get();
-}
-
-void coro_t::end() {
-    m_dispatch->enqueue_release(this);
-    swap(nullptr);
-    ::abort();
+    auto res = dispatch->m_coro_cache.get();
+    assert(res->m_interruptors.size() == 0);
+    return res;
 }
 
 void coro_t::swap(coro_t *next) {
@@ -341,6 +351,11 @@ void coro_t::yield() {
     coro->swap(nullptr);
 }
 
+void coro_t::clear_interruptors() {
+    coro_t *coro = self();
+    coro->m_interruptors.clear([&] (auto) { });
+}
+
 void coro_t::notify(wait_result_t result) {
     assert(!in_a_list());
     m_dispatch->m_run_queue.push_back(this);
@@ -369,6 +384,7 @@ interruptor_t *coro_t::add_interruptor(interruptor_t *interruptor) {
 }
 
 void coro_t::remove_interruptor(interruptor_t *interruptor) {
+    assert(interruptor == m_interruptors.back());
     m_interruptors.remove(interruptor);
 }
 

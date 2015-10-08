@@ -12,6 +12,7 @@ namespace indecorous {
 
 class coro_t;
 class interruptor_t;
+class multiple_wait_callback_t;
 
 // Be careful to avoid deadlock when using wait_all with semaphores
 
@@ -22,6 +23,8 @@ public:
     ~multiple_waiter_t();
 
     void wait();
+
+    void add_item(multiple_wait_callback_t *cb);
     void item_finished(wait_result_t result);
 
 private:
@@ -32,6 +35,7 @@ private:
 
     coro_t *m_owner_coro;
     waitable_t *m_interruptor;
+    intrusive_list_t<multiple_wait_callback_t> m_items;
 
     bool m_ready;
     bool m_waiting;
@@ -41,7 +45,8 @@ private:
     DISABLE_COPYING(multiple_waiter_t);
 };
 
-class multiple_wait_callback_t final : private wait_callback_t {
+class multiple_wait_callback_t final : private wait_callback_t,
+                                       public intrusive_node_t<multiple_wait_callback_t> {
 public:
     multiple_wait_callback_t(waitable_t *obj,
                              multiple_waiter_t *waiter);
@@ -49,6 +54,9 @@ public:
                              multiple_waiter_t *waiter);
     multiple_wait_callback_t(multiple_wait_callback_t &&other) = default;
     ~multiple_wait_callback_t();
+
+    void begin_wait();
+    void cancel_wait();
 
 private:
     void wait_done(wait_result_t result) override final;

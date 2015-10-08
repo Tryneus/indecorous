@@ -11,8 +11,6 @@
 
 namespace indecorous {
 
-// TODO: add strong asserts to all this stuff
-
 template <typename T>
 class intrusive_list_t;
 
@@ -29,8 +27,7 @@ public:
         other.m_prev = nullptr;
     }
     virtual ~intrusive_node_t() {
-        assert(m_next == nullptr);
-        assert(m_prev == nullptr);
+        assert(!in_a_list());
     }
 
     bool in_a_list() { return (m_next != nullptr) || (m_prev != nullptr); }

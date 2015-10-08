@@ -93,6 +93,9 @@ public:
     // Wait temporarily and be rescheduled
     static void yield();
 
+    // Stop listening on any interruptors (including inherited ones)
+    static void clear_interruptors();
+
     // Create a coroutine and put it on the queue to run
     template <typename Callable, typename... Args>
     static auto spawn(Callable &&cb, Args &&...args) {
@@ -156,7 +159,6 @@ private:
         Tuple params(std::move(*reinterpret_cast<Tuple *>(p)));
         maybe_swap_parent(parent, immediate);
         runner_t<Res>::run(std::make_index_sequence<std::tuple_size<Tuple>::value - ArgOffset>{}, &params);
-        end();
     }
 
     template <typename Res>
@@ -182,7 +184,6 @@ private:
 
     void begin(hook_fn_t, coro_t *parent, void *params, bool immediate);
     void swap(coro_t *next);
-    [[noreturn]] void end();
 
     void notify(wait_result_t result);
 
