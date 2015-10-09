@@ -1,5 +1,6 @@
 #include "sync/interruptor.hpp"
 
+#include "common.hpp"
 #include "coro/coro.hpp"
 
 namespace indecorous {
@@ -16,7 +17,7 @@ interruptor_t::interruptor_t(interruptor_t *parent_interruptor) :
         m_triggered(false),
         m_waitable(nullptr), m_waiters(),
         m_prev_waiter(this, parent_interruptor) {
-   interruptor_t *prev_interruptor = coro_t::self()->add_interruptor(this); 
+   DEBUG_VAR interruptor_t *prev_interruptor = coro_t::self()->add_interruptor(this);
    assert(prev_interruptor == nullptr);
 }
 

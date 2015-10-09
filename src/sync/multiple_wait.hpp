@@ -40,7 +40,7 @@ private:
     bool m_ready;
     bool m_waiting;
     size_t m_needed;
-    wait_result_t m_error_result;
+    wait_result_t m_result; // Only valid when m_ready is true
 
     DISABLE_COPYING(multiple_waiter_t);
 };

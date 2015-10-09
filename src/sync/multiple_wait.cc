@@ -13,31 +13,36 @@ multiple_waiter_t::multiple_waiter_t(multiple_waiter_t::wait_type_t type,
         m_ready(false),
         m_waiting(false),
         m_needed(type == wait_type_t::ALL ? total : 1),
-        m_error_result(wait_result_t::Success) { }
+        m_result(wait_result_t::Success) { }
 
 multiple_waiter_t::~multiple_waiter_t() {
     // This should have been marked ready, either by completion or interruption
     assert(m_ready);
+    if (in_a_list()) {
+        assert(m_interruptor != nullptr);
+        m_interruptor->remove_wait(this);
+    }
 }
 
 void multiple_waiter_t::wait() {
     m_items.each([&] (auto cb) { cb->begin_wait(); });
-    if (m_interruptor != nullptr) {
-        m_interruptor->add_wait(this);
-    }
 
-    // Handle the case of immediate completion
-    if (m_error_result != wait_result_t::Success) {
-        check_wait_result(m_error_result);
-        assert(false);
-    } else if (!m_ready) {
+    // We may be immediately ready
+    if (!m_ready) {
+        if (m_interruptor != nullptr) {
+            m_interruptor->add_wait(this);
+        }
+
         m_waiting = true;
         m_owner_coro->wait();
+    } else {
+        assert(m_ready);
+        m_items.clear([&] (auto cb) { cb->cancel_wait(); });
+        check_wait_result(m_result);
     }
 }
 
 void multiple_waiter_t::add_item(multiple_wait_callback_t *cb) {
-    debugf("adding item (%p)", cb);
     m_items.push_back(cb);
 }
 
@@ -50,20 +55,16 @@ void multiple_waiter_t::item_finished(wait_result_t result) {
             ready(wait_result_t::Success);
         }
     } else if (result != wait_result_t::Success) {
-        m_error_result = result;
+        m_result = result;
     }
 }
 
 void multiple_waiter_t::ready(wait_result_t result) {
     assert(!m_ready);
-    debugf("multiple_waiter_t ready (result=%d), items: %zu", result, m_items.size());
     m_ready = true;
-    m_error_result = result;
-    m_items.clear([&] (auto cb) { cb->cancel_wait(); });
-    if (in_a_list()) {
-        m_interruptor->remove_wait(this);
-    }
+    m_result = result;
     if (m_waiting) {
+        m_items.clear([&] (auto cb) { cb->cancel_wait(); });
         m_owner_coro->wait_callback()->wait_done(result);
         m_waiting = false;
     }
@@ -99,7 +100,6 @@ multiple_wait_callback_t::multiple_wait_callback_t(waitable_t &obj,
 multiple_wait_callback_t::~multiple_wait_callback_t() { }
 
 void multiple_wait_callback_t::begin_wait() {
-    debugf("adding wait on m_obj(%p)", m_obj);
     m_obj->add_wait(this);
 }
 

@@ -260,12 +260,10 @@ void launch_coro() {
 
     // Set the base interruptor (inherit interruption from parent coroutine)
     interruptor_t *parent_interruptor = parent->get_interruptor();
-    debugf("new coroutine (%p), parent: %p, parent interruptor: %p, len(parent->m_interruptors): %zu",
-           self, parent, parent_interruptor, parent->m_interruptors.size());
     if (parent_interruptor == nullptr) {
         (self->*fn)(parent, params, immediate);
     } else {
-        interruptor_t inherited_interruptor(parent_interruptor);       
+        interruptor_t inherited_interruptor(parent_interruptor);
         (self->*fn)(parent, params, immediate);
     }
 
