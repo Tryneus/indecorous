@@ -26,13 +26,12 @@ multiple_waiter_t::~multiple_waiter_t() {
 
 void multiple_waiter_t::wait() {
     m_items.each([&] (auto cb) { cb->begin_wait(); });
+    if (m_interruptor != nullptr) {
+        m_interruptor->add_wait(this);
+    }
 
     // We may be immediately ready
     if (!m_ready) {
-        if (m_interruptor != nullptr) {
-            m_interruptor->add_wait(this);
-        }
-
         m_waiting = true;
         m_owner_coro->wait();
     } else {
