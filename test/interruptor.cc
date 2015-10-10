@@ -6,6 +6,7 @@
 #include "sync/event.hpp"
 #include "sync/multiple_wait.hpp"
 #include "sync/timer.hpp"
+#include "sync/drainer.hpp"
 
 using namespace indecorous;
 
@@ -68,4 +69,28 @@ SIMPLE_TEST(interruptor, preemptive, 4, "[sync][interruptor]") {
     coro_t::clear_interruptors();
     coro_any.wait();
     coro_all.wait();
+}
+
+SIMPLE_TEST(interruptor, drainer, 4, "[sync][interruptor]") {
+    drainer_t outer_drainer;
+    interruptor_t interruptor(&outer_drainer);
+
+    // Because we need the drainer to destroy before the interruptor
+    drainer_t drainer(std::move(outer_drainer));
+
+    coro_t::spawn([&] (drainer_lock_t) {
+            try {
+                event_t inner_event;
+                inner_event.wait();
+                FAIL("wait was not interrupted");
+            } catch (const wait_interrupted_exc_t &) { }
+        }, drainer.lock());
+
+    coro_t::spawn([&] (drainer_lock_t) {
+            try {
+                event_t inner_event;
+                inner_event.wait();
+                FAIL("wait was not interrupted");
+            } catch (const wait_interrupted_exc_t &) { }
+        }, drainer.lock());
 }

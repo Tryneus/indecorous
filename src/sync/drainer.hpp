@@ -35,6 +35,7 @@ public:
     ~drainer_t();
 
     bool draining() const;
+    void drain();
 
     drainer_lock_t lock();
 
@@ -43,14 +44,19 @@ private:
     void remove_wait(wait_callback_t *cb) override final;
 
     friend class drainer_lock_t;
+    void add_lock(drainer_lock_t *l);
+    void remove_lock(drainer_lock_t *l);
+
     // List of extant locks on the drainer, which will block draining
     intrusive_list_t<drainer_lock_t> m_locks;
 
     // List of waiters waiting for the drainer to start draining
     intrusive_list_t<wait_callback_t> m_start_drain_waiters;
 
-    // Waiters waiting for the drainer to finish draining (in the destructor)
-    wait_callback_t *m_finish_drain_waiter;
+    // Waiters waiting for the drainer to finish draining
+    intrusive_list_t<wait_callback_t> m_finish_drain_waiters;
+
+    bool m_draining;
 
     DISABLE_COPYING(drainer_t);
 };
