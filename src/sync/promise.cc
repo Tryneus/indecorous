@@ -70,11 +70,13 @@ future_t<void> promise_data_t<void>::add_future() {
 
 void promise_data_t<void>::notify_all() {
     if (m_fulfilled) {
+        // TODO: this will leak if `handle` throws - 
+        // promises should probably catch and propagate exceptions
+        m_chain.clear([] (auto p) { p->handle(); delete p; });
         m_futures.each([] (auto f) { f->notify(wait_result_t::Success); });
-        m_chain.clear([] (auto p) { p->handle(); delete p; });
     } else if (m_abandoned) {
-        m_futures.each([] (auto f) { f->notify(wait_result_t::ObjectLost); });
         m_chain.clear([] (auto p) { p->handle(); delete p; });
+        m_futures.each([] (auto f) { f->notify(wait_result_t::ObjectLost); });
     }
 }
 

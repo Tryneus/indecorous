@@ -9,35 +9,40 @@ namespace indecorous {
 class mutex_t;
 class wait_callback_t;
 
-class mutex_lock_t : public intrusive_node_t<mutex_lock_t> {
+class mutex_acq_t final : public waitable_t, public intrusive_node_t<mutex_acq_t> {
 public:
-    mutex_lock_t(mutex_lock_t &&other);
-    ~mutex_lock_t();
+    mutex_acq_t(mutex_acq_t &&other);
+    ~mutex_acq_t();
+
+    bool has() const;
 private:
     friend class mutex_t;
-    explicit mutex_lock_t(mutex_t *parent);
+    explicit mutex_acq_t(mutex_t *parent);
+    void ready();
+
+    void add_wait(wait_callback_t *cb) override final;
+    void remove_wait(wait_callback_t *cb) override final;
 
     mutex_t *m_parent;
-    wait_callback_t *m_coro_cb;
+    intrusive_list_t<wait_callback_t> m_waiters;
 
-    DISABLE_COPYING(mutex_lock_t);
+    DISABLE_COPYING(mutex_acq_t);
 };
 
-// The mutex is not publicly implemented as a waitable_t so you cannot
-// wait_all on them and unintentionally deadlock.
-// TODO: double check this to see if anything can be done
 class mutex_t {
 public:
-    mutex_t(mutex_t &&other);
     mutex_t();
+    mutex_t(mutex_t &&other);
     ~mutex_t();
 
-    mutex_lock_t lock();
+    mutex_acq_t start_acq();
 
 private:
-    friend class mutex_lock_t;
-    mutex_lock_t *m_lock;
-    intrusive_list_t<mutex_lock_t> m_pending_locks;
+    friend class mutex_acq_t;
+    void add_lock(mutex_acq_t *lock);
+    void release_lock(mutex_acq_t *lock);
+
+    intrusive_list_t<mutex_acq_t> m_pending_locks;
 
     DISABLE_COPYING(mutex_t);
 };

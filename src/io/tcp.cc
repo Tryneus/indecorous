@@ -55,7 +55,9 @@ tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port) :
 
 void tcp_conn_t::read(void *buffer, size_t count) {
     char *buf = reinterpret_cast<char *>(buffer);
-    auto lock = m_read_mutex.lock();
+
+    mutex_acq_t lock = m_read_mutex.start_acq();
+    lock.wait();
 
     while (count > 0) {
         size_t bytes_to_copy =
@@ -82,8 +84,10 @@ void tcp_conn_t::read(void *buffer, size_t count) {
 
 size_t tcp_conn_t::read_until(char delim, void *buffer, size_t count) {
     char *buf = reinterpret_cast<char *>(buffer);
-    auto lock = m_read_mutex.lock();
     size_t original_count = count;
+
+    mutex_acq_t lock = m_read_mutex.start_acq();
+    lock.wait();
 
     while (count > 0) {
         size_t bytes_to_copy =
@@ -100,7 +104,9 @@ size_t tcp_conn_t::read_until(char delim, void *buffer, size_t count) {
 
 void tcp_conn_t::write(void *buffer, size_t count) {
     char *buf = reinterpret_cast<char *>(buffer);
-    auto lock = m_write_mutex.lock();
+
+    mutex_acq_t lock = m_write_mutex.start_acq();
+    lock.wait();
 
     while (count > 0) {
         ssize_t res = eintr_wrap([&] {

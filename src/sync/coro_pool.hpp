@@ -14,8 +14,10 @@ namespace indecorous {
 
 class coro_pool_t {
 public:
-    explicit coro_pool_t(size_t pool_size) :
-            m_semaphore(pool_size), m_drainer() { }
+    explicit coro_pool_t(size_t pool_size);
+    ~coro_pool_t();
+
+    void resize(size_t new_pool_size);
 
     // The producer should return a value that can be passed into the consumer.  The
     // producer may throw a wait_interrupted_exc_t to indicate the end of the loop.  The
@@ -51,8 +53,8 @@ public:
     }
 
     // Alternate version for a producer that returns void
-    // producer signature: void(waitable_t *)
-    // consumer signature: void(waitable_t *)
+    // producer signature: void()
+    // consumer signature: void()
     template <typename callable_producer_t,
               typename callable_consumer_t,
               typename val_t = typename std::result_of<callable_producer_t()>::type >
@@ -77,8 +79,6 @@ public:
             // Do nothing, either the drainer is draining or the producer is finished
         }
     }
-
-    ~coro_pool_t() { }
 
 private:
     semaphore_t m_semaphore;

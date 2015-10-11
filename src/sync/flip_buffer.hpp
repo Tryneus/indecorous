@@ -1,57 +1,86 @@
 #ifndef SYNC_FLIP_BUFFER_HPP_
 #define SYNC_FLIP_BUFFER_HPP_
 
-#include <mutex>
-#include <atomic>
+#include <vector>
 
 #include "rpc/hub.hpp"
 #include "rpc/handler.hpp"
+#include "sync/home_threaded.hpp"
+#include "sync/mutex.hpp"
 #include "sync/swap.hpp"
 
-class flip_buffer_base_t {
+namespace indecorous {
+
+class flip_buffer_base_t : public home_threaded_t {
 public:
-    ~flip_buffer_base_t() { }
-    virtual void flip() = 0;
+    flip_buffer_base_t();
+    virtual ~flip_buffer_base_t();
+
+    // TODO: privatize this
+    void flip_internal();
+protected:
+    void flip();
+
+    enum class buffer_id_t { BUFFER_A = 0, BUFFER_B = 1 };
+    buffer_id_t current_buffer_id() const;
+
+    std::vector<buffer_id_t> m_current_buffers;
 };
 
-struct flip_buffer_callback_t : public handler_t<flip_buffer_callback_t> {
-    void call(flip_buffer_base_t *flip) {
-        flip->flip();
-    }
-};
-
+// Note that the type T must be copy-constructible, but it does not need to be
+// move-constructible or default-constructible.
+// The flip_buffer_t can be safely read from any thread, but can only be written to
+// on the same thread which created it.
 template <typename T>
-class flip_buffer_t {
+class flip_buffer_t : public flip_buffer_base_t {
 public:
-    flip_buffer_t() : m_current_read(0) { }
+    template <typename ...Args>
+    flip_buffer_t(Args &&...args) :
+        flip_buffer_base_t(),
+        m_buffer_a(std::forward<Args>(args)...),
+        m_buffer_b(m_buffer_a) { }
+
     ~flip_buffer_t() { }
 
     template <typename Callable>
-    void apply_read(Callable &&c) const {
+    void apply_read(Callable &&cb) const {
         assert_no_swap_t no_swap;
-        c(m_buffer[m_current_read.load()]);
+        cb((current_buffer_id() == buffer_id_t::BUFFER_A) ? m_buffer_a : m_buffer_b);
     }
 
-    // TODO: use a throttling pool to combine multiple writes so we don't lag behind
     template <typename Callable>
-    void apply_write(Callable &&c) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        size_t new_offset = (m_current_read.load() + 1) % 2;
+    void apply_write(Callable &&cb) {
+        assert_thread();
+        T *old_buffer;
+        T *new_buffer;
+
+        if (current_buffer_id() == buffer_id_t::BUFFER_A) {
+            old_buffer = &m_buffer_a;
+            new_buffer = &m_buffer_b;
+        } else {
+            old_buffer = &m_buffer_b;
+            new_buffer = &m_buffer_a;
+        }
 
         {
             assert_no_swap_t no_swap;
-            c(m_buffer[new_offset]);
+            cb(*new_buffer);
         }
 
-        thread_t::self()->hub()->broadcast_local_sync<flip_buffer_callback_t>(this);
-        m_current_read.store(new_offset);
+        flip();
+
+        {
+            assert_no_swap_t no_swap;
+            *old_buffer = *new_buffer;
+        }
     }
 
-
 private:
-    std::mutex m_mutex;
-    std::atomic<size_t> m_current_read; // TODO: this should be thread-local or sized by thread ids
-    T m_buffer[2];
+    mutex_t m_mutex;
+    T m_buffer_a;
+    T m_buffer_b;
 };
+
+} // namespace indecorous
 
 #endif // SYNC_FLIP_BUFFER_HPP_

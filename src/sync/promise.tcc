@@ -346,6 +346,7 @@ template <typename U>
 typename std::enable_if<std::is_move_constructible<U>::value, void>::type
 promise_data_t<T>::notify_all() {
     if (m_state == state_t::fulfilled) {
+        // TODO: this will leak memory if `handle` throws
         const T &local_ref = m_value;
         m_ref_chain.clear([&] (auto p) { p->handle(local_ref); delete p; });
         m_move_chain.clear([&] (auto p) {

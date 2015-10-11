@@ -74,8 +74,11 @@ public:
     size_t capacity() const;
     size_t available() const;
 
-    void extend(size_t count); // Increases the maximum size
-    void remove(semaphore_acq_t &&destroy); // Decreases the maximum size
+    void extend(size_t count); // Increases the capacity
+    void remove(semaphore_acq_t &&destroy); // Decreases the capacity
+
+    // Helper function to change the capacity, this may block if shrinking
+    void resize(size_t new_capacity);
 
     semaphore_acq_t start_acq(size_t count);
 

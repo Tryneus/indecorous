@@ -73,7 +73,9 @@ public:
                                 &udns_ctx_t::resolve_callback_ipv6, &data) != nullptr);
 
         // Only one coroutine should be calling into these functions at a time
-        mutex_lock_t lock = m_mutex.lock();
+        mutex_acq_t lock = m_mutex.start_acq();
+        lock.wait();
+
         single_timer_t timer;
         file_wait_t in = file_wait_t::in(dns_sock(m_ctx));
         while (data.result == result_t::Pending) {

@@ -38,7 +38,7 @@ void local_stream_t::wait() {
     uint64_t value;
     auto res = ::read(m_fd.get(), &value, sizeof(value));
     if (res != sizeof(value)) {
-        GUARANTEE_ERR(errno == EAGAIN);
+        GUARANTEE_ERR(errno == EAGAIN || errno == EWOULDBLOCK);
     }
     assert(value > 0);
 }

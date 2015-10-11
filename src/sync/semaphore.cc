@@ -146,6 +146,16 @@ void semaphore_t::remove(semaphore_acq_t &&destroy) {
     DEBUG_ONLY(m_pending.each([&] (auto s) { assert(m_capacity >= (s->m_owned + s->m_pending)); }));
 }
 
+void semaphore_t::resize(size_t new_capacity) {
+    if (new_capacity > m_capacity) {
+        extend(new_capacity - m_capacity);
+    } else if (new_capacity < m_capacity) {
+        semaphore_acq_t acq = start_acq(m_capacity - new_capacity);
+        acq.wait();
+        remove(std::move(acq));
+    }
+}
+
 semaphore_acq_t semaphore_t::start_acq(size_t count) {
     return semaphore_acq_t(count, this);
 }
