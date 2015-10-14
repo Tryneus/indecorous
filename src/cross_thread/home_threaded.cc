@@ -1,6 +1,10 @@
-#include "sync/home_threaded.hpp"
+#include "cross_thread/home_threaded.hpp"
 
-home_threaded_t() : m_home_thread(thread_t::self()->id()) { }
+#include "coro/thread.hpp"
+
+namespace indecorous {
+
+home_threaded_t::home_threaded_t() : m_home_thread(thread_t::self()->id()) { }
 home_threaded_t::~home_threaded_t() {
 }
 
@@ -11,3 +15,5 @@ size_t home_threaded_t::home_thread() const {
 void home_threaded_t::assert_thread() const {
     assert(m_home_thread == thread_t::self()->id());
 }
+
+} // namespace indecorous

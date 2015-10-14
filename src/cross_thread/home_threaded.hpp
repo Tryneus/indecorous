@@ -1,7 +1,9 @@
-#ifndef SYNC_HOME_THREADED_HPP_
-#define SYNC_HOME_THREADED_HPP_
+#ifndef CROSS_THREAD_HOME_THREADED_HPP_
+#define CROSS_THREAD_HOME_THREADED_HPP_
 
 #include <cstddef>
+
+namespace indecorous {
 
 class home_threaded_t {
 public:
@@ -13,5 +15,7 @@ public:
 private:
     size_t m_home_thread;
 };
+
+} // namespace indecorous
 
 #endif // SYNC_HOME_THREADED_HPP_

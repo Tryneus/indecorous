@@ -58,7 +58,7 @@ CXX_FLAGS += -Wswitch-enum -Wswitch-default -Wundef -Wvla -Wshadow
 CXX_FLAGS += -Wuninitialized -Wmissing-include-dirs -Wmissing-noreturn
 CXX_FLAGS += -Wunused-parameter -Wstrict-aliasing
 #CXX_FLAGS += -Wpedantic
-CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections
+CXX_FLAGS += -gdwarf-3 -fdata-sections -ffunction-sections -fno-rtti
 CXX_FLAGS += -D__STDC_FORMAT_MACROS
 
 LD_FLAGS += -lstdc++ -Wl,--gc-sections -lpthread -lrt

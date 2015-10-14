@@ -3,6 +3,7 @@
 
 #include "common.hpp"
 #include "containers/intrusive.hpp"
+#include "sync/wait_object.hpp"
 
 namespace indecorous {
 
@@ -42,7 +43,7 @@ private:
     void add_lock(mutex_acq_t *lock);
     void release_lock(mutex_acq_t *lock);
 
-    intrusive_list_t<mutex_acq_t> m_pending_locks;
+    intrusive_list_t<mutex_acq_t> m_locks;
 
     DISABLE_COPYING(mutex_t);
 };

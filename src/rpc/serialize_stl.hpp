@@ -31,7 +31,7 @@ int serialize_container(write_message_t *msg, const Container &c) {
 }
 
 // Generic hack to obtain the internal container of an STL type which doesn't have
-// a interface conducive to serialization/deserialization.
+// a helpful interface for serialization/deserialization.
 template <class T>
 const typename T::container_type &get_container(const T &item) {
     struct hack_t : private T {

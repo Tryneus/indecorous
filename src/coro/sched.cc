@@ -13,6 +13,8 @@
 namespace indecorous {
 
 scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
+        m_running(false),
+        m_shared_registry(),
         m_shutdown_policy(policy),
         m_shutdown(num_threads),
         m_close_flag(false),
@@ -31,7 +33,7 @@ scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
     GUARANTEE(pthread_sigmask(SIG_BLOCK, &sigset, &old_sigset) == 0);
 
     for (size_t i = 0; i < num_threads; ++i) {
-        m_threads.emplace_back(i, &m_shutdown, &m_barrier, &m_close_flag);
+        m_threads.emplace_back(i, this);
     }
 
     // Return SIGINT and SIGTERM to the previous state
@@ -112,6 +114,7 @@ private:
 thread_local scoped_sigaction_t *scoped_sigaction_t::s_instance = nullptr;
 
 void scheduler_t::run() {
+    m_running = true;
     // Count the number of initial calls into the threads
     m_shutdown.reset(std::accumulate(m_threads.begin(), m_threads.end(), size_t(0),
         [] (size_t res, thread_t &t) -> size_t {
@@ -134,6 +137,8 @@ void scheduler_t::run() {
     default:
         UNREACHABLE();
     }
+
+    m_running = false;
 }
 
 } // namespace indecorous

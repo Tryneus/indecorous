@@ -27,17 +27,16 @@ protected:
     void fill_internal(void *buffer, size_t length, gen_t *generator);
 };
 
-template <>
-bool random_t::generate() {
-    char buffer;
-    fill(&buffer, 1);
-    return static_cast<bool>(buffer & 0x1);
-}
+template <> bool random_t::generate();
 
 class true_random_t final : public random_t {
 public:
     true_random_t();
+    true_random_t(true_random_t &&other);
+
     void fill(void *buffer, size_t length) override final;
+
+    static thread_local true_random_t s_instance;
 private:
     friend class random_t;
     typedef std::random_device::result_type val_t;
@@ -46,11 +45,14 @@ private:
     std::random_device dev;
 };
 
-// TODO: make this a one-per-thread singleton?
 class pseudo_random_t final : public random_t {
 public:
     pseudo_random_t();
+    pseudo_random_t(pseudo_random_t &&other);
+
     void fill(void *buffer, size_t length) override final;
+
+    static thread_local pseudo_random_t s_instance;
 private:
     friend class random_t;
     typedef std::mt19937::result_type val_t;

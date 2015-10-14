@@ -4,6 +4,9 @@
 
 namespace indecorous {
 
+thread_local true_random_t true_random_t::s_instance = true_random_t();
+thread_local pseudo_random_t pseudo_random_t::s_instance = pseudo_random_t();
+
 random_t::~random_t() { }
 
 template <typename gen_t>
@@ -21,6 +24,14 @@ void random_t::fill_internal(void *buffer, size_t length, gen_t *generator) {
         memcpy(&static_cast<char *>(buffer)[length - remainder], &w.c[0], remainder);
     }
 }
+
+template <>
+bool random_t::generate() {
+    char buffer;
+    fill(&buffer, 1);
+    return static_cast<bool>(buffer & 0x1);
+}
+
 
 true_random_t::true_random_t() : dev() { }
 

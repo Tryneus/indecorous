@@ -1,4 +1,4 @@
-#include "sync/flip_buffer.hpp"
+#include "cross_thread/flip_buffer.hpp"
 
 #include "coro/thread.hpp"
 #include "rpc/handler.hpp"
@@ -6,10 +6,12 @@
 namespace indecorous {
 
 struct flip_buffer_callback_t {
-    DECLARE_STATIC_RPC(flip)(flip_buffer_base_t *) -> void;
+    DECLARE_STATIC_RPC(flip)(uint64_t) -> void;
 };
 
-IMPL_STATIC_RPC(flip_buffer_callback_t::flip)(flip_buffer_base_t *instance) -> void {
+// TODO: this is really stupid and unsafe, but should we really allow sending pointers?
+IMPL_STATIC_RPC(flip_buffer_callback_t::flip)(uint64_t unsafe_ptr) -> void {
+    flip_buffer_base_t *instance = reinterpret_cast<flip_buffer_base_t *>(unsafe_ptr);
     instance->flip_internal();
 }
 
@@ -19,7 +21,8 @@ flip_buffer_base_t::flip_buffer_base_t() :
 flip_buffer_base_t::~flip_buffer_base_t() { }
 
 void flip_buffer_base_t::flip() {
-    thread_t::self()->hub()->broadcast_local_sync<flip_buffer_callback_t::flip>(this);
+    thread_t::self()->hub()->broadcast_local_sync<flip_buffer_callback_t::flip>(
+            reinterpret_cast<uint64_t>(this));
 }
 
 flip_buffer_base_t::buffer_id_t flip_buffer_base_t::current_buffer_id() const {

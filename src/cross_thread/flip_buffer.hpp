@@ -1,11 +1,11 @@
-#ifndef SYNC_FLIP_BUFFER_HPP_
-#define SYNC_FLIP_BUFFER_HPP_
+#ifndef CROSS_THREAD_FLIP_BUFFER_HPP_
+#define CROSS_THREAD_FLIP_BUFFER_HPP_
 
 #include <vector>
 
+#include "cross_thread/home_threaded.hpp"
 #include "rpc/hub.hpp"
-#include "rpc/handler.hpp"
-#include "sync/home_threaded.hpp"
+#include "sync/drainer.hpp"
 #include "sync/mutex.hpp"
 #include "sync/swap.hpp"
 
@@ -51,6 +51,10 @@ public:
     template <typename Callable>
     void apply_write(Callable &&cb) {
         assert_thread();
+        drainer_lock_t drainer_lock = m_drainer.lock();
+        mutex_acq_t mutex_acq = m_mutex.start_acq();
+        mutex_acq.wait();
+
         T *old_buffer;
         T *new_buffer;
 
@@ -76,6 +80,7 @@ public:
     }
 
 private:
+    drainer_t m_drainer;
     mutex_t m_mutex;
     T m_buffer_a;
     T m_buffer_b;

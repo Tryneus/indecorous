@@ -24,7 +24,7 @@ void target_t::note_send() const {
         thread_t *t = thread_t::self();
         if (t != nullptr) {
             // TODO: this does an atomic operation - check if we can do this otherwise
-            t->m_shutdown->update(1, &t->m_hub);
+            t->get_shutdown()->update(1, &t->m_hub);
         }
     }
 }

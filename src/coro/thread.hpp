@@ -14,15 +14,12 @@
 namespace indecorous {
 
 class scheduler_t;
+class shared_registry_t;
 class shutdown_t;
-class thread_barrier_t;
 
 class thread_t {
 public:
-    thread_t(size_t _id,
-             shutdown_t *shutdown,
-             thread_barrier_t *barrier,
-             std::atomic<bool> *close_flag);
+    thread_t(size_t _id, scheduler_t *parent);
 
     static thread_t *self();
 
@@ -39,16 +36,20 @@ public:
 private:
     void main();
 
+    // For deserializing shared_var_t references to the shared_registry_t
+    template <typename T> friend struct serializer_t;
+    shared_registry_t *get_shared_registry();
+
+    // For immediately noting a local RPC
+    friend class target_t;
+    shutdown_t *get_shutdown();
+
     size_t m_id;
-
-    friend class target_t; // For immediately noting a local RPC
-    shutdown_t *m_shutdown;
-    thread_barrier_t *m_barrier;
-    std::atomic<bool> *m_close_flag;
-
+    scheduler_t *m_parent;
     std::thread m_thread;
 
-    friend class shutdown_rpc_t; // For updating the stop event and stop flag
+    // For updating the stop event and stop flag
+    friend class shutdown_rpc_t;
     event_t m_stop_event;
     bool m_stop_immediately;
 
