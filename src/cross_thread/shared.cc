@@ -12,7 +12,7 @@ const uuid_t &shared_registry_t::id() const {
 }
 
 void shared_registry_t::remove(uint64_t index) {
-    size_t res = m_entries.erase(index);
+    DEBUG_VAR size_t res = m_entries.erase(index);
     assert(res == 1);
 }
 
