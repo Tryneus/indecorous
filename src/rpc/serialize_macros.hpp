@@ -14,6 +14,23 @@ class write_message_t;
         static Type read(read_message_t *); \
     }
 
+// In general, pointers are not serializable, but they may be safely serialized if
+// they are received on the same node (in fact, this is how cross-threaded structures
+// are implemented).  Therefore, do not declare a pointer serializable unless you are
+// sure it will be used properly.
+#define SERIALIZABLE_POINTER(Type) \
+    template <> struct serializer_t<Type *> { \
+        static size_t size(const Type &p) { \
+            return serializer_t<uint64_t>::size(static_cast<uint64_t>(p)); \
+        } \
+        static int write(write_message_t *msg, const Type &p) { \
+            return serializer_t<uint64_t>::write(msg, static_cast<uint64_t>(p)); \
+        } \
+        static Type read(read_message_t *msg) { \
+            return reinterpret_cast<Type *>(serializer_t<uint64_t>::read(msg)); \
+        } \
+    }
+
 #define SERIALIZABLE_ENUM(Type) \
     template <> struct serializer_t<Type> { \
         typedef std::underlying_type<Type>::type Value; \

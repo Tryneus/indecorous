@@ -3,22 +3,21 @@
 
 #include <vector>
 
-#include "cross_thread/home_threaded.hpp"
+#include "cross_thread/ct_mutex.hpp"
 #include "rpc/hub.hpp"
 #include "sync/drainer.hpp"
-#include "sync/mutex.hpp"
 #include "sync/swap.hpp"
 
 namespace indecorous {
 
-class flip_buffer_base_t : public home_threaded_t {
+class flip_buffer_base_t {
 public:
     flip_buffer_base_t();
     virtual ~flip_buffer_base_t();
 
-    // TODO: privatize this
-    void flip_internal();
 protected:
+    friend class flip_buffer_callback_t;
+    void flip_internal();
     void flip();
 
     enum class buffer_id_t { BUFFER_A = 0, BUFFER_B = 1 };
@@ -29,8 +28,8 @@ protected:
 
 // Note that the type T must be copy-constructible, but it does not need to be
 // move-constructible or default-constructible.
-// The flip_buffer_t can be safely read from any thread, but can only be written to
-// on the same thread which created it.
+// The flip_buffer_t can be safely written or read from any thread, although write
+// performance may be impacted if there is much contention for the mutex.
 template <typename T>
 class flip_buffer_t : public flip_buffer_base_t {
 public:
@@ -50,7 +49,6 @@ public:
 
     template <typename Callable>
     void apply_write(Callable &&cb) {
-        assert_thread();
         drainer_lock_t drainer_lock = m_drainer.lock();
         mutex_acq_t mutex_acq = m_mutex.start_acq();
         mutex_acq.wait();
@@ -81,7 +79,7 @@ public:
 
 private:
     drainer_t m_drainer;
-    mutex_t m_mutex;
+    cross_thread_mutex_t m_mutex;
     T m_buffer_a;
     T m_buffer_b;
 };
