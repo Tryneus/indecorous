@@ -5,7 +5,8 @@
 
 namespace indecorous {
 
-struct shutdown_rpc_t {
+class shutdown_rpc_t {
+public:
     DECLARE_STATIC_RPC(init_stop)() -> void;
     DECLARE_STATIC_RPC(finish_stop)() -> void;
 };

@@ -5,6 +5,7 @@
 #include <utility>
 #include <unordered_map>
 
+#include "common.hpp"
 #include "coro/thread.hpp"
 #include "random.hpp"
 #include "rpc/serialize.hpp"
@@ -78,6 +79,8 @@ private:
     uuid_t m_id;
     uint64_t m_next_entry_index;
     std::unordered_map<uint64_t, std::unique_ptr<entry_t> > m_entries;
+
+    DISABLE_COPYING(shared_registry_t);
 };
 
 template <typename T>
@@ -125,6 +128,8 @@ private:
     shared_registry_t *m_registry;
     uint64_t m_index;
     bool m_owner;
+
+    DISABLE_COPYING(shared_var_t);
 };
 
 // Special serialization/deserialization rules
@@ -139,7 +144,7 @@ template <typename T> struct serializer_t<shared_var_t<T> > {
         return 0;
     }
     static shared_var_t<T> read(read_message_t *message) {
-        uuid_t id = serializer_t<uuid_t>::read(message);
+        DEBUG_VAR uuid_t id = serializer_t<uuid_t>::read(message);
         shared_registry_t *registry = thread_t::self()->get_shared_registry();
         assert(registry != nullptr);
         assert(registry->id() == id);

@@ -20,13 +20,13 @@ class write_message_t;
 // sure it will be used properly.
 #define SERIALIZABLE_POINTER(Type) \
     template <> struct serializer_t<Type *> { \
-        static size_t size(const Type &p) { \
-            return serializer_t<uint64_t>::size(static_cast<uint64_t>(p)); \
+        static size_t size(const Type *p) { \
+            return serializer_t<uint64_t>::size(reinterpret_cast<uint64_t>(p)); \
         } \
-        static int write(write_message_t *msg, const Type &p) { \
-            return serializer_t<uint64_t>::write(msg, static_cast<uint64_t>(p)); \
+        static int write(write_message_t *msg, const Type *p) { \
+            return serializer_t<uint64_t>::write(msg, reinterpret_cast<uint64_t>(p)); \
         } \
-        static Type read(read_message_t *msg) { \
+        static Type *read(read_message_t *msg) { \
             return reinterpret_cast<Type *>(serializer_t<uint64_t>::read(msg)); \
         } \
     }

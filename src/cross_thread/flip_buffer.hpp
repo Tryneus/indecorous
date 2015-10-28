@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "common.hpp"
 #include "cross_thread/ct_mutex.hpp"
 #include "rpc/hub.hpp"
 #include "sync/drainer.hpp"
@@ -24,6 +25,8 @@ protected:
     buffer_id_t current_buffer_id() const;
 
     std::vector<buffer_id_t> m_current_buffers;
+
+    DISABLE_COPYING(flip_buffer_base_t);
 };
 
 // Note that the type T must be copy-constructible, but it does not need to be
@@ -50,7 +53,7 @@ public:
     template <typename Callable>
     void apply_write(Callable &&cb) {
         drainer_lock_t drainer_lock = m_drainer.lock();
-        mutex_acq_t mutex_acq = m_mutex.start_acq();
+        cross_thread_mutex_acq_t mutex_acq(&m_mutex);
         mutex_acq.wait();
 
         T *old_buffer;
@@ -82,6 +85,8 @@ private:
     cross_thread_mutex_t m_mutex;
     T m_buffer_a;
     T m_buffer_b;
+
+    DISABLE_COPYING(flip_buffer_t);
 };
 
 } // namespace indecorous

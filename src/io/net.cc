@@ -34,7 +34,7 @@ in6_addr serializer_t<in6_addr>::read(read_message_t *msg) {
 IMPL_SERIALIZABLE(ip_address_t, m_addr, m_scope_id);
 IMPL_SERIALIZABLE(ip_and_port_t, m_addr, m_port);
 
-auto udns_init_result = [&] {
+auto udns_init_result = [] {
         int res = dns_init(nullptr, false);
         GUARANTEE(res == 0);
         return res;

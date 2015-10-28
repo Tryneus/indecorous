@@ -57,6 +57,14 @@ private:
     DISABLE_COPYING(interruptor_t);
 };
 
+// Instantiating an interruptor_clear_t will disable all current interruptors on the
+// running coroutine until the interruptor_clear_t is destroyed.  New interruptors can
+// still be registered and will work normally.  Child coroutines will still inherit the
+// interruptor chain and update accordingly when the interruptor_clear_t is destroyed.
+class interruptor_clear_t {
+// TODO: implement
+};
+
 } // namespace indecorous
 
 #endif // SYNC_INTERRUPTOR_HPP_

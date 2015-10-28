@@ -3,6 +3,8 @@
 
 #include <atomic>
 
+#include "common.hpp"
+
 namespace indecorous {
 
 class spinlock_t {
@@ -15,6 +17,8 @@ public:
 
 private:
     std::atomic_flag m_locked;
+
+    DISABLE_COPYING(spinlock_t);
 };
 
 class spinlock_acq_t {
@@ -23,6 +27,8 @@ public:
     ~spinlock_acq_t();
 private:
     spinlock_t *m_lock;
+
+    DISABLE_COPYING(spinlock_acq_t);
 };
 
 } // namespace indecorous

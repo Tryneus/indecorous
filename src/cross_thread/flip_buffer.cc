@@ -5,7 +5,8 @@
 
 namespace indecorous {
 
-struct flip_buffer_callback_t {
+class flip_buffer_callback_t {
+public:
     DECLARE_STATIC_RPC(flip)(uint64_t) -> void;
 };
 

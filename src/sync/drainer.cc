@@ -70,6 +70,7 @@ bool drainer_t::draining() const {
 }
 
 void drainer_t::drain() {
+    // TODO: Important! do not allow interruption during draining, it will break assumptions!
     m_draining = true;
     m_start_drain_waiters.clear([] (auto w) { w->wait_done(wait_result_t::Success); });
     if (!m_locks.empty()) {

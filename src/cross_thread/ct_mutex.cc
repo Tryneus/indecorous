@@ -1,6 +1,8 @@
 #include "cross_thread/ct_mutex.hpp"
 
+#include "coro/thread.hpp"
 #include "rpc/handler.hpp"
+#include "rpc/target.hpp"
 
 namespace indecorous {
 
@@ -8,17 +10,20 @@ SERIALIZABLE_POINTER(cross_thread_mutex_t);
 SERIALIZABLE_POINTER(cross_thread_mutex_acq_t);
 
 class cross_thread_mutex_callback_t {
-    DECLARE_STATIC_RPC(notify)(cross_thread_mutex_t *) -> void;
+public:
+    DECLARE_STATIC_RPC(notify)(cross_thread_mutex_t *, cross_thread_mutex_acq_t *) -> void;
 };
 
 cross_thread_mutex_acq_t::cross_thread_mutex_acq_t(cross_thread_mutex_t *parent) :
-        m_has(false), m_parent(parent) {
+        m_has(false), m_parent(parent), m_waiters() {
     m_parent->add_lock(this);
 }
 
 cross_thread_mutex_acq_t::~cross_thread_mutex_acq_t() {
-    m_parent->remove_lock(this);
-    m_waiters.clear([] (auto w) { w->wait_done(wait_result_t::ObjectLost); });
+    if (m_parent != nullptr) {
+        m_parent->release_lock(this);
+        m_waiters.clear([] (auto w) { w->wait_done(wait_result_t::ObjectLost); });
+    }
 }
 
 bool cross_thread_mutex_acq_t::has() const {
@@ -30,7 +35,8 @@ void cross_thread_mutex_acq_t::ready() {
     m_waiters.clear([] (auto w) { w->wait_done(wait_result_t::Success); });
 }
 
-void cross_thread_mutex_acq_t::add_wait(wait_callback_t *cb) override final {
+void cross_thread_mutex_acq_t::add_wait(wait_callback_t *cb) {
+    assert(m_parent != nullptr);
     if (m_has) {
         cb->wait_done(wait_result_t::Success);
     } else {
@@ -38,7 +44,8 @@ void cross_thread_mutex_acq_t::add_wait(wait_callback_t *cb) override final {
     }
 }
 
-void cross_thread_mutex_acq_t::remove_wait(wait_callback_t *cb) override final {
+void cross_thread_mutex_acq_t::remove_wait(wait_callback_t *cb) {
+    assert(m_parent != nullptr);
     m_waiters.remove(cb);
 }
 
@@ -48,10 +55,6 @@ cross_thread_mutex_t::~cross_thread_mutex_t() {
     m_spinlock.lock();
     assert(m_locks.empty());
     m_spinlock.unlock();
-}
-
-cross_thread_mutex_acq_t cross_thread_mutex_t::start_acq() {
-    return cross_thread_mutex_acq_t(this);
 }
 
 void cross_thread_mutex_t::add_lock(cross_thread_mutex_acq_t *lock) {
@@ -79,8 +82,8 @@ void cross_thread_mutex_t::release_lock(cross_thread_mutex_acq_t *lock) {
     m_spinlock.unlock();
 
     if (next != nullptr) {
-        target_t *target = thread_t::self()->local_targets[next->home_thread()];
-        target->call_noreply<cross_thread_mutex_callback_t::notify>(this, next);
+        target_t *target = thread_t::self()->hub()->local_targets()[next->home_thread()];
+        target->call_noreply<cross_thread_mutex_callback_t::notify>(this, std::move(next)); // TODO: should we really need this std::move here?
     }
 }
 
@@ -100,3 +103,5 @@ IMPL_STATIC_RPC(cross_thread_mutex_callback_t::notify)(cross_thread_mutex_t *m,
                                                        cross_thread_mutex_acq_t *acq) -> void {
     m->cross_thread_notification(acq);
 }
+
+} // namespace indecorous
