@@ -115,7 +115,7 @@ void events_t::update_epoll() {
 
             // If the fd was closed, it may have been automatically removed from the set
             int res = ::epoll_ctl(m_epoll_set.get(), EPOLL_CTL_DEL, fd, &event);
-            GUARANTEE_ERR(res == 0 || errno == EBADF);
+            GUARANTEE_ERR(res == 0 || errno == EBADF || errno == ENOENT);
         } else {
             int task = it->second.m_last_used_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
             it->second.m_last_used_events = event.events;

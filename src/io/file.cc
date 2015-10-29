@@ -22,7 +22,10 @@ file_t::file_t(std::string filename, int flags) :
                 scoped_fd_t res(::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));
                 GUARANTEE_ERR(res.valid());
                 return res;
-            }()) {
+            }()),
+        m_extant_requests(),
+        m_completed_requests(),
+        m_drainer() {
     // Coroutine that waits for completion of events and passes it back to waiting coroutines
     coro_t::spawn([&] (drainer_lock_t lock) {
             UNUSED interruptor_clear_t non_interruptor;
@@ -47,8 +50,8 @@ file_t::~file_t() {
     }
 }
 
-future_t<int> file_t::write(uint64_t offset, void *buffer, size_t size) {
-    request_t *req = new request_t(this, offset, buffer, size);
+future_t<int> file_t::write(uint64_t offset, const void *buffer, size_t size) {
+    request_t *req = new request_t(this, offset, const_cast<void *>(buffer), size);
     future_t<int> res = req->m_promise.get_future();
 
     if (aio_write(&req->m_acb) != 0) {

@@ -49,7 +49,9 @@ void cross_thread_mutex_acq_t::remove_wait(wait_callback_t *cb) {
     m_waiters.remove(cb);
 }
 
-cross_thread_mutex_t::cross_thread_mutex_t() { }
+cross_thread_mutex_t::cross_thread_mutex_t() :
+    m_spinlock(),
+    m_locks() { }
 
 cross_thread_mutex_t::~cross_thread_mutex_t() {
     m_spinlock.lock();
