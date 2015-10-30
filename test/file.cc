@@ -8,9 +8,9 @@ using namespace indecorous;
 const char file_data[] = {'l','o','r','e','m',' ','i','p','s','u','m'};
 const size_t buffer_size = sizeof(file_data);
 
-SIMPLE_TEST(file, simple, 4, "[io][file]") {
+SIMPLE_TEST(file, simple, 1, "[io][file]") {
     char buffer[buffer_size];
-    file_t file("./file_test.txt", O_RDWR | O_CREAT | O_EXCL);
+    file_t file("./file_test.txt", O_RDWR | O_CREAT | O_TRUNC);
 
     file.read(0, buffer, buffer_size).then([] (int res) {
             CHECK(res == EINVAL);
@@ -24,10 +24,10 @@ SIMPLE_TEST(file, simple, 4, "[io][file]") {
         });
 }
 
-SIMPLE_TEST(file, read_write, 4, "[io][file]") {
+SIMPLE_TEST(file, read_write, 1, "[io][file]") {
     char buffer[buffer_size];
-    file_t reader("./file_test.txt", O_RDONLY | O_CREAT | O_EXCL);
-    file_t writer("./file_test.txt", O_WRONLY | O_CREAT);
+    file_t reader("./file_test.txt", O_RDONLY | O_CREAT | O_TRUNC);
+    file_t writer("./file_test.txt", O_WRONLY);
 
     reader.write(0, file_data, buffer_size).then([] (int res) {
             CHECK(res == EBADF);

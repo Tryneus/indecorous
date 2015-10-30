@@ -16,7 +16,7 @@ namespace indecorous {
 
 class file_t {
 public:
-    file_t(std::string filename, int flags);
+    file_t(std::string filename, int flags, int permissions = 0600);
     file_t(file_t &&other); // Cannot be called while there are outstanding requests
     ~file_t();
 
