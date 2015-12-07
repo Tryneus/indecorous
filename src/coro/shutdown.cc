@@ -7,35 +7,40 @@ namespace indecorous {
 
 class shutdown_rpc_t {
 public:
-    DECLARE_STATIC_RPC(init_stop)() -> void;
-    DECLARE_STATIC_RPC(finish_stop)() -> void;
+    DECLARE_STATIC_RPC(begin_shutdown)() -> void;
+    DECLARE_STATIC_RPC(finish_shutdown)() -> void;
 };
 
-IMPL_STATIC_RPC(shutdown_rpc_t::init_stop)() -> void {
-    thread_t::self()->m_stop_event.set();
+IMPL_STATIC_RPC(shutdown_rpc_t::begin_shutdown)() -> void {
+    thread_t::self()->begin_shutdown();
 }
 
-IMPL_STATIC_RPC(shutdown_rpc_t::finish_stop)() -> void {
-    thread_t::self()->m_stop_immediately = true;
+IMPL_STATIC_RPC(shutdown_rpc_t::finish_shutdown)() -> void {
+    thread_t::self()->finish_shutdown();
 }
 
-shutdown_t::shutdown_t(size_t thread_count) :
-    m_finish_sent(true), m_active_count(0), m_thread_count(thread_count) { }
+shutdown_t::shutdown_t(std::vector<target_t *> targets) :
+   m_targets(std::move(targets)), m_finish_sent(true), m_active_count(0) { }
 
-void shutdown_t::shutdown(message_hub_t *hub) {
-    update(m_thread_count - 1, hub); // This is called outside the context of a dispatch_t, so update manually
-    GUARANTEE(hub->broadcast_local_noreply<shutdown_rpc_t::init_stop>() == m_thread_count);
+void shutdown_t::begin_shutdown() {
+    // This is called outside the context of a thread_t, so update manually
+    update(m_targets.size() - 1);
+    for (auto &&t : m_targets) {
+        t->call_noreply<shutdown_rpc_t::begin_shutdown>();
+    }
 }
 
-void shutdown_t::update(int64_t active_delta, message_hub_t *hub) {
+void shutdown_t::update(int64_t active_delta) {
     uint64_t res = m_active_count.fetch_add(active_delta);
 
     bool done = ((res + active_delta) == 0);
     if (done && res != 0) {
         if (!m_finish_sent.load()) {
-            m_active_count.fetch_add(m_thread_count);
+            m_active_count.fetch_add(m_targets.size());
             m_finish_sent.store(true);
-            hub->broadcast_local_noreply<shutdown_rpc_t::finish_stop>();
+            for (auto &&t : m_targets) {
+                t->call_noreply<shutdown_rpc_t::finish_shutdown>();
+            }
         }
     }
 }

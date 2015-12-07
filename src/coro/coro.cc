@@ -108,30 +108,8 @@ struct handover_params_t {
 };
 thread_local handover_params_t handover_params;
 
-void coro_pull() {
-    thread_t *thread = thread_t::self();
-    dispatcher_t *dispatch = thread->dispatcher();
-    message_hub_t *hub = thread->hub();
-    local_target_t *target = hub->self_target();
-
-    try {
-        interruptor_t shutdown(&dispatch->m_close_event);
-
-        while (true) {
-            while (target->handle(hub)) { }
-            target->wait();
-        }
-    } catch (const wait_interrupted_exc_t &ex) {
-        // pass
-    }
-    assert(dispatch->m_close_event.triggered());
-
-    coro_t *self = coro_t::self();
-    dispatch->enqueue_release(self);
-    self->swap(nullptr);
-}
-
-dispatcher_t::dispatcher_t() :
+dispatcher_t::dispatcher_t(shutdown_t *shutdown) :
+        m_shutdown(shutdown),
         m_swap_permitted(true),
         m_coro_cache(32, this),
         m_run_queue(),
@@ -140,42 +118,18 @@ dispatcher_t::dispatcher_t() :
         m_swap_count(0),
         m_close_event(),
         m_main_context(),
-        m_rpc_consumer(m_coro_cache.get()),
         m_coro_delta(0) {
     // Save the currently running context
     GUARANTEE_ERR(getcontext(&m_main_context) == 0);
-
-    // Set up the rpc consumer coroutine
-    makecontext(&m_rpc_consumer->m_context, coro_pull, 0);
-    m_run_queue.push_back(m_rpc_consumer);
-
-    assert(m_coro_cache.extant() == 1);
 }
 
 dispatcher_t::~dispatcher_t() {
-    // Shutdown should have been performed first
-    // TODO: make this happen in the destructor using RAII on the thread::main?
-    assert(m_rpc_consumer == nullptr);
-}
-
-void dispatcher_t::close() {
     assert(m_running == nullptr);
     assert(m_run_queue.size() == 0);
-    assert(m_coro_cache.extant() == 1);
-
-    m_close_event.set();
-    assert(m_run_queue.size() == 1);
-    m_running = m_run_queue.pop_front();
-    assert(m_running == m_rpc_consumer);
-
-    swapcontext(&m_main_context, &m_rpc_consumer->m_context);
-
-    assert(m_release == m_rpc_consumer);
-    m_coro_cache.release(m_rpc_consumer);
-    m_rpc_consumer = nullptr;
+    assert(m_coro_cache.extant() == 0);
 }
 
-int64_t dispatcher_t::run() {
+void dispatcher_t::run() {
     assert(m_running == nullptr);
     m_swap_count = 0;
     m_coro_delta = 0;
@@ -192,7 +146,7 @@ int64_t dispatcher_t::run() {
     }
 
     assert(m_running == nullptr);
-    return m_coro_delta;
+    m_shutdown->update(m_coro_delta);
 }
 
 void dispatcher_t::note_new_task() {

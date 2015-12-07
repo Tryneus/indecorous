@@ -42,7 +42,7 @@ IMPL_STATIC_RPC(tcp_test_t::server_loop)() -> void {
 
 TEST_CASE("tcp/basic", "[tcp]") {
     scheduler_t sched(4, shutdown_policy_t::Eager);
-    sched.threads().begin()->hub()->self_target()->call_noreply<tcp_test_t::server_loop>();
+    sched.local_targets()[0]->call_noreply<tcp_test_t::server_loop>();
     sched.run();
 }
 
@@ -52,6 +52,6 @@ IMPL_STATIC_RPC(tcp_test_t::resolve)(std::string host) -> std::vector<ip_address
 
 TEST_CASE("tcp/resolve", "[tcp][dns][hide]") {
     scheduler_t sched(2, shutdown_policy_t::Eager);
-    sched.threads().begin()->hub()->self_target()->call_noreply<tcp_test_t::resolve>("www.google.com");
+    sched.local_targets()[0]->call_noreply<tcp_test_t::resolve>("www.google.com");
     sched.run();
 }

@@ -12,15 +12,36 @@
 
 namespace indecorous {
 
-scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
+scheduler_t::scheduler_t(size_t num_coro_threads, shutdown_policy_t policy) :
         m_running(false),
         m_shared_registry(),
         m_shutdown_policy(policy),
-        m_shutdown(num_threads),
-        m_close_flag(false),
-        m_barrier(num_threads + 1),
-        m_threads() {
-    assert(num_threads > 0);
+        m_shutdown(),
+        m_destroying(false),
+        m_barrier(num_coro_threads + 2),
+        m_io_stream(),
+        m_io_target(&m_io_stream),
+        m_coro_threads(),
+        m_io_threads() {
+    construct_internal(num_coro_threads, 1);
+}
+
+scheduler_t::scheduler_t(size_t num_coro_threads, size_t num_io_threads, shutdown_policy_t policy) :
+        m_running(false),
+        m_shared_registry(),
+        m_shutdown_policy(policy),
+        m_shutdown(),
+        m_destroying(false),
+        m_barrier(num_coro_threads + num_io_threads + 1),
+        m_io_stream(),
+        m_io_target(&m_io_stream),
+        m_coro_threads(),
+        m_io_threads() {
+    construct_internal(num_coro_threads, num_io_threads);
+}
+
+void scheduler_t::construct_internal(size_t num_coro_threads, size_t num_io_threads) {
+    assert(num_coro_threads > 0);
 
     // Block signals on child threads (this will be inherited)
     sigset_t sigset;
@@ -32,33 +53,47 @@ scheduler_t::scheduler_t(size_t num_threads, shutdown_policy_t policy) :
 
     GUARANTEE(pthread_sigmask(SIG_BLOCK, &sigset, &old_sigset) == 0);
 
-    for (size_t i = 0; i < num_threads; ++i) {
-        m_threads.emplace_back(i, this);
+    for (size_t i = 0; i < num_coro_threads; ++i) {
+        m_coro_threads.emplace_back(this, &m_io_target);
+    }
+
+    for (size_t i = 0; i < num_io_threads; ++i) {
+        m_io_threads.emplace_back(this, &m_io_target, &m_io_stream);
     }
 
     // Return SIGINT and SIGTERM to the previous state
     GUARANTEE(pthread_sigmask(SIG_SETMASK, &old_sigset, nullptr) == 0);
 
     // Tell the message hubs of each thread about the others
-    for (auto &&t : m_threads) {
-        t.hub()->set_local_targets(&m_threads);
+    for (auto &&t : m_coro_threads) {
+        for (auto &&u : m_coro_threads) {
+            t.thread()->hub()->add_local_target(u.thread()->target());
+        }
     }
 
     m_barrier.wait(); // Wait for all threads to start up
 }
 
 scheduler_t::~scheduler_t() {
-    m_close_flag.store(true);
+    m_destroying.store(true);
     m_barrier.wait(); // Start the threads so they can exit
     m_barrier.wait(); // Wait for threads to exit
 
-    for (auto &&t : m_threads) {
-        t.join();
+    for (auto &&t : m_coro_threads) {
+        t.thread()->join();
+    }
+
+    for (auto &&t : m_io_threads) {
+        t.thread()->join();
     }
 }
 
-std::list<thread_t> &scheduler_t::threads() {
-    return m_threads;
+const std::vector<target_t *> &scheduler_t::local_targets() {
+    return m_coro_threads.begin()->thread()->hub()->local_targets();
+}
+
+target_t *scheduler_t::io_target() {
+    return &m_io_target;
 }
 
 class scoped_sigaction_t {
@@ -114,30 +149,40 @@ private:
 thread_local scoped_sigaction_t *scoped_sigaction_t::s_instance = nullptr;
 
 void scheduler_t::run() {
+    std::vector<target_t *> all_thread_targets;
+    all_thread_targets.reserve(m_coro_threads.size() + m_io_threads.size());
+
+    size_t initial_tasks = m_io_stream.size();
+    for (auto &&t : m_coro_threads) {
+        initial_tasks += t.thread()->queue_length();
+        all_thread_targets.push_back(t.thread()->target());
+    }
+
+    for (auto &&t : m_io_threads) {
+        all_thread_targets.push_back(t.thread()->target());
+    }
+
     m_running = true;
-    // Count the number of initial calls into the threads
-    m_shutdown.reset(std::accumulate(m_threads.begin(), m_threads.end(), size_t(0),
-        [] (size_t res, thread_t &t) -> size_t {
-            return res + t.hub()->self_target()->m_stream.m_message_queue.size();
-        }));
+    m_shutdown = std::make_unique<shutdown_t>(std::move(all_thread_targets));
 
     switch (m_shutdown_policy) {
     case shutdown_policy_t::Eager: {
             m_barrier.wait();
-            m_shutdown.shutdown(m_threads.begin()->hub());
+            m_shutdown->begin_shutdown();
             m_barrier.wait();
         } break;
     case shutdown_policy_t::Kill: {
             scoped_sigaction_t scoped_sigaction;
             m_barrier.wait();
             scoped_sigaction.wait();
-            m_shutdown.shutdown(m_threads.begin()->hub());
+            m_shutdown->begin_shutdown();
             m_barrier.wait();
         } break;
     default:
         UNREACHABLE();
     }
 
+    m_shutdown.reset();
     m_running = false;
 }
 

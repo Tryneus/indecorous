@@ -51,11 +51,11 @@
 // Disable this so we can use -Wpedantic in clang
 //#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 
-#define debugf(format, ...) printf("Thread %" PRIi32 " - " format "\n", indecorous::thread_self_id(), ##__VA_ARGS__)
+#define debugf(format, ...) printf("Thread %" PRIu64 " - " format "\n", indecorous::thread_self_id(), ##__VA_ARGS__)
 
 namespace indecorous {
     typedef int fd_t;
-    int32_t thread_self_id();
+    uint64_t thread_self_id();
 }
 
 #endif // COMMON_HPP_

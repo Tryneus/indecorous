@@ -21,6 +21,7 @@ namespace indecorous {
 class coro_t;
 class dispatcher_t;
 class interruptor_t;
+class shutdown_t;
 
 class coro_cache_t {
 public:
@@ -45,19 +46,18 @@ private:
 class dispatcher_t
 {
 public:
-    dispatcher_t();
+    dispatcher_t(shutdown_t *shutdown);
     ~dispatcher_t();
 
-    // Returns the delta in active local coroutines
-    int64_t run();
-
-    void close();
+    void run();
 
     // Called when an rpc is sent from this thread
     void note_new_task();
     void note_accepted_task();
 
     void enqueue_release(coro_t *coro);
+
+    shutdown_t * const m_shutdown;
 
     // Used by synchronization primitives with callbacks to fail an assert if the callback attempts
     // to swap coroutines
@@ -66,7 +66,7 @@ public:
     coro_cache_t m_coro_cache; // arena used to cache coro allocations
     intrusive_list_t<coro_t> m_run_queue; // queue of contexts to run
 
-    coro_t *volatile m_running;
+    coro_t * volatile m_running;
     coro_t *m_release; // Recently-finished coro_t to be released
 
     size_t m_swap_count;
@@ -76,7 +76,6 @@ public:
 
     static size_t s_max_swaps_per_loop;
 private:
-    coro_t *m_rpc_consumer;
     int64_t m_coro_delta;
 
     DISABLE_COPYING(dispatcher_t);
@@ -116,7 +115,6 @@ private:
     friend class scheduler_t;
     friend class dispatcher_t;
     friend void launch_coro();
-    friend void coro_pull();
     friend class waitable_t;
     friend class coro_cache_t;
 

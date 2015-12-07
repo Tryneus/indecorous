@@ -24,7 +24,7 @@ void target_t::note_send() const {
         thread_t *t = thread_t::self();
         if (t != nullptr) {
             // TODO: this does an atomic operation - check if we can do this otherwise
-            t->get_shutdown()->update(1, &t->m_hub);
+            t->note_local_rpc();
         }
     }
 }
@@ -41,24 +41,6 @@ target_t::request_params_t target_t::new_request() const {
 }
 
 template <> void target_t::parse_result(read_message_t) { }
-
-local_target_t::local_target_t() :
-    target_t(), m_stream() { }
-
-bool local_target_t::handle(message_hub_t *local_hub) {
-    read_message_t msg(m_stream.read());
-    if (!msg.buffer.has()) { return false; }
-    local_hub->spawn(std::move(msg));
-    return true;
-}
-
-stream_t *local_target_t::stream() {
-    return &m_stream;
-}
-
-bool local_target_t::is_local() const {
-    return true;
-}
 
 remote_target_t::remote_target_t() :
     target_t(), m_stream(-1) { }

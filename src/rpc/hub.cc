@@ -10,8 +10,9 @@
 namespace indecorous {
 
 // This constructor copies the statically-initialized set of rpcs
-message_hub_t::message_hub_t() :
-    m_self_target(),
+message_hub_t::message_hub_t(target_t *self_target, target_t *io_target) :
+    m_self_target_id(self_target->id()),
+    m_io_target(io_target),
     m_local_targets(),
     m_targets(),
     m_rpcs(register_callback(nullptr)),
@@ -29,6 +30,7 @@ void handle_wrapper(message_hub_t *hub, rpc_callback_t *rpc, read_message_t msg)
         source->send_reply(std::move(reply));
     }
 }
+
 void handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg) {
     rpc->handle_noreply(std::move(msg));
 }
@@ -37,10 +39,10 @@ target_t::request_params_t message_hub_t::new_request() {
     request_id_t request_id = m_request_gen.next();
     auto res = m_replies.emplace(request_id, promise_t<read_message_t>());
     assert(res.second);
-    return { m_self_target.id(), request_id, res.first->second.get_future() };
+    return { m_self_target_id, request_id, res.first->second.get_future() };
 }
 
-bool message_hub_t::spawn(read_message_t msg) {
+void message_hub_t::spawn_task(read_message_t msg) {
     assert(msg.buffer.has());
     if (msg.rpc_id == rpc_id_t::reply()) {
         auto reply_it = m_replies.find(msg.request_id);
@@ -63,11 +65,6 @@ bool message_hub_t::spawn(read_message_t msg) {
             debugf("No registered RPC for rpc_id (%lu).", msg.rpc_id.value());
         }
     }
-    return true;
-}
-
-local_target_t *message_hub_t::self_target() {
-    return &m_self_target;
 }
 
 target_t *message_hub_t::target(target_id_t id) {
@@ -75,19 +72,13 @@ target_t *message_hub_t::target(target_id_t id) {
     return (it == m_targets.end()) ? nullptr : it->second;
 }
 
-const std::vector<local_target_t *> &message_hub_t::local_targets() {
+const std::vector<target_t *> &message_hub_t::local_targets() {
     return m_local_targets;
 }
 
-void message_hub_t::set_local_targets(std::list<thread_t> *threads) {
-    // This should be done once and only once during startup of the thread pool
-    assert(m_local_targets.empty());
-    m_local_targets.reserve(threads->size());
-    for (auto &&t : *threads) {
-        local_target_t *thread_target = t.hub()->self_target();
-        m_local_targets.emplace_back(thread_target);
-        m_targets.emplace(thread_target->id(), thread_target);
-    }
+void message_hub_t::add_local_target(target_t *t) {
+    m_local_targets.emplace_back(t);
+    m_targets.emplace(t->id(), t);
 }
 
 } // namespace indecorous

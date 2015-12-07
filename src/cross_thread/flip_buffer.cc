@@ -17,7 +17,13 @@ IMPL_STATIC_RPC(flip_buffer_callback_t::flip)(uint64_t unsafe_ptr) -> void {
 }
 
 flip_buffer_base_t::flip_buffer_base_t() :
-    m_current_buffers(thread_t::self()->hub()->local_targets().size(), buffer_id_t::BUFFER_A) { }
+        m_current_buffers() {
+    const std::vector<target_t *> &local_targets = thread_t::self()->hub()->local_targets();
+
+    for (auto &&t : local_targets) {
+        m_current_buffers[t->id()] = buffer_id_t::BUFFER_A;
+    }
+}
 
 flip_buffer_base_t::~flip_buffer_base_t() { }
 
@@ -27,15 +33,11 @@ void flip_buffer_base_t::flip() {
 }
 
 flip_buffer_base_t::buffer_id_t flip_buffer_base_t::current_buffer_id() const {
-    size_t this_thread = thread_t::self()->id();
-    assert(this_thread < m_current_buffers.size());
-    return m_current_buffers[this_thread];
+    return m_current_buffers.at(thread_t::self()->target()->id());
 }
 
 void flip_buffer_base_t::flip_internal() {
-    size_t this_thread = thread_t::self()->id();
-    assert(this_thread < m_current_buffers.size());
-    auto &buffer_id = m_current_buffers[this_thread];
+    auto &buffer_id = m_current_buffers.at(thread_t::self()->target()->id());
     buffer_id = static_cast<buffer_id_t>((static_cast<int>(buffer_id) + 1) % 2);
 }
 

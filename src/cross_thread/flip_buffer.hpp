@@ -24,7 +24,7 @@ protected:
     enum class buffer_id_t { BUFFER_A = 0, BUFFER_B = 1 };
     buffer_id_t current_buffer_id() const;
 
-    std::vector<buffer_id_t> m_current_buffers;
+    std::unordered_map<target_id_t, buffer_id_t> m_current_buffers;
 
     DISABLE_COPYING(flip_buffer_base_t);
 };

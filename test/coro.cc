@@ -73,7 +73,7 @@ TEST_CASE("coro/wait", "[coro][sync]") {
 // Disabled by default as it causes complications in a debugger
 TEST_CASE("coro/sigint", "[coro][shutdown][hide]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Kill);
-    target_t *target = sched.threads().begin()->hub()->self_target();
+    target_t *target = sched.local_targets()[0];
 
     target->call_noreply<coro_test_t::suicide>(getpid(), SIGINT);
     sched.run();

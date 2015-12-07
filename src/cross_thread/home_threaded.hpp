@@ -3,6 +3,8 @@
 
 #include <cstddef>
 
+#include "rpc/id.hpp"
+
 namespace indecorous {
 
 class home_threaded_t {
@@ -10,10 +12,10 @@ public:
     home_threaded_t();
     virtual ~home_threaded_t();
 
-    size_t home_thread() const;
+    target_id_t home_thread() const;
     void assert_thread() const;
 private:
-    size_t m_home_thread;
+    target_id_t m_home_thread;
 };
 
 } // namespace indecorous

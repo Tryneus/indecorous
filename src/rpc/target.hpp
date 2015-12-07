@@ -85,19 +85,23 @@ private:
 
 template <> void target_t::parse_result(read_message_t data);
 
+template <class stream_type>
 class local_target_t : public target_t {
 public:
-    local_target_t();
+    local_target_t(stream_type *_stream) : m_stream(_stream) { }
 
-    // Returns true if a message was processed, false otherwise
-    bool handle(message_hub_t *local_hub);
+    bool is_local() const override final {
+        return true;
+    }
 
-    bool is_local() const override final;
 private:
-    friend class scheduler_t; // To get the initial stream size
-    friend class thread_t; // To check empty at the end of a run
-    stream_t *stream() override final;
-    local_stream_t m_stream;
+    stream_t *stream() override final {
+        return m_stream;
+    }
+
+    stream_type *m_stream;
+
+    DISABLE_COPYING(local_target_t);
 };
 
 // TODO: need to be able to address multiple targets in a remote process
@@ -108,6 +112,8 @@ public:
 private:
     stream_t *stream() override final;
     tcp_stream_t m_stream;
+
+    DISABLE_COPYING(remote_target_t);
 };
 
 } // namespace indecorous

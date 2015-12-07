@@ -84,7 +84,7 @@ void cross_thread_mutex_t::release_lock(cross_thread_mutex_acq_t *lock) {
     m_spinlock.unlock();
 
     if (next != nullptr) {
-        target_t *target = thread_t::self()->hub()->local_targets()[next->home_thread()];
+        target_t *target = thread_t::self()->hub()->target(next->home_thread());
         target->call_noreply<cross_thread_mutex_callback_t::notify>(this, std::move(next)); // TODO: should we really need this std::move here?
     }
 }

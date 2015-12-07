@@ -231,7 +231,7 @@ public:
         return nullptr;
     }
 
-    // This should not be called while other threads could be writing to the queue
+    // This may not be accurate if called when other threads could be writing to the queue
     size_t size() const {
         size_t res = 0;
         for (auto cursor = m_front; cursor != nullptr; cursor = cursor->next_node()) {
