@@ -5,15 +5,19 @@
 #include <unistd.h>
 
 #include "coro/coro.hpp"
+#include "coro/thread.hpp"
 #include "rpc/handler.hpp"
 #include "sync/file_wait.hpp"
 #include "sync/interruptor.hpp"
 
 namespace indecorous {
 
+SERIALIZABLE_POINTER(void);
+
 class file_callbacks_t {
-    DECLARE_STATIC_RPC(read)(int fd, off_t offset, const void *buffer, size_t size) -> int;
-    DECLARE_STATIC_RPC(write)(int fd, off_t offset, const void *buffer, size_t size) -> int;
+public:
+    DECLARE_STATIC_RPC(read)(int fd, off_t offset, void *buffer, size_t size) -> int;
+    DECLARE_STATIC_RPC(write)(int fd, off_t offset, void *buffer, size_t size) -> int;
 };
 
 file_t::file_t(std::string filename, int flags, int permissions) :
@@ -35,52 +39,51 @@ file_t::file_t(file_t &&other) :
 }
 
 IMPL_STATIC_RPC(file_callbacks_t::read)
-        (int fd, off_t offset, const void *buffer, size_t size) -> int {
-    iovec iov[1];
-    iov[0].iov_base = const_cast<void *>(buffer);
-    iov[0].iov_len = size;
-    ssize_t res = ::preadv(fd, &iov[0], 1, offset);
-    while (res != size) {
-        if (res == 0) {
+        (int fd, off_t offset, void *buffer, size_t size) -> int {
+    iovec iov;
+    iov.iov_base = buffer;
+    iov.iov_len = size;
+    ssize_t res = ::preadv(fd, &iov, 1, offset);
+    while (static_cast<size_t>(res) != size) {
+        if (res == -1) {
             return errno;
         }
-        buffer += res;
         size -= res;
         offset += size;
-        iov[0].iov_base = buffer;
-        iov[0].io_size = size;
-        res = ::preadv(fd, &iov[0], 1, offset);
+        iov.iov_base = reinterpret_cast<char *>(iov.iov_base) + res;
+        iov.iov_len = size;
+        res = ::preadv(fd, &iov, 1, offset);
     }
     return 0;
 }
 
 IMPL_STATIC_RPC(file_callbacks_t::write)
-        (int fd, off_t offset, const void *buffer, size_t size) -> int {
-    iovec iov[1];
-    iov[0].iov_base = buffer;
-    iov[0].iov_len = size;
-    ssize_t res = ::pwritev(fd, &iov[0], 1, offset);
-    while (res != size) {
-        if (res == 0) {
+        (int fd, off_t offset, void *buffer, size_t size) -> int {
+    iovec iov;
+    iov.iov_base = buffer;
+    iov.iov_len = size;
+    ssize_t res = ::pwritev(fd, &iov, 1, offset);
+    while (static_cast<size_t>(res) != size) {
+        if (res == -1) {
             return errno;
         }
-        buffer += res;
         size -= res;
         offset += size;
-        iov[0].iov_base = buffer;
-        iov[0].io_size = size;
-        res = ::pwritev(fd, &iov[0], 1, offset);
+        iov.iov_base = reinterpret_cast<char *>(iov.iov_base) + res;
+        iov.iov_len = size;
+        res = ::pwritev(fd, &iov, 1, offset);
     }
+    return 0;
 }
 
 future_t<int> file_t::write(off_t offset, const void *buffer, size_t size) {
-    return thread_t::self()->hub()->io_pool()->
-        call_async<file_callbacks_t::write>(m_file.get(), offset, buffer, size);
+    return thread_t::self()->hub()->io_target()->
+        call_async<file_callbacks_t::write>(m_file.get(), std::move(offset), const_cast<void *>(buffer), std::move(size));
 }
 
 future_t<int> file_t::read(off_t offset, void *buffer, size_t size) {
-    return thread_t::self()->hub()->io_pool()->
-        call_async<file_callbacks_t::read>(m_file.get(), offset, buffer, size);
+    return thread_t::self()->hub()->io_target()->
+        call_async<file_callbacks_t::read>(m_file.get(), std::move(offset), std::move(buffer), std::move(size));
 }
 
 } // namespace indecorous

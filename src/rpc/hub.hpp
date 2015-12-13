@@ -24,6 +24,7 @@ public:
     ~message_hub_t();
 
     target_t *target(target_id_t id);
+    target_t *io_target();
 
     const std::vector<target_t *> &local_targets();
 
@@ -81,7 +82,7 @@ private:
     target_t::request_params_t new_request();
 
     const target_id_t m_self_target_id;
-    const target_t *m_io_target;
+    target_t * const m_io_target;
     std::vector<target_t *> m_local_targets;
     std::unordered_map<target_id_t, target_t *> m_targets;
     std::unordered_map<rpc_id_t, rpc_callback_t *> m_rpcs;

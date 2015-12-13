@@ -10,9 +10,9 @@
 namespace indecorous {
 
 // This constructor copies the statically-initialized set of rpcs
-message_hub_t::message_hub_t(target_t *self_target, target_t *io_target) :
+message_hub_t::message_hub_t(target_t *self_target, target_t *_io_target) :
     m_self_target_id(self_target->id()),
-    m_io_target(io_target),
+    m_io_target(_io_target),
     m_local_targets(),
     m_targets(),
     m_rpcs(register_callback(nullptr)),
@@ -70,6 +70,10 @@ void message_hub_t::spawn_task(read_message_t msg) {
 target_t *message_hub_t::target(target_id_t id) {
     auto it = m_targets.find(id);
     return (it == m_targets.end()) ? nullptr : it->second;
+}
+
+target_t *message_hub_t::io_target() {
+    return m_io_target;
 }
 
 const std::vector<target_t *> &message_hub_t::local_targets() {
