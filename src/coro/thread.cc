@@ -59,26 +59,26 @@ void thread_t::main() {
     m_parent->m_barrier.wait(); // Barrier for the scheduler_t constructor, thread ready
     m_parent->m_barrier.wait(); // Wait for run or ~scheduler_t
 
-    m_dispatcher = std::make_unique<dispatcher_t>(m_parent->m_shutdown.get());
-
     event_t close_event;
-    coro_t::spawn([&] {
-        try {
-            interruptor_t shutdown(&close_event);
+    m_dispatcher = std::make_unique<dispatcher_t>(
+        m_parent->m_shutdown.get(),
+        [&] {
+            try {
+                interruptor_t shutdown(&close_event);
+                coro_t::spawn([&] { m_coro_pull(); });
 
-            while (true) {
-                read_message_t msg = m_direct_stream.read();
-                if (msg.buffer.has()) {
-                    m_hub.spawn_task(std::move(msg));
-                } else {
-                    m_direct_stream.wait();
+                while (true) {
+                    read_message_t msg = m_direct_stream.read();
+                    if (msg.buffer.has()) {
+                        m_hub.spawn_task(std::move(msg));
+                    } else {
+                        m_direct_stream.wait();
+                    }
                 }
+            } catch (wait_interrupted_exc_t &) {
+                // Do nothing
             }
-        } catch (wait_interrupted_exc_t &) {
-            // Do nothing
-        }
-    });
-
+        });
 
     while (!m_parent->m_destroying.load()) {
         m_stop_immediately = false;

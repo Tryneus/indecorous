@@ -46,7 +46,8 @@ private:
 class dispatcher_t
 {
 public:
-    dispatcher_t(shutdown_t *shutdown);
+    dispatcher_t(shutdown_t *shutdown,
+                 std::function<void()> initial_fn);
     ~dispatcher_t();
 
     void run();
@@ -70,12 +71,14 @@ public:
     coro_t *m_release; // Recently-finished coro_t to be released
 
     size_t m_swap_count;
-    event_t m_close_event;
-
     ucontext_t m_main_context; // Used to store the thread's main context
 
     static size_t s_max_swaps_per_loop;
 private:
+    friend void run_initial_coro();
+
+    coro_t *m_initial_coro;
+    std::function<void()> m_initial_fn;
     int64_t m_coro_delta;
 
     DISABLE_COPYING(dispatcher_t);

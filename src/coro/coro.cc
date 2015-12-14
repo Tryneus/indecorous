@@ -108,7 +108,12 @@ struct handover_params_t {
 };
 thread_local handover_params_t handover_params;
 
-dispatcher_t::dispatcher_t(shutdown_t *shutdown) :
+void run_initial_coro() {
+    thread_t::self()->dispatcher()->m_initial_fn();
+}
+
+dispatcher_t::dispatcher_t(shutdown_t *shutdown,
+                           std::function<void()> initial_fn) :
         m_shutdown(shutdown),
         m_swap_permitted(true),
         m_coro_cache(32, this),
@@ -116,11 +121,16 @@ dispatcher_t::dispatcher_t(shutdown_t *shutdown) :
         m_running(nullptr),
         m_release(nullptr),
         m_swap_count(0),
-        m_close_event(),
         m_main_context(),
+        m_initial_coro(m_coro_cache.get()),
+        m_initial_fn(std::move(initial_fn)),
         m_coro_delta(0) {
     // Save the currently running context
     GUARANTEE_ERR(getcontext(&m_main_context) == 0);
+
+    // Set up the initial coro context
+    makecontext(&m_initial_coro->m_context, &run_initial_coro, 0);
+    m_run_queue.push_back(m_initial_coro);
 }
 
 dispatcher_t::~dispatcher_t() {
