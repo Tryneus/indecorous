@@ -19,8 +19,12 @@ IMPL_STATIC_RPC(shutdown_rpc_t::finish_shutdown)() -> void {
     thread_t::self()->finish_shutdown();
 }
 
-shutdown_t::shutdown_t(std::vector<target_t *> targets) :
-   m_targets(std::move(targets)), m_finish_sent(true), m_active_count(0) { }
+shutdown_t::shutdown_t(size_t initial_tasks,
+                       std::vector<target_t *> targets) :
+   m_targets(std::move(targets)),
+   m_finish_sent(false),
+   // The extra 1 is a dummy task to prevent shutdown until `shutdown` is called
+   m_active_count(initial_tasks + 1) { }
 
 void shutdown_t::begin_shutdown() {
     // This is called outside the context of a thread_t, so update manually
@@ -43,12 +47,6 @@ void shutdown_t::update(int64_t active_delta) {
             }
         }
     }
-}
-
-void shutdown_t::reset(uint64_t initial_count) {
-    // The extra 1 is a dummy task to prevent shutdown until `shutdown` is called
-    m_finish_sent.store(false);
-    m_active_count.store(initial_count + 1);
 }
 
 } // namespace indecorous

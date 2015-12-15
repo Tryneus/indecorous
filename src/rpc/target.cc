@@ -23,7 +23,6 @@ void target_t::note_send() const {
     if (is_local()) {
         thread_t *t = thread_t::self();
         if (t != nullptr) {
-            // TODO: this does an atomic operation - check if we can do this otherwise
             t->note_local_rpc();
         }
     }

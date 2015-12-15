@@ -76,6 +76,7 @@ public:
     static size_t s_max_swaps_per_loop;
 private:
     friend void run_initial_coro();
+    friend class ignore_coro_for_shutdown_t;
 
     coro_t *m_initial_coro;
     std::function<void()> m_initial_fn;

@@ -156,7 +156,9 @@ void dispatcher_t::run() {
     }
 
     assert(m_running == nullptr);
-    m_shutdown->update(m_coro_delta);
+    if (m_coro_delta != 0) {
+        m_shutdown->update(m_coro_delta);
+    }
 }
 
 void dispatcher_t::note_new_task() {

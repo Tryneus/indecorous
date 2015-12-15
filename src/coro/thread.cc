@@ -53,6 +53,20 @@ void thread_t::join() {
     m_thread.join();
 }
 
+// This should be instantiated at the beginning of a system coroutine
+// (aside from the initial coroutine, which is implicitly handled) to
+// counteract coroutine delta tracking so that it doesn't count against
+// shutdown.
+class ignore_coro_for_shutdown_t {
+public:
+    ignore_coro_for_shutdown_t() {
+        thread_t::self()->dispatcher()->m_coro_delta -= 1;
+    }
+    ~ignore_coro_for_shutdown_t() {
+        thread_t::self()->dispatcher()->m_coro_delta += 1;
+    }
+};
+
 void thread_t::main() {
     s_instance = this;
 
@@ -65,7 +79,14 @@ void thread_t::main() {
         [&] {
             try {
                 interruptor_t shutdown(&close_event);
-                coro_t::spawn([&] { m_coro_pull(); });
+                coro_t::spawn([&] {
+                    ignore_coro_for_shutdown_t ignore;
+                    try {
+                        m_coro_pull();
+                    } catch (wait_interrupted_exc_t &) {
+                        // Do nothing
+                    }
+                });
 
                 while (true) {
                     read_message_t msg = m_direct_stream.read();
@@ -127,14 +148,13 @@ void io_thread_t::coro_pull() {
 }
 
 void io_thread_t::inner_main() {
+    m_ready_for_next.set();
+    m_thread.events()->check(m_thread.dispatcher()->m_run_queue.empty());
     m_thread.dispatcher()->run();
     while (m_thread.dispatcher()->m_coro_cache.extant() > 2) {
         m_thread.events()->check(m_thread.dispatcher()->m_run_queue.empty());
         m_thread.dispatcher()->run();
     } 
-    m_ready_for_next.set();
-    m_thread.dispatcher()->run();
-    m_thread.events()->check(m_thread.dispatcher()->m_run_queue.empty());
 }
 
 } // namespace indecorous

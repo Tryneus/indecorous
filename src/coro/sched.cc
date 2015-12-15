@@ -163,7 +163,8 @@ void scheduler_t::run() {
     }
 
     m_running = true;
-    m_shutdown = std::make_unique<shutdown_t>(std::move(all_thread_targets));
+    m_shutdown = std::make_unique<shutdown_t>(initial_tasks,
+                                              std::move(all_thread_targets));
 
     switch (m_shutdown_policy) {
     case shutdown_policy_t::Eager: {
