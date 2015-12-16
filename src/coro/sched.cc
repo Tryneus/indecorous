@@ -64,12 +64,22 @@ void scheduler_t::construct_internal(size_t num_coro_threads, size_t num_io_thre
     // Return SIGINT and SIGTERM to the previous state
     GUARANTEE(pthread_sigmask(SIG_SETMASK, &old_sigset, nullptr) == 0);
 
+    std::vector<target_t *> all_thread_targets;
+    all_thread_targets.reserve(m_coro_threads.size() + m_io_threads.size());
+
     // Tell the message hubs of each thread about the others
     for (auto &&t : m_coro_threads) {
+        all_thread_targets.push_back(t.thread()->target());
         for (auto &&u : m_coro_threads) {
             t.thread()->hub()->add_local_target(u.thread()->target());
         }
     }
+
+    for (auto &&t : m_io_threads) {
+        all_thread_targets.push_back(t.thread()->target());
+    }
+
+    m_shutdown = std::make_unique<shutdown_t>(std::move(all_thread_targets));
 
     m_barrier.wait(); // Wait for all threads to start up
 }
@@ -149,22 +159,13 @@ private:
 thread_local scoped_sigaction_t *scoped_sigaction_t::s_instance = nullptr;
 
 void scheduler_t::run() {
-    std::vector<target_t *> all_thread_targets;
-    all_thread_targets.reserve(m_coro_threads.size() + m_io_threads.size());
-
     size_t initial_tasks = m_io_stream.size();
     for (auto &&t : m_coro_threads) {
         initial_tasks += t.thread()->queue_length();
-        all_thread_targets.push_back(t.thread()->target());
-    }
-
-    for (auto &&t : m_io_threads) {
-        all_thread_targets.push_back(t.thread()->target());
     }
 
     m_running = true;
-    m_shutdown = std::make_unique<shutdown_t>(initial_tasks,
-                                              std::move(all_thread_targets));
+    m_shutdown->reset(initial_tasks);
 
     switch (m_shutdown_policy) {
     case shutdown_policy_t::Eager: {
@@ -182,8 +183,6 @@ void scheduler_t::run() {
     default:
         UNREACHABLE();
     }
-
-    m_shutdown.reset();
     m_running = false;
 }
 

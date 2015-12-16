@@ -111,6 +111,7 @@ void thread_t::main() {
         m_parent->m_barrier.wait(); // Wait for run or ~scheduler_t
     }
 
+
     close_event.set();
     m_dispatcher->run();
     m_dispatcher.reset();

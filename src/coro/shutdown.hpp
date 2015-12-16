@@ -12,8 +12,9 @@ class target_t;
 
 class shutdown_t {
 public:
-    shutdown_t(size_t initial_count, std::vector<target_t *> targets);
+    shutdown_t(std::vector<target_t *> targets);
 
+    void reset(size_t initial_tasks);
     void begin_shutdown();
     void update(int64_t active_delta);
 private:

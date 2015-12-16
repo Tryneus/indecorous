@@ -108,8 +108,12 @@ struct handover_params_t {
 };
 thread_local handover_params_t handover_params;
 
-void run_initial_coro() {
-    thread_t::self()->dispatcher()->m_initial_fn();
+void dispatcher_t::run_initial_coro() {
+    coro_t *self = coro_t::self();
+    dispatcher_t *dispatcher = thread_t::self()->dispatcher();
+    dispatcher->m_initial_fn();
+    dispatcher->enqueue_release(self);
+    self->swap(nullptr);
 }
 
 dispatcher_t::dispatcher_t(shutdown_t *shutdown,
