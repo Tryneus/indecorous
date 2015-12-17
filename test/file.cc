@@ -12,23 +12,19 @@ SIMPLE_TEST(file, simple, 1, "[io][file]") {
     char buffer[buffer_size];
     file_t file("./file_test.txt", O_RDWR | O_CREAT | O_TRUNC);
 
-    debugf("read");
     file.read(0, buffer, buffer_size).then([] (int res) {
             debugf("read response");
             CHECK(res == EINVAL);
         }).wait();
-    debugf("write");
     file.write(0, file_data, buffer_size).then([] (int res) {
             debugf("write response");
             CHECK(res == 0);
         }).wait();
-    debugf("read");
     file.read(0, buffer, buffer_size).then([&] (int res) {
             debugf("read response");
             CHECK(res == 0);
             CHECK(memcmp(file_data, buffer, buffer_size) == 0);
         }).wait();
-    debugf("done");
 }
 
 SIMPLE_TEST(file, read_write, 1, "[io][file]") {

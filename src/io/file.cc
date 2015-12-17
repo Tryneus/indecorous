@@ -36,13 +36,14 @@ IMPL_STATIC_RPC(file_callbacks_t::read)
     iov.iov_len = size;
     ssize_t res = ::preadv(fd, &iov, 1, offset);
     while (static_cast<size_t>(res) != size) {
-        if (res == -1) {
+        if (res == 0) {
+            return EINVAL; // TODO: we probably need to return the actual size of the read
+        } else if (res == -1) {
             return errno;
         }
-        size -= res;
-        offset += size;
+        offset += res;
         iov.iov_base = reinterpret_cast<char *>(iov.iov_base) + res;
-        iov.iov_len = size;
+        iov.iov_len -= res;
         res = ::preadv(fd, &iov, 1, offset);
     }
     return 0;
@@ -58,10 +59,9 @@ IMPL_STATIC_RPC(file_callbacks_t::write)
         if (res == -1) {
             return errno;
         }
-        size -= res;
-        offset += size;
+        offset += res;
         iov.iov_base = reinterpret_cast<char *>(iov.iov_base) + res;
-        iov.iov_len = size;
+        iov.iov_len -= res;
         res = ::pwritev(fd, &iov, 1, offset);
     }
     return 0;
