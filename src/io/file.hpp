@@ -25,7 +25,6 @@ public:
 private:
     std::string m_filename;
     int m_flags;
-
     scoped_fd_t m_file;
 
     DISABLE_COPYING(file_t);

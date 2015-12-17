@@ -36,7 +36,8 @@ public:
         note_send();
         auto params = new_request();
         send_request<RPC>(params.source_id, params.request_id, std::forward<Args>(args)...);
-        return serializer_t<Res>::read(params.future.release());
+        read_message_t reply(params.future.release());
+        return serializer_t<Res>::read(&reply);
     }
 
     template <typename RPC, typename... Args,

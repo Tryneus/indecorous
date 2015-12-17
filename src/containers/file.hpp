@@ -14,6 +14,7 @@ public:
 
     fd_t get() const;
     bool valid() const;
+    fd_t release();
 
 private:
     static const fd_t s_invalid_fd = -1;

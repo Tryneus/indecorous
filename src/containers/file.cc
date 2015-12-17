@@ -28,4 +28,10 @@ bool scoped_fd_t::valid() const {
     return m_fd != s_invalid_fd;
 }
 
+fd_t scoped_fd_t::release() {
+    fd_t res = m_fd;
+    m_fd = s_invalid_fd;
+    return res;
+}
+
 } // namespace indecorous
