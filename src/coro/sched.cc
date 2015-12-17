@@ -75,8 +75,13 @@ void scheduler_t::construct_internal(size_t num_coro_threads, size_t num_io_thre
         }
     }
 
+    // IO threads should know about coro threads, but not vice versa
+    // TODO: this means you can't do 'reply' rpcs to other targets (from an io target)
     for (auto &&t : m_io_threads) {
         all_thread_targets.push_back(t.thread()->target());
+        for (auto &&u : m_coro_threads) {
+            t.thread()->hub()->add_local_target(u.thread()->target());
+        }
     }
 
     m_shutdown = std::make_unique<shutdown_t>(std::move(all_thread_targets));

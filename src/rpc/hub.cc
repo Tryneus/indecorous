@@ -28,6 +28,8 @@ void handle_wrapper(message_hub_t *hub, rpc_callback_t *rpc, read_message_t msg)
     target_t *source = hub->target(source_id);
     if (source != nullptr) {
         source->send_reply(std::move(reply));
+    } else {
+        debugf("Could not find target (%" PRIu64 ") for reply, might be disconnected", source_id.value());
     }
 }
 

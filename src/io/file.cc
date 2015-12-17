@@ -27,7 +27,6 @@ file_t::file_t(std::string filename, int flags, int permissions) :
                 // TODO: mix in flags like non-block/cloexec?
                 scoped_fd_t res(::open(m_filename.c_str(), flags, permissions));
                 GUARANTEE_ERR(res.valid());
-                debugf("opened file descriptor: %d", res.get());
                 return res;
             }()) { }
 
