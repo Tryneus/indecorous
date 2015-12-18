@@ -16,7 +16,8 @@ scoped_fd_t::scoped_fd_t(scoped_fd_t &&other) :
 
 scoped_fd_t::~scoped_fd_t() {
     if (valid()) {
-        eintr_wrap([&] { return close(m_fd); });
+        int res = eintr_wrap([&] { return close(m_fd); });
+        GUARANTEE_ERR(res == 0);
     }
 }
 

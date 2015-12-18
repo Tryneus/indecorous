@@ -145,7 +145,8 @@ public:
     }
 
     void wait() {
-        eintr_wrap([&] { return sem_wait(&m_semaphore); });
+        auto res = eintr_wrap([&] { return sem_wait(&m_semaphore); });
+        GUARANTEE_ERR(res == 0);
     }
 
 private:

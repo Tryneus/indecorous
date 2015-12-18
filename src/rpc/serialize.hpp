@@ -58,13 +58,13 @@ size_t full_serialized_size(const Args &...args) {
         size_t value;
     } acc;
 
-    UNUSED int dummy[] = { 0, acc.add(serializer_t<Args>::size(args))... };
+    UNUSED int dummy[] = { acc.add(serializer_t<Args>::size(args))... };
     return acc.value;
 }
 
 template <typename... Args>
 int full_serialize(write_message_t *msg, const Args &...args) {
-    UNUSED int dummy[] = { 0, serializer_t<Args>::write(msg, args)... };
+    UNUSED int dummy[] = { serializer_t<Args>::write(msg, args)... };
     return 0;
 }
 
