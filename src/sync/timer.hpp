@@ -58,8 +58,7 @@ public:
 private:
     void add_wait(wait_callback_t* cb) override final;
     void remove_wait(wait_callback_t* cb) override final;
-
-    void timer_callback(wait_result_t result);
+    void timer_callback(wait_result_t result) override final;
 
     bool m_triggered;
     intrusive_list_t<wait_callback_t> m_waiters;
@@ -81,9 +80,9 @@ public:
 private:
     void add_wait(wait_callback_t* cb) override final;
     void remove_wait(wait_callback_t* cb) override final;
+    void timer_callback(wait_result_t result) override final;
 
     void stop_internal(wait_result_t result);
-    void timer_callback(wait_result_t result);
 
     int64_t m_period_ms;
     intrusive_list_t<wait_callback_t> m_waiters;

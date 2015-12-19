@@ -17,10 +17,10 @@ ifeq ($(CXX),g++)
   COMPILER_SUFFIX = gcc4.9
 else
   ifeq ($(CXX),clang++)
-    override CXX = clang++-3.5
+    override CXX = clang++
     CXX_FLAGS = -Wconditional-uninitialized -Wused-but-marked-unused
     LD_FLAGS =
-    COMPILER_SUFFIX = clang3.5
+    COMPILER_SUFFIX = clang
   endif
 endif
 

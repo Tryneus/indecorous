@@ -2,6 +2,7 @@
 
 #include <sys/eventfd.h>
 #include <sys/uio.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "coro/coro.hpp"

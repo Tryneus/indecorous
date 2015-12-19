@@ -1,5 +1,9 @@
 #include "test.hpp"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "io/file.hpp"
 #include "sync/coro_map.hpp"
 

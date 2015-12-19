@@ -45,7 +45,7 @@ private:
 
     file_wait_t(int _fd, uint32_t _event_mask);
 
-    void file_callback(wait_result_t result);
+    void file_callback(wait_result_t result) override final;
 
     intrusive_list_t<wait_callback_t> m_waiters;
     events_t *m_thread_events;
