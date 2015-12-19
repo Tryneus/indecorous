@@ -17,11 +17,11 @@ IMPL_STATIC_RPC(flip_buffer_callback_t::flip)(uint64_t unsafe_ptr) -> void {
 }
 
 flip_buffer_base_t::flip_buffer_base_t() :
-        m_current_buffers() {
+        m_thread_data() {
     const std::vector<target_t *> &local_targets = thread_t::self()->hub()->local_targets();
 
     for (auto &&t : local_targets) {
-        m_current_buffers[t->id()] = buffer_id_t::BUFFER_A;
+        m_thread_data[t->id()].current_buffer = buffer_id_t::BUFFER_A;
     }
 }
 
@@ -33,12 +33,41 @@ void flip_buffer_base_t::flip() {
 }
 
 flip_buffer_base_t::buffer_id_t flip_buffer_base_t::current_buffer_id() const {
-    return m_current_buffers.at(thread_t::self()->target()->id());
+    return m_thread_data.at(thread_t::self()->target()->id()).current_buffer;
 }
 
 void flip_buffer_base_t::flip_internal() {
-    auto &buffer_id = m_current_buffers.at(thread_t::self()->target()->id());
-    buffer_id = static_cast<buffer_id_t>((static_cast<int>(buffer_id) + 1) % 2);
+    auto &thread_data = m_thread_data.at(thread_t::self()->target()->id());
+    thread_data.current_buffer =
+        static_cast<buffer_id_t>((static_cast<int>(thread_data.current_buffer) + 1) % 2);
+
+    assert_no_swap_t no_swap;
+    thread_data.subscriptions.each([&] (auto const &s) {
+            s->m_base->on_flip(thread_data.current_buffer);
+        });
+}
+
+flip_buffer_base_t::subscription_t::subscription_t(flip_buffer_base_t *parent,
+                                              std::unique_ptr<base_t> base) :
+        m_parent(parent),
+        m_base(std::move(base)),
+        m_lock(m_parent->m_drainer.lock()) {
+    target_id_t id = thread_t::self()->target()->id();
+    m_parent->m_thread_data[id].subscriptions.push_back(this);
+}
+
+flip_buffer_base_t::subscription_t::subscription_t(subscription_t &&other) :
+        m_parent(other.m_parent),
+        m_base(std::move(other.m_base)),
+        m_lock(std::move(other.m_lock)) {
+    other.m_parent = nullptr;
+}
+
+flip_buffer_base_t::subscription_t::~subscription_t() {
+    if (m_parent != nullptr) {
+        target_id_t id = thread_t::self()->target()->id();
+        m_parent->m_thread_data[id].subscriptions.remove(this);
+    }
 }
 
 } // namespace indecorous

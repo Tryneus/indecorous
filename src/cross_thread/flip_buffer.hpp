@@ -2,6 +2,7 @@
 #define CROSS_THREAD_FLIP_BUFFER_HPP_
 
 #include <vector>
+#include <memory>
 
 #include "common.hpp"
 #include "cross_thread/ct_mutex.hpp"
@@ -12,19 +13,54 @@
 namespace indecorous {
 
 class flip_buffer_base_t {
+private:
+    enum class buffer_id_t { BUFFER_A = 0, BUFFER_B = 1 };
 public:
     flip_buffer_base_t();
     virtual ~flip_buffer_base_t();
 
+    class subscription_t : public intrusive_node_t<subscription_t> {
+    public:
+        subscription_t(subscription_t &&other);
+        ~subscription_t();
+
+    private:
+        template <typename Callable>
+        friend class subscription_impl_t;
+        class base_t {
+        public:
+            virtual ~base_t() { }
+            virtual void on_flip(buffer_id_t buffer) = 0;
+        };
+
+        friend class flip_buffer_base_t;
+        subscription_t(flip_buffer_base_t *parent,
+                       std::unique_ptr<base_t> base);
+
+        flip_buffer_base_t *m_parent;
+        std::unique_ptr<base_t> m_base;
+        drainer_lock_t m_lock;
+    };
+
 protected:
     friend class flip_buffer_callback_t;
+    friend class subscription_t;
     void flip_internal();
     void flip();
 
-    enum class buffer_id_t { BUFFER_A = 0, BUFFER_B = 1 };
+    subscription_t add_subscription(std::unique_ptr<subscription_t::base_t> base) {
+        return subscription_t(this, std::move(base));
+    }
+
     buffer_id_t current_buffer_id() const;
 
-    std::unordered_map<target_id_t, buffer_id_t> m_current_buffers;
+    struct thread_data_t {
+        buffer_id_t current_buffer;
+        intrusive_list_t<subscription_t> subscriptions;
+    };
+
+    std::unordered_map<target_id_t, thread_data_t> m_thread_data;
+    drainer_t m_drainer;
 
     DISABLE_COPYING(flip_buffer_base_t);
 };
@@ -80,8 +116,28 @@ public:
         }
     }
 
+    template <typename Callable>
+    subscription_t subscribe(Callable &&cb) {
+        return add_subscription(
+            std::make_unique<subscription_impl_t<Callable> >(this, std::move(cb)));
+    }
+
 private:
-    drainer_t m_drainer;
+    template <typename Callable>
+    class subscription_impl_t : public subscription_t::base_t {
+    public:
+        subscription_impl_t(flip_buffer_t<T> *parent, Callable cb) :
+            m_parent(parent),
+            m_cb(std::move(cb)) { }
+    private:
+        void on_flip(buffer_id_t buffer) override final {
+            cb(buffer == buffer_id_t::BUFFER_A ? m_parent->m_buffer_a : m_parent->m_buffer_b);
+        }
+
+        const flip_buffer_t<T> * const m_parent;
+        const Callable m_cb;
+    };
+
     cross_thread_mutex_t m_mutex;
     T m_buffer_a;
     T m_buffer_b;
