@@ -3,7 +3,9 @@
 namespace indecorous {
 
 spinlock_t::spinlock_t() :
-        m_locked(ATOMIC_FLAG_INIT) { }
+        m_locked() {
+    m_locked.clear();
+}
 
 spinlock_t::~spinlock_t() {
     assert(!m_locked.test_and_set(std::memory_order_acquire));

@@ -11,10 +11,10 @@ endif
 # We use c++14 extensions, so force us to use a compiler version with support
 # TODO: make this more portable
 ifeq ($(CXX),g++)
-  override CXX = g++-4.9
+  override CXX = g++-5
   CXX_FLAGS =
   LD_FLAGS =
-  COMPILER_SUFFIX = gcc4.9
+  COMPILER_SUFFIX = gcc5
 else
   ifeq ($(CXX),clang++)
     override CXX = clang++
