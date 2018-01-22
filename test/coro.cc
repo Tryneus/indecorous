@@ -82,6 +82,87 @@ TEST_CASE("coro/sigint", "[coro][shutdown][hide]") {
     sched.run();
 }
 
+class construction_count_t {
+public:
+    construction_count_t() {
+        s_new_count += 1;
+    }
+
+    construction_count_t(const construction_count_t &) {
+        s_copy_count += 1;
+    }
+
+    construction_count_t(construction_count_t &&) {
+        s_move_count += 1;
+    }
+
+    static void reset() {
+        s_new_count = 0;
+        s_copy_count = 0;
+        s_move_count = 0;
+    }
+
+    static size_t s_new_count;
+    static size_t s_copy_count;
+    static size_t s_move_count;
+};
+
+size_t construction_count_t::s_new_count = 0;
+size_t construction_count_t::s_copy_count = 0;
+size_t construction_count_t::s_move_count = 0;
+
+SIMPLE_TEST(coro, move_count, 1, "[coro][move_count]") {
+    {
+        construction_count_t::reset();
+        construction_count_t count;
+
+        coro_t::spawn_now([](construction_count_t) {}, count);
+        CHECK(construction_count_t::s_new_count == 1);
+        CHECK(construction_count_t::s_copy_count == 1);
+        CHECK(construction_count_t::s_move_count == 2);
+    }
+
+    {
+        construction_count_t::reset();
+        construction_count_t count;
+
+        coro_t::spawn_now([](construction_count_t) {}, std::move(count));
+        CHECK(construction_count_t::s_new_count == 1);
+        CHECK(construction_count_t::s_copy_count == 0);
+        CHECK(construction_count_t::s_move_count == 3);
+    }
+
+    {
+        construction_count_t::reset();
+        construction_count_t count;
+
+        coro_t::spawn_now([](const construction_count_t &) {}, count);
+        CHECK(construction_count_t::s_new_count == 1);
+        CHECK(construction_count_t::s_copy_count == 0);
+        CHECK(construction_count_t::s_move_count == 0);
+    }
+
+    {
+        construction_count_t::reset();
+        construction_count_t count;
+
+        coro_t::spawn_now([](construction_count_t &) {}, count);
+        CHECK(construction_count_t::s_new_count == 1);
+        CHECK(construction_count_t::s_copy_count == 0);
+        CHECK(construction_count_t::s_move_count == 0);
+    }
+
+    {
+        construction_count_t::reset();
+        construction_count_t count;
+
+        coro_t::spawn_now([](construction_count_t &&) {}, std::move(count));
+        CHECK(construction_count_t::s_new_count == 1);
+        CHECK(construction_count_t::s_copy_count == 0);
+        CHECK(construction_count_t::s_move_count == 0);
+    }
+}
+
 class param_t {
 public:
     param_t(int init_val) : value(init_val) { }
@@ -97,7 +178,6 @@ private:
 
 SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     // Passing a naked value
-    // TODO: this probably isn't passing the object exactly as I expect
     {
         // Should copy the object (on the stack) and move the copy to the coroutine
         param_t param(1);
@@ -231,7 +311,6 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     // Source is an r-value reference
     {
         // Should move the object all the way to the coroutine
-        // TODO: make a test like this checking the number of times 'param_t' is constructed
         param_t param(0);
         future_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 0); }, std::move(param));
         CHECK(param.get() == -1);
