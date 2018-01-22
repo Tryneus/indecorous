@@ -96,7 +96,7 @@ private:
 };
 
 SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
-    // Source is a copy of the object
+    // Passing a naked value
     // TODO: this probably isn't passing the object exactly as I expect
     {
         // Should copy the object (on the stack) and move the copy to the coroutine
@@ -111,21 +111,33 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     }
 
     {
-        // Should copy the object (on the stack) and move the copy to the coroutine
+        // Should pass a const reference to the object
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 0); }, param);
+        coro_t::spawn_now([&] (const param_t &p) { CHECK(p.get() == 0); }, param);
+        future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 1); }, param);
         CHECK(param.get() == 0);
         param.set(1);
         done.wait();
+        CHECK(param.get() == 1);
     }
 
     {
-        // Should copy the object (on the stack) and move the copy to the coroutine
+        // Should pass a mutable reference to the object
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 0); }, param);
-        CHECK(param.get() == 0);
-        param.set(1);
+        coro_t::spawn_now([&] (param_t &p) {
+                CHECK(p.get() == 0);
+                p.set(1);
+            }, param);
+        CHECK(param.get() == 1);
+        future_t<void> done = coro_t::spawn([&] (param_t &p) {
+                CHECK(p.get() == 2);
+                p.set(3);
+            }, param);
+        CHECK(param.get() == 1);
+        param.set(2);
+        CHECK(param.get() == 2);
         done.wait();
+        CHECK(param.get() == 3);
     }
 
     {
@@ -139,19 +151,23 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Should copy the object and move the copy to the coroutine
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 1); }, std::cref(param));
+        future_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 0); }, std::cref(param));
         CHECK(param.get() == 0);
         param.set(1);
+        CHECK(param.get() == 1);
         done.wait();
+        CHECK(param.get() == 1);
     }
 
     {
-        // Should copy the object and move the copy to the coroutine
+        // Should pass a const reference to the object
         param_t param(0);
         future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 1); }, std::cref(param));
         CHECK(param.get() == 0);
         param.set(1);
+        CHECK(param.get() == 1);
         done.wait();
+        CHECK(param.get() == 1);
     }
 
     {
@@ -172,10 +188,12 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Should copy the object and move the copy to the coroutine
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 1); }, std::ref(param));
+        future_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 0); }, std::ref(param));
         CHECK(param.get() == 0);
         param.set(1);
+        CHECK(param.get() == 1);
         done.wait();
+        CHECK(param.get() == 1);
     }
 
     {
@@ -184,16 +202,23 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
         future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 1); }, std::ref(param));
         CHECK(param.get() == 0);
         param.set(1);
+        CHECK(param.get() == 1);
         done.wait();
+        CHECK(param.get() == 1);
     }
 
     {
         // Should copy the object and move the copy to the coroutine
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 1); }, std::ref(param));
+        future_t<void> done = coro_t::spawn([&] (param_t &p) {
+                CHECK(p.get() == 1);
+                p.set(2);
+            }, std::ref(param));
         CHECK(param.get() == 0);
         param.set(1);
+        CHECK(param.get() == 1);
         done.wait();
+        CHECK(param.get() == 2);
     }
 
     {
@@ -206,37 +231,55 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     // Source is an r-value reference
     {
         // Should move the object all the way to the coroutine
+        // TODO: make a test like this checking the number of times 'param_t' is constructed
         param_t param(0);
         future_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 0); }, std::move(param));
         CHECK(param.get() == -1);
         param.set(1);
+        CHECK(param.get() == 1);
         done.wait();
+        CHECK(param.get() == 1);
     }
 
     {
-        // Should move the object all the way to the coroutine
+        // Should pass a reference to the original object
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 0); }, std::move(param));
-        CHECK(param.get() == -1);
+        future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 1); }, std::move(param));
+        CHECK(param.get() == 0);
         param.set(1);
+        CHECK(param.get() == 1);
         done.wait();
+        CHECK(param.get() == 1);
     }
 
     {
+        // TODO: this should work
         // Should move the object all the way to the coroutine
         //param_t param(0);
-        //future_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 0); }, std::move(param));
+        //future_t<void> done = coro_t::spawn([&] (param_t &p) {
+        //        CHECK(p.get() == 0);
+        //        p.set(2);
+        //    }, std::move(param));
         //CHECK(param.get() == -1);
         //param.set(1);
+        //CHECK(param.get() == -1);
         //done.wait();
+        //CHECK(param.get() == -1);
     }
 
     {
-        // Should move the object all the way to the coroutine
+        // Should pass an r-value ref to the original object
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 0); }, std::move(param));
-        CHECK(param.get() == -1);
+        future_t<void> done = coro_t::spawn([&] (param_t &&p) {
+                CHECK(p.get() == 1);
+                param_t movee(std::move(p));
+                CHECK(movee.get() == 1);
+                CHECK(p.get() == -1);
+            }, std::move(param));
+        CHECK(param.get() == 0);
         param.set(1);
+        CHECK(param.get() == 1);
         done.wait();
+        CHECK(param.get() == -1);
     }
 }
