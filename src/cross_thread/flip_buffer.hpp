@@ -15,8 +15,6 @@
 namespace indecorous {
 
 class flip_buffer_base_t {
-private:
-    enum class buffer_id_t { BUFFER_A = 0, BUFFER_B = 1 };
 public:
     flip_buffer_base_t();
     virtual ~flip_buffer_base_t();
@@ -29,6 +27,7 @@ protected:
 
     virtual void on_flip() const = 0;
 
+    enum class buffer_id_t { BUFFER_A = 0, BUFFER_B = 1 };
     one_per_thread_t<buffer_id_t> m_current_buffer;
 
     DISABLE_COPYING(flip_buffer_base_t);

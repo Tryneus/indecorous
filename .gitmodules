@@ -1,0 +1,3 @@
+[submodule "external/template-utils"]
+	path = external/template-utils
+	url = git@github.com:kennytm/utils

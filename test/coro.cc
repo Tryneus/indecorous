@@ -100,11 +100,14 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     // TODO: this probably isn't passing the object exactly as I expect
     {
         // Should copy the object (on the stack) and move the copy to the coroutine
-        param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 0); }, param);
-        CHECK(param.get() == 0);
-        param.set(1);
+        param_t param(1);
+        future_t<void> done = coro_t::spawn([&] (param_t p) {
+                CHECK(p.get() == 1);
+                p.set(0);
+            }, param);
+        CHECK(param.get() == 1);
         done.wait();
+        CHECK(param.get() == 1);
     }
 
     {
@@ -118,20 +121,18 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
 
     {
         // Should copy the object (on the stack) and move the copy to the coroutine
-        //param_t param(0);
-        //future_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 0); }, param);
-        //CHECK(param.get() == 0);
-        //param.set(1);
-        //done.wait();
+        param_t param(0);
+        future_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 0); }, param);
+        CHECK(param.get() == 0);
+        param.set(1);
+        done.wait();
     }
 
     {
-        // Should copy the object (on the stack) and move the copy to the coroutine
-        //param_t param(0);
-        //future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 0); }, param);
-        //CHECK(param.get() == 0);
-        //param.set(1);
-        //done.wait();
+        // Can't call an r-value reference with a normal variable
+        // param_t param(0);
+        // future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 0); }, param);
+        // done.wait();
     }
 
     // Source is a const reference
@@ -154,21 +155,17 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     }
 
     {
-        // Should copy the object and move the copy to the coroutine
-        //param_t param(0);
-        //future_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 1); }, std::cref(param));
-        //CHECK(param.get() == 0);
-        //param.set(1);
-        //done.wait();
+        // Can't call a reference using a const reference
+        // param_t param(0);
+        // future_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 1); }, std::cref(param));
+        // done.wait();
     }
 
     {
-        // Should copy the object and move the copy to the coroutine
-        //param_t param(0);
-        //future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 1); }, std::cref(param));
-        //CHECK(param.get() == 0);
-        //param.set(1);
-        //done.wait();
+        // Can't call an r-value reference using a const reference
+        // param_t param(0);
+        // future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 1); }, std::cref(param));
+        // done.wait();
     }
 
     // Source is a reference
@@ -200,12 +197,10 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     }
 
     {
-        // Should copy the object and move the copy to the coroutine
-        //param_t param(0);
-        //future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 1); }, std::ref(param));
-        //CHECK(param.get() == 0);
-        //param.set(1);
-        //done.wait();
+        // Can't call an r-value reference with a normal reference
+        // param_t param(0);
+        // future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 1); }, std::ref(param));
+        // done.wait();
     }
 
     // Source is an r-value reference
