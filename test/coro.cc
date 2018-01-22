@@ -332,18 +332,17 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     }
 
     {
-        // TODO: this should work
-        // Should move the object all the way to the coroutine
-        //param_t param(0);
-        //future_t<void> done = coro_t::spawn([&] (param_t &p) {
-        //        CHECK(p.get() == 0);
-        //        p.set(2);
-        //    }, std::move(param));
-        //CHECK(param.get() == -1);
-        //param.set(1);
-        //CHECK(param.get() == -1);
-        //done.wait();
-        //CHECK(param.get() == -1);
+        // Can't pass an r-value reference to a non-const reference I guess
+        // param_t param(0);
+        // future_t<void> done = coro_t::spawn([&] (param_t &p) {
+        //         CHECK(p.get() == 1);
+        //         p.set(2);
+        //     }, std::move(param));
+        // CHECK(param.get() == 0);
+        // param.set(1);
+        // CHECK(param.get() == 1);
+        // done.wait();
+        // CHECK(param.get() == 2);
     }
 
     {
