@@ -59,6 +59,8 @@ public:
     }
 };
 
+// TODO: member functions are broken
+/*
 template <typename... Args>
 void spawn_member_function(Args &&...args) {
     bench_timer_t timer("coro/spawn member function", reps);
@@ -67,7 +69,10 @@ void spawn_member_function(Args &&...args) {
         coro_t::spawn_now(&spawn_class_t::member_function<Args...>, &instance, std::forward<Args>(args)...);
     }
 }
+*/
 
+// TODO: member functions are broken
+/*
 template <typename... Args>
 void spawn_member_operator(Args &&...args) {
     bench_timer_t timer("coro/spawn member operator ()", reps);
@@ -76,6 +81,7 @@ void spawn_member_operator(Args &&...args) {
         coro_t::spawn_now(instance, std::forward<Args>(args)...);
     }
 }
+*/
 
 template <typename... Args>
 void spawn_std_function(Args &&...args) {
@@ -101,8 +107,8 @@ struct bench_t {
         debugf("Running with %zu args", sizeof...(N));
         spawn_lambda(N...);
         spawn_basic_function(N...);
-        spawn_member_function(N...);
-        spawn_member_operator(N...);
+        //spawn_member_function(N...);
+        //spawn_member_operator(N...);
         spawn_std_function(N...);
         //spawn_std_bind(N...);
     }
