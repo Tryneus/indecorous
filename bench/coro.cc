@@ -196,7 +196,7 @@ void spawn_now_std_bind(int expected, Args &&...args) {
     int res = 0;
     bench_timer_t timer("coro/spawn_now std::bind", reps);
     for (size_t i = 0; i < reps; ++i) {
-        coro_t::spawn_now(std::bind(&basic_function<Args...>, std::forward<Args>(args)...));
+        coro_t::spawn_now(std::bind(&basic_function<Args...>, &res, std::forward<Args>(args)...));
     }
     CHECK(res == expected);
 }
@@ -209,7 +209,7 @@ void spawn_deferred_std_bind(int expected, Args &&...args) {
     bench_timer_t timer("coro/spawn_deferred std::bind", reps);
     for (size_t i = 0; i < reps; ++i) {
         futures.push_back(
-            coro_t::spawn(std::bind(&basic_function<Args...>, std::forward<Args>(args)...))
+            coro_t::spawn(std::bind(&basic_function<Args...>, &res, std::forward<Args>(args)...))
         );
     }
 
