@@ -8,8 +8,6 @@
 #include <cstddef>
 #include <type_traits>
 
-#include "traits.hpp"
-
 #include "common.hpp"
 #include "containers/intrusive.hpp"
 #include "sync/event.hpp"
@@ -125,47 +123,33 @@ private:
     friend class waitable_t;
     friend class coro_cache_t;
 
-    template <typename Callable,
-              size_t... N,
-              typename... Args,
-              typename FnTraits = typename utils::function_traits<Callable>,
-              typename Res = typename FnTraits::result_type,
-              typename Tuple = typename std::tuple<promise_t<Res>, Callable, typename FnTraits::template arg<N>::type...>>
-    Tuple make_params(std::integer_sequence<size_t, N...>, promise_t<Res> &&promise, Callable &&cb, Args &&...args) {
-        return Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...);
-    }
-
     template <typename Callable, typename... Args,
-              typename FnTraits = typename utils::function_traits<Callable>,
-              typename Res = typename FnTraits::result_type>
+              typename Res = typename std::result_of<Callable(Args...)>::type>
     typename std::enable_if<!std::is_member_function_pointer<Callable>::value, future_t<Res> >::type
     spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
         coro_t *context = coro_t::create();
-        auto params = make_params(
-            std::make_index_sequence<FnTraits::arity>{},
-            std::move(promise),
-            std::forward<Callable>(cb),
-            std::forward<Args>(args)...);
+        std::tuple<promise_t<Res>,
+                   typename std::remove_reference<Callable>::type,
+                   typename std::remove_reference<Args>::type... > params(
+            std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)... );
         context->begin(&coro_t::hook<Res, decltype(params), 2>, this, &params, immediate);
         swap(context);
         return res;
     }
 
     template <typename Callable, typename... Args,
-              typename FnTraits = typename utils::function_traits<Callable>,
-              typename Res = typename FnTraits::result_type>
+              typename Res = typename std::result_of<Callable(Args...)>::type>
     typename std::enable_if<std::is_member_function_pointer<Callable>::value, future_t<Res> >::type
     spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
         coro_t *context = coro_t::create();
-        auto params = make_params(
-            std::make_index_sequence<FnTraits::arity>{},
-            std::move(promise),
-            std::forward<Callable>(cb),
-            std::forward<Args>(args)...);
+        std::tuple<promise_t<Res>,
+                   typename std::remove_reference<Callable>::type,
+                   typename std::remove_reference<Args>::type... > params(
+            std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)... );
         context->begin(&coro_t::hook<Res, decltype(params), 3>, this, &params, immediate);
         swap(context);
         return res;
