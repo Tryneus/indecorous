@@ -9,7 +9,7 @@
 
 using namespace indecorous;
 
-size_t reps = 1000000;
+size_t reps = 10;
 
 int sum() {
     return 0;
@@ -22,10 +22,20 @@ int sum(int value, Args &&...args) {
 
 
 template <typename... Args>
-void spawn_lambda(Args &&...args) {
+void spawn_now_lambda(Args &&...args) {
     bench_timer_t timer("coro/spawn lambda", reps);
     for (size_t i = 0; i < reps; ++i) {
         coro_t::spawn_now([] (Args &&...inner_args) {
+                return sum(std::forward<Args>(inner_args)...);
+            }, std::forward<Args>(args)...);
+    }
+}
+
+template <typename... Args>
+void spawn_deferred_lambda(Args &&...args) {
+    bench_timer_t timer("coro/spawn lambda", reps);
+    for (size_t i = 0; i < reps; ++i) {
+        coro_t::spawn([] (Args &&...inner_args) {
                 return sum(std::forward<Args>(inner_args)...);
             }, std::forward<Args>(args)...);
     }
@@ -37,10 +47,18 @@ int basic_function(Args &&...args) {
 }
 
 template <typename... Args>
-void spawn_basic_function(Args &&...args) {
+void spawn_now_basic_function(Args &&...args) {
     bench_timer_t timer("coro/spawn function pointer", reps);
     for (size_t i = 0; i < reps; ++i) {
         coro_t::spawn_now(&basic_function<Args...>, std::forward<Args>(args)...);
+    }
+}
+
+template <typename... Args>
+void spawn_deferred_basic_function(Args &&...args) {
+    bench_timer_t timer("coro/spawn function pointer", reps);
+    for (size_t i = 0; i < reps; ++i) {
+        coro_t::spawn(&basic_function<Args...>, std::forward<Args>(args)...);
     }
 }
 
@@ -60,7 +78,7 @@ public:
 };
 
 template <typename... Args>
-void spawn_member_function(Args &&...args) {
+void spawn_now_member_function(Args &&...args) {
     bench_timer_t timer("coro/spawn member function", reps);
     spawn_class_t instance;
     for (size_t i = 0; i < reps; ++i) {
@@ -69,7 +87,16 @@ void spawn_member_function(Args &&...args) {
 }
 
 template <typename... Args>
-void spawn_member_operator(Args &&...args) {
+void spawn_deferred_member_function(Args &&...args) {
+    bench_timer_t timer("coro/spawn member function", reps);
+    spawn_class_t instance;
+    for (size_t i = 0; i < reps; ++i) {
+        coro_t::spawn(&spawn_class_t::member_function<Args...>, &instance, std::forward<Args>(args)...);
+    }
+}
+
+template <typename... Args>
+void spawn_now_member_operator(Args &&...args) {
     bench_timer_t timer("coro/spawn member operator ()", reps);
     spawn_class_t instance;
     for (size_t i = 0; i < reps; ++i) {
@@ -78,54 +105,95 @@ void spawn_member_operator(Args &&...args) {
 }
 
 template <typename... Args>
-void spawn_std_function(Args &&...args) {
+void spawn_deferred_member_operator(Args &&...args) {
+    bench_timer_t timer("coro/spawn member operator ()", reps);
+    spawn_class_t instance;
+    for (size_t i = 0; i < reps; ++i) {
+        coro_t::spawn(instance, std::forward<Args>(args)...);
+    }
+}
+
+template <typename... Args>
+void spawn_now_std_function(Args &&...args) {
     bench_timer_t timer("coro/spawn std::function", reps);
     for (size_t i = 0; i < reps; ++i) {
         coro_t::spawn_now(std::function<void(Args&&...)>(&basic_function<Args...>), std::forward<Args>(args)...);
     }
 }
 
+template <typename... Args>
+void spawn_deferred_std_function(Args &&...args) {
+    bench_timer_t timer("coro/spawn std::function", reps);
+    for (size_t i = 0; i < reps; ++i) {
+        coro_t::spawn(std::function<void(Args&&...)>(&basic_function<Args...>), std::forward<Args>(args)...);
+    }
+}
+
 /*
 template <typename... Args>
-void spawn_std_bind(Args &&...args) {
+void spawn_now_std_bind(Args &&...args) {
     bench_timer_t timer("coro/spawn std::bind", reps);
     for (size_t i = 0; i < reps; ++i) {
         coro_t::spawn_now(std::bind(&basic_function<Args...>, std::forward<Args>(args)...));
+    }
+}
+
+template <typename... Args>
+void spawn_deferred_std_bind(Args &&...args) {
+    bench_timer_t timer("coro/spawn std::bind", reps);
+    for (size_t i = 0; i < reps; ++i) {
+        coro_t::spawn(std::bind(&basic_function<Args...>, std::forward<Args>(args)...));
     }
 }
 */
 
 struct bench_t {
     template <int... N>
-    static void run(std::integer_sequence<int, N...>) {
+    static void run_now(std::integer_sequence<int, N...>) {
         debugf("Running with %zu args", sizeof...(N));
-        spawn_lambda(N...);
-        spawn_basic_function(N...);
-        spawn_member_function(N...);
-        spawn_member_operator(N...);
-        spawn_std_function(N...);
-        //spawn_std_bind(N...);
+        spawn_now_lambda(N...);
+        spawn_now_basic_function(N...);
+        spawn_now_member_function(N...);
+        spawn_now_member_operator(N...);
+        spawn_now_std_function(N...);
+        //spawn_now_std_bind(N...);
     }
 
-    DECLARE_STATIC_RPC(spawn)() -> void;
+    template <int... N>
+    static void run_deferred(std::integer_sequence<int, N...>) {
+        debugf("Running with %zu args", sizeof...(N));
+        spawn_now_lambda(N...);
+        spawn_now_basic_function(N...);
+        spawn_now_member_function(N...);
+        spawn_now_member_operator(N...);
+        spawn_now_std_function(N...);
+        //spawn_now_std_bind(N...);
+    }
+
+    DECLARE_STATIC_RPC(spawn_now)() -> void;
+    DECLARE_STATIC_RPC(spawn_deferred)() -> void;
 };
 
-IMPL_STATIC_RPC(bench_t::spawn)() -> void {
-    run(std::make_integer_sequence<int, 0>{});
-    run(std::make_integer_sequence<int, 1>{});
-    run(std::make_integer_sequence<int, 2>{});
-    run(std::make_integer_sequence<int, 3>{});
-    run(std::make_integer_sequence<int, 4>{});
-    run(std::make_integer_sequence<int, 5>{});
-    run(std::make_integer_sequence<int, 6>{});
-    run(std::make_integer_sequence<int, 7>{});
-    run(std::make_integer_sequence<int, 8>{});
-    run(std::make_integer_sequence<int, 9>{});
-    run(std::make_integer_sequence<int, 10>{});
+IMPL_STATIC_RPC(bench_t::spawn_now)() -> void {
+    run_now(std::make_integer_sequence<int, 0>{});
+    run_now(std::make_integer_sequence<int, 1>{});
+    run_now(std::make_integer_sequence<int, 10>{});
+}
+
+IMPL_STATIC_RPC(bench_t::spawn_deferred)() -> void {
+    run_deferred(std::make_integer_sequence<int, 0>{});
+    run_deferred(std::make_integer_sequence<int, 1>{});
+    run_deferred(std::make_integer_sequence<int, 10>{});
 }
 
 TEST_CASE("coro/spawn", "[coro][spawn]") {
-    scheduler_t sched(1, shutdown_policy_t::Eager);
-    sched.broadcast_local<bench_t::spawn>();
-    sched.run();
+    debugf("spawn now bench");
+    scheduler_t sched_now(1, shutdown_policy_t::Eager);
+    sched_now.broadcast_local<bench_t::spawn_now>();
+    sched_now.run();
+
+    debugf("spawn deferred bench");
+    scheduler_t sched_deferred(1, shutdown_policy_t::Eager);
+    sched_deferred.broadcast_local<bench_t::spawn_deferred>();
+    sched_deferred.run();
 }

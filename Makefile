@@ -17,7 +17,7 @@ ifeq ($(CXX),g++)
   COMPILER_SUFFIX = gcc5
 else
   ifeq ($(CXX),clang++)
-    override CXX = clang++
+    override CXX = clang++-5.0
     CXX_FLAGS = -Wconditional-uninitialized -Wused-but-marked-unused
     LD_FLAGS =
     COMPILER_SUFFIX = clang
