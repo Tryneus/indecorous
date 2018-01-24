@@ -69,51 +69,12 @@ void coro_cache_t::release(coro_t *coro) {
     }
 }
 
-// TODO: coroutines should inherit the parent's interruptor chain as well
-// TODO: users should be able to discard (all?) inherited interruptors
-// Used to hand over parameters to a new coroutine - since we can't safely pass pointers
-struct handover_params_t {
-    void init(coro_t *_self,
-              coro_t::hook_fn_t _fn,
-              void *_params,
-              coro_t *_parent,
-              bool _immediate) {
-        self = _self;
-        fn = _fn;
-        params = _params;
-        parent = _parent;
-        immediate = _immediate;
-    }
-
-    void clear() {
-        self = nullptr;
-        fn = nullptr;
-        params = nullptr;
-        parent = nullptr;
-        immediate = false;
-    }
-
-    void check_valid() {
-        assert(self != nullptr);
-        assert(fn != nullptr);
-        assert(params != nullptr);
-        assert(parent != nullptr);
-    }
-
-    coro_t *self;
-    coro_t::hook_fn_t fn;
-    void *params;
-    coro_t *parent;
-    bool immediate;
-};
-thread_local handover_params_t handover_params;
-
 void dispatcher_t::run_initial_coro() {
-    coro_t *self = coro_t::self();
     dispatcher_t *dispatcher = thread_t::self()->dispatcher();
+    coro_t *coro = dispatcher->m_running;
     dispatcher->m_initial_fn();
-    dispatcher->enqueue_release(self);
-    self->swap(nullptr);
+    dispatcher->enqueue_release(coro);
+    coro->swap(nullptr);
 }
 
 dispatcher_t::dispatcher_t(shutdown_t *shutdown,
@@ -215,27 +176,32 @@ coro_t::~coro_t() {
     GUARANTEE_ERR(munmap(m_stack, s_stack_size) == 0);
 }
 
-void launch_coro() {
-    handover_params.check_valid();
+[[ noreturn ]]
+void launch_coro(coro_start_t *start) {
+    auto self = start->self;
+    auto hook = start->hook;
 
-    // Copy out the handover parameters so we can clear them
-    coro_t::hook_fn_t fn = handover_params.fn;
-    void *params = handover_params.params;
-    coro_t *self = handover_params.self;
-    coro_t *parent = handover_params.parent;
-    bool immediate = handover_params.immediate;
 
-    // Reset the handover parameters for the next coroutine to be spawned
-    handover_params.clear();
+    if (self->m_dispatch->m_release != nullptr) {
+        self->m_dispatch->m_coro_cache.release(self->m_dispatch->m_release);
+        self->m_dispatch->m_release = nullptr;
+    }
+
+    if (start->immediate) {
+        // We're running immediately, put our parent on the back of the run queue
+        self->m_dispatch->m_run_queue.push_back(start->parent);
+    }
 
     // Set the base interruptor (inherit interruption from parent coroutine)
-    interruptor_t *parent_interruptor = parent->get_interruptor();
+    interruptor_t *parent_interruptor = start->parent->get_interruptor();
     if (parent_interruptor == nullptr) {
-        (self->*fn)(parent, params, immediate);
+        (self->*hook)(start->params);
     } else {
         interruptor_t inherited_interruptor(parent_interruptor);
-        (self->*fn)(parent, params, immediate);
+        (self->*hook)(start->params);
     }
+
+    delete start;
 
     assert(self->m_interruptors.size() == 0);
     self->m_dispatch->enqueue_release(self);
@@ -243,13 +209,9 @@ void launch_coro() {
     ::abort();
 }
 
-void coro_t::begin(coro_t::hook_fn_t fn, coro_t *parent, void *params, bool immediate) {
-    // The new coroutine will pick up its parameters from the thread-static variable
+void coro_t::begin(coro_start_t *start) {
     m_dispatch->note_new_task();
-
-    assert(handover_params.fn == nullptr);
-    handover_params.init(this, fn, params, parent, immediate);
-    makecontext(&m_context, launch_coro, 0);
+    makecontext(&m_context, (void (*)())launch_coro, 1, start);
 }
 
 coro_t *coro_t::create() {
@@ -276,6 +238,8 @@ void coro_t::swap(coro_t *next) {
         m_dispatch->m_running = m_dispatch->m_run_queue.pop_front();
         if (m_dispatch->m_running != this) {
             swapcontext(&m_context, &m_dispatch->m_running->m_context);
+        } else {
+            // TODO: it seems bad that this can happen
         }
     }
 

@@ -16,12 +16,35 @@
 
 namespace indecorous {
 
-[[noreturn]] void launch_coro();
-
+struct coro_start_t;
 class coro_t;
 class dispatcher_t;
 class interruptor_t;
 class shutdown_t;
+
+typedef void(coro_t::*hook_fn_t)(void*);
+
+[[noreturn]] void launch_coro(coro_start_t *);
+
+// Used internally for handing over data when spawning a new coroutine
+struct coro_start_t {
+    coro_start_t(coro_t *_self,
+            hook_fn_t _hook,
+            void *_params,
+            coro_t *_parent,
+            bool _immediate) :
+        self(_self),
+        hook(_hook),
+        params(_params),
+        parent(_parent),
+        immediate(_immediate) { }
+
+    coro_t *self;
+    hook_fn_t hook;
+    void *params;
+    coro_t *parent;
+    bool immediate;
+};
 
 class coro_cache_t {
 public:
@@ -112,14 +135,13 @@ public:
                                               std::forward<Args>(args)...);
     }
 
-    typedef void(coro_t::*hook_fn_t)(coro_t*, void*, bool);
-
     wait_callback_t *wait_callback();
 
 private:
+
     friend class scheduler_t;
     friend class dispatcher_t;
-    friend void launch_coro();
+    friend void launch_coro(coro_start_t *);
     friend class waitable_t;
     friend class coro_cache_t;
 
@@ -133,14 +155,23 @@ private:
     spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
-        coro_t *context = coro_t::create();
+        coro_t *coro = coro_t::create();
         // TODO: put this somewhere in the stack for the new coroutine - it'll save an allocation each call
-        auto params = new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...);
-        context->begin(&coro_t::hook<Res, Tuple, 2>, this, params, immediate);
+        // TODO: two allocations here is shitty
+        coro_start_t *start = new coro_start_t(
+            coro,
+            &coro_t::hook<Res, Tuple, 2>,
+            new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...),
+            this,
+            immediate
+        );
+
+        coro->begin(start);
+
         if (immediate) {
-            swap(context);
+            swap(coro);
         } else {
-            m_dispatch->m_run_queue.push_back(context);
+            m_dispatch->m_run_queue.push_back(coro);
         }
         return res;
     }
@@ -155,25 +186,30 @@ private:
     spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
-        coro_t *context = coro_t::create();
+        coro_t *coro = coro_t::create();
         // TODO: put this somewhere in the stack for the new coroutine - it'll save an allocation each call
-        auto params = new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...);
-        context->begin(&coro_t::hook<Res, Tuple, 3>, this, params, immediate);
+        // TODO: two allocations here is shitty
+        coro_start_t *start = new coro_start_t(
+            coro,
+            &coro_t::hook<Res, Tuple, 3>,
+            new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...),
+            this,
+            immediate
+        );
+
+        coro->begin(start);
+
         if (immediate) {
-            swap(context);
+            swap(coro);
         } else {
-            m_dispatch->m_run_queue.push_back(context);
+            m_dispatch->m_run_queue.push_back(coro);
         }
         return res;
     }
 
     template <typename Res, typename Tuple, size_t ArgOffset>
-    void hook(coro_t *parent, void *p, bool immediate) {
+    void hook(void *p) {
         auto params = reinterpret_cast<Tuple *>(p);
-        if (immediate) {
-            // We're running immediately, put our parent on the back of the run queue
-            m_dispatch->m_run_queue.push_back(parent);
-        }
         runner_t<Res>::run(std::make_index_sequence<std::tuple_size<Tuple>::value - ArgOffset>{}, params);
         delete params;
     }
@@ -199,7 +235,7 @@ private:
     explicit coro_t(dispatcher_t *dispatch);
     ~coro_t();
 
-    void begin(hook_fn_t, coro_t *parent, void *params, bool immediate);
+    void begin(coro_start_t *start);
     void swap(coro_t *next);
 
     void notify(wait_result_t result);
