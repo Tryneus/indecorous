@@ -124,44 +124,58 @@ private:
     friend class coro_cache_t;
 
     template <typename Callable, typename... Args,
-              typename Res = typename std::result_of<Callable(Args...)>::type>
+              typename Res = typename std::result_of<Callable(Args...)>::type,
+              typename Tuple =
+                   std::tuple<promise_t<Res>,
+                       typename std::remove_reference<Callable>::type,
+                       typename std::remove_reference<Args>::type... >>
     typename std::enable_if<!std::is_member_function_pointer<Callable>::value, future_t<Res> >::type
     spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
         coro_t *context = coro_t::create();
-        std::tuple<promise_t<Res>,
-                   typename std::remove_reference<Callable>::type,
-                   typename std::remove_reference<Args>::type... > params(
-            std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)... );
-        context->begin(&coro_t::hook<Res, decltype(params), 2>, this, &params, immediate);
-        swap(context);
+        // TODO: put this somewhere in the stack for the new coroutine - it'll save an allocation each call
+        auto params = new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...);
+        context->begin(&coro_t::hook<Res, Tuple, 2>, this, params, immediate);
+        if (immediate) {
+            swap(context);
+        } else {
+            m_dispatch->m_run_queue.push_back(context);
+        }
         return res;
     }
 
     template <typename Callable, typename... Args,
-              typename Res = typename std::result_of<Callable(Args...)>::type>
+              typename Res = typename std::result_of<Callable(Args...)>::type,
+              typename Tuple =
+                   std::tuple<promise_t<Res>,
+                       typename std::remove_reference<Callable>::type,
+                       typename std::remove_reference<Args>::type... >>
     typename std::enable_if<std::is_member_function_pointer<Callable>::value, future_t<Res> >::type
     spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         future_t<Res> res = promise.get_future();
         coro_t *context = coro_t::create();
-        std::tuple<promise_t<Res>,
-                   typename std::remove_reference<Callable>::type,
-                   typename std::remove_reference<Args>::type... > params(
-            std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)... );
-        context->begin(&coro_t::hook<Res, decltype(params), 3>, this, &params, immediate);
-        swap(context);
+        // TODO: put this somewhere in the stack for the new coroutine - it'll save an allocation each call
+        auto params = new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...);
+        context->begin(&coro_t::hook<Res, Tuple, 3>, this, params, immediate);
+        if (immediate) {
+            swap(context);
+        } else {
+            m_dispatch->m_run_queue.push_back(context);
+        }
         return res;
     }
 
-    void maybe_swap_parent(coro_t *parent, bool immediate);
-
     template <typename Res, typename Tuple, size_t ArgOffset>
     void hook(coro_t *parent, void *p, bool immediate) {
-        Tuple params(std::move(*reinterpret_cast<Tuple *>(p)));
-        maybe_swap_parent(parent, immediate);
-        runner_t<Res>::run(std::make_index_sequence<std::tuple_size<Tuple>::value - ArgOffset>{}, &params);
+        auto params = reinterpret_cast<Tuple *>(p);
+        if (immediate) {
+            // We're running immediately, put our parent on the back of the run queue
+            m_dispatch->m_run_queue.push_back(parent);
+        }
+        runner_t<Res>::run(std::make_index_sequence<std::tuple_size<Tuple>::value - ArgOffset>{}, params);
+        delete params;
     }
 
     template <typename Res>

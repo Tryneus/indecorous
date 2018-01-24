@@ -252,18 +252,6 @@ void coro_t::begin(coro_t::hook_fn_t fn, coro_t *parent, void *params, bool imme
     makecontext(&m_context, launch_coro, 0);
 }
 
-void coro_t::maybe_swap_parent(coro_t *parent, bool immediate) {
-    if (immediate) {
-        // We're running immediately, put our parent on the back of the run queue
-        m_dispatch->m_run_queue.push_back(parent);
-    } else {
-        // We're delaying our execution, put ourselves on the back of the run queue
-        // and swap back in our parent so they can continue
-        m_dispatch->m_run_queue.push_back(this);
-        swap(parent);
-    }
-}
-
 coro_t *coro_t::create() {
     dispatcher_t *dispatch = thread_t::self()->dispatcher();
     auto res = dispatch->m_coro_cache.get();

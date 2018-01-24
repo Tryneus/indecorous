@@ -119,7 +119,7 @@ SIMPLE_TEST(coro, move_count, 1, "[coro][move_count]") {
         coro_t::spawn_now([](construction_count_t) {}, count);
         CHECK(construction_count_t::s_new_count == 1);
         CHECK(construction_count_t::s_copy_count == 1);
-        CHECK(construction_count_t::s_move_count == 2); // TODO: this could be lower
+        CHECK(construction_count_t::s_move_count == 1);
     }
 
     {
@@ -128,7 +128,7 @@ SIMPLE_TEST(coro, move_count, 1, "[coro][move_count]") {
         coro_t::spawn_now([](construction_count_t) {}, construction_count_t());
         CHECK(construction_count_t::s_new_count == 1);
         CHECK(construction_count_t::s_copy_count == 0);
-        CHECK(construction_count_t::s_move_count == 3); // TODO: this could be lower
+        CHECK(construction_count_t::s_move_count == 2);
     }
 
     {
@@ -148,7 +148,7 @@ SIMPLE_TEST(coro, move_count, 1, "[coro][move_count]") {
         coro_t::spawn_now([](construction_count_t) {}, std::move(count));
         CHECK(construction_count_t::s_new_count == 1);
         CHECK(construction_count_t::s_copy_count == 0);
-        CHECK(construction_count_t::s_move_count == 3); // TODO: this could be lower
+        CHECK(construction_count_t::s_move_count == 2);
     }
 
     {
@@ -168,7 +168,7 @@ SIMPLE_TEST(coro, move_count, 1, "[coro][move_count]") {
         coro_t::spawn_now([](const construction_count_t &) {}, count);
         CHECK(construction_count_t::s_new_count == 1);
         CHECK(construction_count_t::s_copy_count == 1);
-        CHECK(construction_count_t::s_move_count == 1);
+        CHECK(construction_count_t::s_move_count == 0);
     }
 
     {
@@ -177,7 +177,7 @@ SIMPLE_TEST(coro, move_count, 1, "[coro][move_count]") {
         coro_t::spawn_now([](const construction_count_t &) {}, construction_count_t());
         CHECK(construction_count_t::s_new_count == 1);
         CHECK(construction_count_t::s_copy_count == 0);
-        CHECK(construction_count_t::s_move_count == 2);
+        CHECK(construction_count_t::s_move_count == 1);
     }
 
     {
@@ -196,7 +196,7 @@ SIMPLE_TEST(coro, move_count, 1, "[coro][move_count]") {
         coro_t::spawn_now([](construction_count_t &&) {}, construction_count_t());
         CHECK(construction_count_t::s_new_count == 1);
         CHECK(construction_count_t::s_copy_count == 0);
-        CHECK(construction_count_t::s_move_count == 2);
+        CHECK(construction_count_t::s_move_count == 1);
     }
 
     {
@@ -206,7 +206,7 @@ SIMPLE_TEST(coro, move_count, 1, "[coro][move_count]") {
         coro_t::spawn_now([](construction_count_t &&) {}, std::move(count));
         CHECK(construction_count_t::s_new_count == 1);
         CHECK(construction_count_t::s_copy_count == 0);
-        CHECK(construction_count_t::s_move_count == 2);
+        CHECK(construction_count_t::s_move_count == 1);
     }
 }
 
