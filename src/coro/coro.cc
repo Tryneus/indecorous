@@ -181,7 +181,6 @@ void launch_coro(coro_start_t *start) {
     auto self = start->self;
     auto hook = start->hook;
 
-
     if (self->m_dispatch->m_release != nullptr) {
         self->m_dispatch->m_coro_cache.release(self->m_dispatch->m_release);
         self->m_dispatch->m_release = nullptr;
