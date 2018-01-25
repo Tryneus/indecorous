@@ -22,9 +22,10 @@ class waitable_t;
 class tcp_conn_t final : public read_stream_t, public write_stream_t {
 public:
     explicit tcp_conn_t(scoped_fd_t sock);
-    tcp_conn_t(const ip_and_port_t &host_port);
+    tcp_conn_t(const ip_and_port_t &ip_port);
     tcp_conn_t(tcp_conn_t &&other);
 
+    void peek(void *buf, size_t count) override final;
     void read(void *buf, size_t count) override final;
     size_t read_until(char delim, void *buf, size_t count) override final;
     void write(void *buf, size_t count) override final;
@@ -49,6 +50,7 @@ private:
 // TODO: specify any number of interfaces to listen on?
 class tcp_listener_t {
 public:
+    tcp_listener_t(const ip_and_port_t &ip_port, std::function<void (tcp_conn_t, drainer_lock_t)> on_connect);
     tcp_listener_t(uint16_t _local_port, std::function<void (tcp_conn_t, drainer_lock_t)> on_connect);
     tcp_listener_t(tcp_listener_t &&other);
 

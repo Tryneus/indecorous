@@ -10,6 +10,7 @@ class waitable_t;
 class read_stream_t {
 public:
     virtual ~read_stream_t() { }
+    virtual void peek(void *buf, size_t count) = 0;
     virtual void read(void *buf, size_t count) = 0;
     virtual size_t read_until(char delim, void *buf, size_t count) = 0;
 };

@@ -53,6 +53,42 @@ tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port) :
     assert(err == 0); // TODO: exception
 }
 
+void tcp_conn_t::peek(void *buffer, size_t count) {
+    if (count > s_read_buffer_size) {
+        throw std::exception(strprintf("Cannot peek more than %d bytes", s_read_buffer_size));
+    }
+
+    if (s_read_buffer_size - m_read_buffer_offset < count) {
+        // peek count can't fit in the remaining buffer, shift it to the start
+        for (size_t i = 0; i < m_read_buffer.size() - m_read_buffer_offset; ++i) {
+            m_read_buffer[i] = m_read_buffer[m_read_buffer_offset + i];
+        }
+
+        m_read_buffer.resize(m_read_buffer.size() - m_read_buffer_offset);
+        m_read_buffer_offset = 0;
+    }
+
+    if (m_read_buffer_size() - m_read_buffer_offset < count) {
+        // We need more data, perform some reads
+        mutex_acq_t lock = m_read_mutex.start_acq();
+        lock.wait();
+
+        while (m_read_buffer.size() - m_read_buffer_offset < count) {
+            size_t old_size = m_read_buffer.size();
+            m_read_buffer.resize(s_read_buffer_size);
+            ssize_t res = eintr_wrap([&] {
+                    return ::read(m_socket.get(), &m_read_buffer[old_size], m_read_buffer.size() - old_size);
+                }, &m_in);
+            m_read_buffer.resize(old_size + res);
+        }
+    }
+
+    char *buf = reinterpret_cast<char *>(buffer);
+    for (size_t i = m_read_buffer_offset; i < m_read_buffer_offset + count; ++i) {
+        *buf++ = m_read_buffer[i];
+    }
+}
+
 void tcp_conn_t::read(void *buffer, size_t count) {
     char *buf = reinterpret_cast<char *>(buffer);
 
