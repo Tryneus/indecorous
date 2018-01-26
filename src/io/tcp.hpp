@@ -19,6 +19,16 @@ namespace indecorous {
 
 class waitable_t;
 
+// Thrown if the user attempts to do a peek larger than the buffer size
+class peek_length_exc_t final : public std::exception {
+public:
+    peek_length_exc_t(size_t requested, size_t max_length);
+
+    const char *what() const noexcept override final;
+private:
+    std::string m_message;
+};
+
 class tcp_conn_t final : public read_stream_t, public write_stream_t {
 public:
     explicit tcp_conn_t(scoped_fd_t sock);

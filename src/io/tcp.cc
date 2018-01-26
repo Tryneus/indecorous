@@ -13,6 +13,13 @@ namespace indecorous {
 
 const size_t tcp_conn_t::s_read_buffer_size = 65536;
 
+peek_length_exc_t::peek_length_exc_t(size_t requested, size_t max_length) :
+    m_message(strprintf("Cannot peek more than %zu bytes (%zu requested)", max_length, requested)) { }
+
+const char *peek_length_exc_t::what() const noexcept {
+    return m_message.c_str();
+}
+
 // TODO: this probably isn't safe if someone has a read or write lock (or is acquiring one)
 tcp_conn_t::tcp_conn_t(tcp_conn_t &&other) :
         m_socket(std::move(other.m_socket)),
@@ -55,7 +62,7 @@ tcp_conn_t::tcp_conn_t(const ip_and_port_t &ip_port) :
 
 void tcp_conn_t::peek(void *buffer, size_t count) {
     if (count > s_read_buffer_size) {
-        throw std::exception(strprintf("Cannot peek more than %d bytes", s_read_buffer_size));
+        throw peek_length_exc_t(count, s_read_buffer_size);
     }
 
     if (s_read_buffer_size - m_read_buffer_offset < count) {
@@ -68,7 +75,7 @@ void tcp_conn_t::peek(void *buffer, size_t count) {
         m_read_buffer_offset = 0;
     }
 
-    if (m_read_buffer_size() - m_read_buffer_offset < count) {
+    if (m_read_buffer.size() - m_read_buffer_offset < count) {
         // We need more data, perform some reads
         mutex_acq_t lock = m_read_mutex.start_acq();
         lock.wait();
