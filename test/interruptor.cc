@@ -35,7 +35,7 @@ SIMPLE_TEST(interruptor, basic, 4, "[sync][interruptor]") {
         FAIL("wait was not interrupted");
     } catch (const wait_interrupted_exc_t &) { }
 
-    coro_t::clear_interruptors();
+    interruptor_clear_t no_interrupt;
     coro_any.wait();
     coro_all.wait();
 }
@@ -70,7 +70,7 @@ SIMPLE_TEST(interruptor, preemptive, 4, "[sync][interruptor]") {
     // which should be a persistent and constantly-updated object.  Right now
     // it appears to just take what the parent has when the child initializes,
     // which is flakey and harder to reason about.
-    coro_t::clear_interruptors();
+    interruptor_clear_t no_interrupt;
     coro_any.wait();
     coro_all.wait();
 }

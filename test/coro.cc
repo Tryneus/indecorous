@@ -228,7 +228,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Should copy the object (on the stack) and move the copy to the coroutine
         param_t param(1);
-        future_t<void> done = coro_t::spawn([&] (param_t p) {
+        coro_result_t<void> done = coro_t::spawn([&] (param_t p) {
                 CHECK(p.get() == 1);
                 p.set(0);
             }, param);
@@ -241,7 +241,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
         // Should copy the object and pass it on
         param_t param(0);
         coro_t::spawn_now([&] (const param_t &p) { CHECK(p.get() == 0); }, param);
-        future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 0); }, param);
+        coro_result_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 0); }, param);
         CHECK(param.get() == 0);
         param.set(1);
         done.wait();
@@ -251,7 +251,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Can't pass a normal variable as a reference (?)
         // param_t param(0);
-        // future_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 2); }, std::ref(param));
+        // coro_result_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 2); }, std::ref(param));
         // param.set(2);
         // done.wait();
     }
@@ -259,7 +259,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Can't call an r-value reference with a normal variable
         // param_t param(0);
-        // future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 0); }, param);
+        // coro_result_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 0); }, param);
         // done.wait();
     }
 
@@ -267,7 +267,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Should pass a const-reference which is copied when the coroutine starts
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 1); }, std::cref(param));
+        coro_result_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 1); }, std::cref(param));
         CHECK(param.get() == 0);
         param.set(1);
         CHECK(param.get() == 1);
@@ -278,7 +278,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Should pass a const reference to the object
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 1); }, std::cref(param));
+        coro_result_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 1); }, std::cref(param));
         CHECK(param.get() == 0);
         param.set(1);
         CHECK(param.get() == 1);
@@ -289,14 +289,14 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Can't call a reference using a const reference
         // param_t param(0);
-        // future_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 1); }, std::cref(param));
+        // coro_result_t<void> done = coro_t::spawn([&] (param_t &p) { CHECK(p.get() == 1); }, std::cref(param));
         // done.wait();
     }
 
     {
         // Can't call an r-value reference using a const reference
         // param_t param(0);
-        // future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 1); }, std::cref(param));
+        // coro_result_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 1); }, std::cref(param));
         // done.wait();
     }
 
@@ -304,7 +304,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Should pass a reference which is copied when the coroutine starts
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t p) {
+        coro_result_t<void> done = coro_t::spawn([&] (param_t p) {
                 CHECK(p.get() == 1);
                 p.set(2);
             }, std::ref(param));
@@ -317,7 +317,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
 
     {
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 1); }, std::ref(param));
+        coro_result_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 1); }, std::ref(param));
         CHECK(param.get() == 0);
         param.set(1);
         CHECK(param.get() == 1);
@@ -332,7 +332,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
                 p.set(1);
             }, std::ref(param));
         CHECK(param.get() == 1);
-        future_t<void> done = coro_t::spawn([&] (param_t &p) {
+        coro_result_t<void> done = coro_t::spawn([&] (param_t &p) {
                 CHECK(p.get() == 2);
                 p.set(3);
             }, std::ref(param));
@@ -346,7 +346,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Can't call an r-value reference with a normal reference
         // param_t param(0);
-        // future_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 1); }, std::ref(param));
+        // coro_result_t<void> done = coro_t::spawn([&] (param_t &&p) { CHECK(p.get() == 1); }, std::ref(param));
         // done.wait();
     }
 
@@ -354,7 +354,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Should move the object all the way to the coroutine
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 0); }, std::move(param));
+        coro_result_t<void> done = coro_t::spawn([&] (param_t p) { CHECK(p.get() == 0); }, std::move(param));
         CHECK(param.get() == -1);
         param.set(1);
         CHECK(param.get() == 1);
@@ -365,7 +365,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Should move the param to the coroutine
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 0); }, std::move(param));
+        coro_result_t<void> done = coro_t::spawn([&] (const param_t &p) { CHECK(p.get() == 0); }, std::move(param));
         CHECK(param.get() == -1);
         param.set(1);
         CHECK(param.get() == 1);
@@ -376,7 +376,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Can't pass an r-value reference to a non-const reference I guess
         // param_t param(0);
-        // future_t<void> done = coro_t::spawn([&] (param_t &p) {
+        // coro_result_t<void> done = coro_t::spawn([&] (param_t &p) {
         //         CHECK(p.get() == 1);
         //         p.set(2);
         //     }, std::move(param));
@@ -390,7 +390,7 @@ SIMPLE_TEST(coro, spawn_params, 2, "[coro][spawn_params]") {
     {
         // Should move the object to the coroutine
         param_t param(0);
-        future_t<void> done = coro_t::spawn([&] (param_t &&p) {
+        coro_result_t<void> done = coro_t::spawn([&] (param_t &&p) {
                 CHECK(p.get() == 0);
                 param_t movee(std::move(p));
                 CHECK(movee.get() == 0);

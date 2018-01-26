@@ -104,4 +104,10 @@ void interruptor_t::prev_waiter_t::object_moved(waitable_t *new_ptr) {
     m_prev_interruptor = new_ptr;
 }
 
+interruptor_clear_t::interruptor_clear_t() {
+}
+
+interruptor_clear_t::~interruptor_clear_t() {
+}
+
 } // namespace indecorous

@@ -10,8 +10,8 @@
 
 #include "common.hpp"
 #include "containers/intrusive.hpp"
-#include "sync/event.hpp"
 #include "sync/promise.hpp"
+#include "sync/drainer.hpp"
 #include "sync/wait_object.hpp"
 
 namespace indecorous {
@@ -32,18 +32,23 @@ struct coro_start_t {
             hook_fn_t _hook,
             void *_params,
             coro_t *_parent,
-            bool _immediate) :
+            bool _immediate,
+            drainer_lock_t &&_lock) :
         self(_self),
         hook(_hook),
         params(_params),
         parent(_parent),
-        immediate(_immediate) { }
+        immediate(_immediate),
+        lock(std::move(_lock)) { }
 
     coro_t *self;
     hook_fn_t hook;
     void *params;
     coro_t *parent;
     bool immediate;
+    drainer_lock_t lock;
+
+    DISABLE_COPYING(coro_start_t);
 };
 
 class coro_cache_t {
@@ -109,19 +114,31 @@ private:
     DISABLE_COPYING(dispatcher_t);
 };
 
+template <typename Res>
+class coro_result_t : public future_t<Res> {
+public:
+    coro_result_t(coro_result_t &&other) :
+            future_t<Res>(std::move(other)),
+            m_drainer(std::move(other.m_drainer)) { }
+
+private:
+    friend class coro_t;
+    coro_result_t(future_t<Res> &&future) :
+            future_t<Res>(std::move(future)),
+            m_drainer() { }
+
+    drainer_t m_drainer;
+
+    DISABLE_COPYING(coro_result_t);
+};
+
 class coro_t : public intrusive_node_t<coro_t> {
 public:
-    // Get the running coroutine
-    static coro_t* self();
-
     // Give up execution indefinitely (until notified)
     void wait();
 
     // Wait temporarily and be rescheduled
     static void yield();
-
-    // Stop listening on any interruptors (including inherited ones)
-    static void clear_interruptors();
 
     // Create a coroutine and put it on the queue to run
     template <typename Callable, typename... Args>
@@ -135,10 +152,11 @@ public:
                                               std::forward<Args>(args)...);
     }
 
+    // These are typically used by synchronization primitives
+    static coro_t* self(); // Get the currently running coroutine on this thread
     wait_callback_t *wait_callback();
 
 private:
-
     friend class scheduler_t;
     friend class dispatcher_t;
     friend void launch_coro(coro_start_t *);
@@ -151,19 +169,20 @@ private:
                    std::tuple<promise_t<Res>,
                        typename std::remove_reference<Callable>::type,
                        typename std::remove_reference<Args>::type... >>
-    typename std::enable_if<!std::is_member_function_pointer<Callable>::value, future_t<Res> >::type
+    typename std::enable_if<!std::is_member_function_pointer<Callable>::value, coro_result_t<Res> >::type
     spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
-        future_t<Res> res = promise.get_future();
         coro_t *coro = coro_t::create();
+        coro_result_t<Res> res(promise.get_future());
         // TODO: put this somewhere in the stack for the new coroutine - it'll save an allocation each call
-        // TODO: two allocations here is shitty
+        // TODO: two allocations here is shitty af
         coro_start_t *start = new coro_start_t(
             coro,
             &coro_t::hook<Res, Tuple, 2>,
             new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...),
             this,
-            immediate
+            immediate,
+            res.m_drainer.lock()
         );
 
         coro->begin(start);
@@ -182,11 +201,11 @@ private:
                    std::tuple<promise_t<Res>,
                        typename std::remove_reference<Callable>::type,
                        typename std::remove_reference<Args>::type... >>
-    typename std::enable_if<std::is_member_function_pointer<Callable>::value, future_t<Res> >::type
+    typename std::enable_if<std::is_member_function_pointer<Callable>::value, coro_result_t<Res> >::type
     spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
-        future_t<Res> res = promise.get_future();
         coro_t *coro = coro_t::create();
+        coro_result_t<Res> res(promise.get_future());
         // TODO: put this somewhere in the stack for the new coroutine - it'll save an allocation each call
         // TODO: two allocations here is shitty
         coro_start_t *start = new coro_start_t(
@@ -194,7 +213,8 @@ private:
             &coro_t::hook<Res, Tuple, 3>,
             new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...),
             this,
-            immediate
+            immediate,
+            res.m_drainer.lock()
         );
 
         coro->begin(start);

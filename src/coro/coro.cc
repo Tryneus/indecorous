@@ -191,12 +191,9 @@ void launch_coro(coro_start_t *start) {
         self->m_dispatch->m_run_queue.push_back(start->parent);
     }
 
-    // Set the base interruptor (inherit interruption from parent coroutine)
-    interruptor_t *parent_interruptor = start->parent->get_interruptor();
-    if (parent_interruptor == nullptr) {
-        (self->*hook)(start->params);
-    } else {
-        interruptor_t inherited_interruptor(parent_interruptor);
+    {
+        // Set the base interruptor (this will trigger if the coro_result_t is destroyed)
+        interruptor_t interruptor(&start->lock);
         (self->*hook)(start->params);
     }
 
@@ -268,11 +265,6 @@ void coro_t::yield() {
     coro_t *coro = self();
     coro->m_dispatch->m_run_queue.push_back(coro);
     coro->swap(nullptr);
-}
-
-void coro_t::clear_interruptors() {
-    coro_t *coro = self();
-    coro->m_interruptors.clear([&] (auto) { });
 }
 
 void coro_t::notify(wait_result_t result) {

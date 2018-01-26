@@ -28,7 +28,7 @@ struct future_reducer_t<future_t<T> > {
 // TODO: ability to get errored results from futures
 
 template <typename T>
-class future_t final : public intrusive_node_t<future_t<T> >, public waitable_t {
+class future_t : public intrusive_node_t<future_t<T> >, public waitable_t {
 public:
     future_t(future_t<T> &&other);
     ~future_t();
@@ -74,7 +74,7 @@ private:
 };
 
 template <>
-class future_t<void> final : public intrusive_node_t<future_t<void> >, public waitable_t {
+class future_t<void> : public intrusive_node_t<future_t<void> >, public waitable_t {
 public:
     future_t(future_t<void> &&other);
     ~future_t();

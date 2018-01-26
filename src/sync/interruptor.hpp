@@ -62,7 +62,12 @@ private:
 // still be registered and will work normally.  Child coroutines will still inherit the
 // interruptor chain and update accordingly when the interruptor_clear_t is destroyed.
 class interruptor_clear_t {
-// TODO: implement
+public:
+    interruptor_clear_t();
+    ~interruptor_clear_t();
+
+private:
+    DISABLE_COPYING(interruptor_clear_t);
 };
 
 } // namespace indecorous
