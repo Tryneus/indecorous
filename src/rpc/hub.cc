@@ -17,34 +17,31 @@ message_hub_t::message_hub_t(target_t *self_target, target_t *_io_target) :
     m_targets(),
     m_rpcs(register_callback(nullptr)),
     m_request_gen(),
+    m_task_gen(),
     m_running(),
     m_replies() { }
 
 message_hub_t::~message_hub_t() { }
 
-void message_hub_t::handle_wrapper(rpc_callback_t *rpc, read_message_t msg) {
+void message_hub_t::handle(task_id_t task_id, rpc_callback_t *rpc, read_message_t msg) {
     target_id_t source_id = msg.source_id;
-    request_id_t request_id = msg.request_id;
-    write_message_t reply = rpc->handle(std::move(msg));
+    debugf("task %" PRIu64 " starting", task_id.value());
 
-    target_t *source = target(source_id);
-    if (source != nullptr) {
-        source->send_reply(std::move(reply));
+    if (msg.request_id == request_id_t::noreply()) {
+        rpc->handle_noreply(std::move(msg));
     } else {
-        debugf("Could not find target (%" PRIu64 ") for reply, might be disconnected", source_id.value());
+        write_message_t reply = rpc->handle(std::move(msg));
+
+        target_t *source = target(source_id);
+        if (source != nullptr) {
+            source->send_reply(std::move(reply));
+        } else {
+            debugf("Could not find target (%" PRIu64 ") for reply, might be disconnected", source_id.value());
+        }
     }
 
-    auto res = m_running.erase(std::make_pair(source_id, request_id));
-    GUARANTEE(res == 1);
-}
-
-void message_hub_t::handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg) {
-    target_id_t source_id = msg.source_id;
-    request_id_t request_id = msg.request_id;
-
-    rpc->handle_noreply(std::move(msg));
-
-    auto res = m_running.erase(std::make_pair(source_id, request_id));
+    debugf("task %" PRIu64 " done", task_id.value());
+    auto res = m_running.erase(task_id);
     GUARANTEE(res == 1);
 }
 
@@ -70,22 +67,17 @@ void message_hub_t::spawn_task(read_message_t msg) {
         }
 
         auto cb_it = m_rpcs.find(msg.rpc_id);
-        if (msg.request_id == request_id_t::noreply()) {
-            auto result = coro_t::spawn(&message_hub_t::handle_noreply_wrapper, this, cb_it->second, std::move(msg));
-            m_running.insert(
+        if (msg.request_id == request_id_t::noreply() || cb_it != m_rpcs.end()) {
+            const task_id_t task_id = m_task_gen.next();
+            auto result = coro_t::spawn(&message_hub_t::handle, this, task_id, cb_it->second, std::move(msg));
+
+            auto insert = m_running.insert(
                 std::make_pair(
-                    std::make_pair(msg.source_id, msg.request_id),
-                    result.detach()
+                    task_id,
+                    std::move(result)
                 )
             );
-        } else if (cb_it != m_rpcs.end()) {
-            auto result = coro_t::spawn(&message_hub_t::handle_wrapper, this, cb_it->second, std::move(msg));
-            m_running.insert(
-                std::make_pair(
-                    std::make_pair(msg.source_id, msg.request_id),
-                    result.detach()
-                )
-            );
+            GUARANTEE(insert.second);
         } else {
             debugf("No registered RPC for rpc_id (%lu).", msg.rpc_id.value());
         }

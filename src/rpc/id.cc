@@ -55,5 +55,16 @@ request_id_t request_id_t::noreply() {
     return request_id_t(std::numeric_limits<uint64_t>::max());
 }
 
+task_id_t::task_id_t(uint64_t _value) :
+    value_(_value) { }
+
+uint64_t task_id_t::value() const {
+    return value_;
+}
+
+bool task_id_t::operator ==(const task_id_t &other) const {
+    return value_ == other.value_;
+}
+
 } // namespace indecorous
 

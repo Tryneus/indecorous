@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "sync/drainer.hpp"
+#include "coro/coro.hpp"
 #include "sync/multiple_wait.hpp"
 #include "rpc/handler.hpp"
 #include "rpc/id.hpp"
@@ -82,8 +82,7 @@ private:
     friend class target_t; // For generating new request ids and promises
     target_t::request_params_t new_request();
 
-    void handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg);
-    void handle_wrapper(rpc_callback_t *rpc, read_message_t msg);
+    void handle(task_id_t task_id, rpc_callback_t *rpc, read_message_t msg);
 
     const target_id_t m_self_target_id;
     target_t * const m_io_target;
@@ -92,7 +91,8 @@ private:
     std::unordered_map<rpc_id_t, rpc_callback_t *> m_rpcs;
 
     id_generator_t<request_id_t> m_request_gen;
-    std::unordered_map<std::pair<target_id_t, request_id_t>, drainer_t> m_running;
+    id_generator_t<task_id_t> m_task_gen;
+    std::unordered_map<task_id_t, coro_result_t<void>> m_running;
     std::unordered_map<request_id_t, promise_t<read_message_t> > m_replies;
 
     DISABLE_COPYING(message_hub_t);

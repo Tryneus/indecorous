@@ -79,7 +79,7 @@ void thread_t::main() {
         [&] {
             try {
                 interruptor_t shutdown(&close_event);
-                coro_t::spawn([&] {
+                auto result = coro_t::spawn([&] {
                     ignore_coro_for_shutdown_t ignore;
                     try {
                         m_coro_pull();

@@ -56,6 +56,16 @@ private:
     uint64_t value_;
 };
 
+class task_id_t {
+public:
+    uint64_t value() const;
+    bool operator ==(const task_id_t &other) const;
+private:
+    friend class id_generator_t<task_id_t>;
+    explicit task_id_t(uint64_t _value);
+    uint64_t value_;
+};
+
 } // namespace indecorous
 
 namespace std {
@@ -76,10 +86,9 @@ template <> struct hash<indecorous::request_id_t> {
     }
 };
 
-template <> struct hash<std::pair<indecorous::target_id_t, indecorous::request_id_t>> {
-    size_t operator () (const std::pair<indecorous::target_id_t, indecorous::request_id_t> &ids) const {
-        // TODO: actual hash
-        return std::hash<uint64_t>()(ids.first.value());
+template <> struct hash<indecorous::task_id_t> {
+    size_t operator () (const indecorous::task_id_t &id) const {
+        return std::hash<uint64_t>()(id.value());
     }
 };
 
