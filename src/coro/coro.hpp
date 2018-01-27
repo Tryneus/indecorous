@@ -121,6 +121,10 @@ public:
             future_t<Res>(std::move(other)),
             m_drainer(std::move(other.m_drainer)) { }
 
+    drainer_t detach() {
+        return std::move(m_drainer);
+    }
+
 private:
     friend class coro_t;
     coro_result_t(future_t<Res> &&future) :

@@ -78,7 +78,7 @@ file_t::file_t(std::string filename, int flags, int permissions) :
         m_flags(flags),
         m_file([&] {
             // We would leak the file descriptor if interrupted here
-            UNUSED interruptor_clear_t non_interruptor;
+            interruptor_clear_t no_interruptor;
             std::pair<fd_t, int> res =
                 thread_t::self()->hub()->io_target()->call_sync<file_callbacks_t::open>
                     (std::string(m_filename), std::move(flags), std::move(permissions)); // TODO: shouldn't need to move everything

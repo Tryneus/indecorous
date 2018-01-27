@@ -76,6 +76,13 @@ template <> struct hash<indecorous::request_id_t> {
     }
 };
 
+template <> struct hash<std::pair<indecorous::target_id_t, indecorous::request_id_t>> {
+    size_t operator () (const std::pair<indecorous::target_id_t, indecorous::request_id_t> &ids) const {
+        // TODO: actual hash
+        return std::hash<uint64_t>()(ids.first.value());
+    }
+};
+
 } // namespace std
 
 #endif // ID_HPP_

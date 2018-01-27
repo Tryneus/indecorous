@@ -17,24 +17,35 @@ message_hub_t::message_hub_t(target_t *self_target, target_t *_io_target) :
     m_targets(),
     m_rpcs(register_callback(nullptr)),
     m_request_gen(),
+    m_running(),
     m_replies() { }
 
 message_hub_t::~message_hub_t() { }
 
-void handle_wrapper(message_hub_t *hub, rpc_callback_t *rpc, read_message_t msg) {
+void message_hub_t::handle_wrapper(rpc_callback_t *rpc, read_message_t msg) {
     target_id_t source_id = msg.source_id;
+    request_id_t request_id = msg.request_id;
     write_message_t reply = rpc->handle(std::move(msg));
 
-    target_t *source = hub->target(source_id);
+    target_t *source = target(source_id);
     if (source != nullptr) {
         source->send_reply(std::move(reply));
     } else {
         debugf("Could not find target (%" PRIu64 ") for reply, might be disconnected", source_id.value());
     }
+
+    auto res = m_running.erase(std::make_pair(source_id, request_id));
+    GUARANTEE(res == 1);
 }
 
-void handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg) {
+void message_hub_t::handle_noreply_wrapper(rpc_callback_t *rpc, read_message_t msg) {
+    target_id_t source_id = msg.source_id;
+    request_id_t request_id = msg.request_id;
+
     rpc->handle_noreply(std::move(msg));
+
+    auto res = m_running.erase(std::make_pair(source_id, request_id));
+    GUARANTEE(res == 1);
 }
 
 target_t::request_params_t message_hub_t::new_request() {
@@ -60,9 +71,21 @@ void message_hub_t::spawn_task(read_message_t msg) {
 
         auto cb_it = m_rpcs.find(msg.rpc_id);
         if (msg.request_id == request_id_t::noreply()) {
-            coro_t::spawn(&handle_noreply_wrapper, cb_it->second, std::move(msg));
+            auto result = coro_t::spawn(&message_hub_t::handle_noreply_wrapper, this, cb_it->second, std::move(msg));
+            m_running.insert(
+                std::make_pair(
+                    std::make_pair(msg.source_id, msg.request_id),
+                    result.detach()
+                )
+            );
         } else if (cb_it != m_rpcs.end()) {
-            coro_t::spawn(&handle_wrapper, this, cb_it->second, std::move(msg));
+            auto result = coro_t::spawn(&message_hub_t::handle_wrapper, this, cb_it->second, std::move(msg));
+            m_running.insert(
+                std::make_pair(
+                    std::make_pair(msg.source_id, msg.request_id),
+                    result.detach()
+                )
+            );
         } else {
             debugf("No registered RPC for rpc_id (%lu).", msg.rpc_id.value());
         }
