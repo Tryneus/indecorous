@@ -38,6 +38,7 @@ drainer_lock_t::~drainer_lock_t() {
     // tasks to clear their own drainer (by destructing their drainer lock
     // while an interruptor currently listens to it) - this is not great RAII
     m_waiters.clear([&] (auto w) { w->wait_done(wait_result_t::Success); });
+
     if (m_parent != nullptr) {
         m_parent->remove_lock(this);
         m_parent->remove_wait(this);

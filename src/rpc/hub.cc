@@ -40,10 +40,7 @@ void message_hub_t::handle(task_id_t task_id, rpc_callback_t *rpc, read_message_
         }
     }
 
-    logDebug("Finishing task %" PRIu64, task_id.value());
-    // TODO: this is really bad - we can't delete our drainer within the same coroutine
-    auto res = m_running.erase(task_id);
-    GUARANTEE(res == 1);
+    logDebug("Finished task %" PRIu64, task_id.value());
 }
 
 target_t::request_params_t message_hub_t::new_request() {
@@ -72,6 +69,11 @@ void message_hub_t::spawn_task(read_message_t msg) {
         if (msg.request_id == request_id_t::noreply() || cb_it != m_rpcs.end()) {
             const task_id_t task_id = m_task_gen.next();
             auto result = coro_t::spawn(&message_hub_t::handle, this, task_id, cb_it->second, std::move(msg));
+
+            result.then([this, task_id] () {
+                    auto res = m_running.erase(task_id);
+                    GUARANTEE(res == 1);
+                });
 
             auto insert = m_running.insert(
                 std::make_pair(
