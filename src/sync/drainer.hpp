@@ -19,6 +19,8 @@ public:
     ~drainer_lock_t();
 
     bool draining() const;
+
+    // Do not use this, just do your standard RAII stuff
     void release();
 
 private:
