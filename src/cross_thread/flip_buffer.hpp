@@ -9,7 +9,6 @@
 #include "cross_thread/ct_mutex.hpp"
 #include "rpc/hub.hpp"
 #include "sync/drainer.hpp"
-#include "sync/subscribe.hpp"
 #include "sync/swap.hpp"
 
 namespace indecorous {
@@ -21,7 +20,6 @@ public:
 
 protected:
     friend class flip_buffer_callback_t;
-    friend class subscription_t;
     void flip_internal();
     void flip();
 
@@ -85,10 +83,6 @@ public:
     }
 
 private:
-    void on_flip() const override final {
-        m_subs.get().notify(active_buffer());
-    }
-
     T &active_buffer() {
         return (m_current_buffer.get() == buffer_id_t::BUFFER_A) ? m_buffer_a : m_buffer_b;
     }
@@ -97,7 +91,6 @@ private:
     T m_buffer_a;
     T m_buffer_b;
 
-    one_per_thread_t<subscribable_t<T> > m_subs;
     drainer_t m_drainer;
 
     DISABLE_COPYING(flip_buffer_t);
