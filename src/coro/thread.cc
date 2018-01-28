@@ -73,6 +73,7 @@ void thread_t::main() {
     m_parent->m_barrier.wait(); // Barrier for the scheduler_t constructor, thread ready
     m_parent->m_barrier.wait(); // Wait for run or ~scheduler_t
 
+    m_stop_immediately = false;
     event_t close_event;
     m_dispatcher = std::make_unique<dispatcher_t>(
         m_parent->m_shutdown.get(),
@@ -102,7 +103,6 @@ void thread_t::main() {
         });
 
     while (!m_parent->m_destroying.load()) {
-        m_stop_immediately = false;
         while (!m_stop_immediately) {
             m_inner_main();
         }

@@ -223,7 +223,7 @@ void spawn_deferred_std_bind(int expected, Args &&...args) {
 struct bench_t {
     template <int... N>
     static void run_now(int expected, std::integer_sequence<int, N...>) {
-        debugf("Running with %zu args", sizeof...(N));
+        logDebug("Running with %zu args", sizeof...(N));
         spawn_now_lambda(expected, N...);
         spawn_now_basic_function(expected, N...);
         spawn_now_member_function(expected, N...);
@@ -234,7 +234,7 @@ struct bench_t {
 
     template <int... N>
     static void run_deferred(int expected, std::integer_sequence<int, N...>) {
-        debugf("Running with %zu args", sizeof...(N));
+        logDebug("Running with %zu args", sizeof...(N));
         spawn_deferred_lambda(expected, N...);
         spawn_deferred_basic_function(expected, N...);
         spawn_deferred_member_function(expected, N...);

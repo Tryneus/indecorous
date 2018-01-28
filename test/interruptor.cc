@@ -51,20 +51,20 @@ SIMPLE_TEST(interruptor, preemptive, 4, "[sync][interruptor]") {
                 event_t event;
                 wait_any(event, timeout);
                 FAIL("wait was not interrupted");
-            } catch (const wait_interrupted_exc_t &) { debugf("coro_any interrupted"); }
+            } catch (const wait_interrupted_exc_t &) { logDebug("coro_any interrupted"); }
         });
 
     auto coro_all = coro_t::spawn([&] {
             try {
                 wait_all(coro_any, timeout);
                 FAIL("wait was not interrupted");
-            } catch (const wait_interrupted_exc_t &) { debugf("coro_all interrupted"); }
+            } catch (const wait_interrupted_exc_t &) { logDebug("coro_all interrupted"); }
         });
 
     try {
         wait_all(coro_any, coro_all, timeout);
         FAIL("wait was not interrupted");
-    } catch (const wait_interrupted_exc_t &) { debugf("parent coro interrupted"); }
+    } catch (const wait_interrupted_exc_t &) { logDebug("parent coro interrupted"); }
 
     // TODO: children coroutines should subscribe to the parent's interruptor
     // which should be a persistent and constantly-updated object.  Right now

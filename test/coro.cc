@@ -26,16 +26,16 @@ struct coro_test_t {
 };
 
 IMPL_STATIC_RPC(coro_test_t::log)(std::string a, std::string b, int value) -> void {
-    debugf("Got called with %s, %s, %d", a.c_str(), b.c_str(), value);
+    logDebug("Got called with %s, %s, %d", a.c_str(), b.c_str(), value);
 }
 
 IMPL_STATIC_RPC(coro_test_t::wait)() -> void {
-    debugf("coro_test_t::wait");
+    logDebug("coro_test_t::wait");
     periodic_timer_t timer_a;
     single_timer_t timer_b;
     timer_a.start(10);
     timer_b.start(100);
-    debugf("coro_test_t::wait waiting");
+    logDebug("coro_test_t::wait waiting");
     wait_any(&timer_a, timer_b);
     wait_all(timer_a, &timer_b);
 }
@@ -65,16 +65,16 @@ TEST_CASE("coro/spawn", "[coro][shutdown]") {
 
 TEST_CASE("coro/wait", "[coro][sync]") {
     scheduler_t sched(num_threads, shutdown_policy_t::Eager);
-    debugf("broadcasting wait");
+    logDebug("broadcasting wait");
     sched.broadcast_local<coro_test_t::wait>();
-    debugf("running");
+    logDebug("running");
     sched.run();
 
-    debugf("broadcasting wait");
+    logDebug("broadcasting wait");
     sched.broadcast_local<coro_test_t::wait>();
-    debugf("running");
+    logDebug("running");
     sched.run();
-    debugf("done");
+    logDebug("done");
 }
 
 // Disabled by default as it causes complications in a debugger

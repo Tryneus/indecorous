@@ -176,6 +176,7 @@ void scheduler_t::run() {
     switch (m_shutdown_policy) {
     case shutdown_policy_t::Eager: {
             m_barrier.wait();
+            logInfo("Initiating eager shutdown");
             m_shutdown->begin_shutdown();
             m_barrier.wait();
         } break;
@@ -183,6 +184,7 @@ void scheduler_t::run() {
             scoped_sigaction_t scoped_sigaction;
             m_barrier.wait();
             scoped_sigaction.wait();
+            logInfo("Kill received, initiating shutdown");
             m_shutdown->begin_shutdown();
             m_barrier.wait();
         } break;

@@ -25,7 +25,7 @@ message_hub_t::~message_hub_t() { }
 
 void message_hub_t::handle(task_id_t task_id, rpc_callback_t *rpc, read_message_t msg) {
     target_id_t source_id = msg.source_id;
-    debugf("task %" PRIu64 " starting", task_id.value());
+    logDebug("task %" PRIu64 " starting", task_id.value());
 
     if (msg.request_id == request_id_t::noreply()) {
         rpc->handle_noreply(std::move(msg));
@@ -36,11 +36,11 @@ void message_hub_t::handle(task_id_t task_id, rpc_callback_t *rpc, read_message_
         if (source != nullptr) {
             source->send_reply(std::move(reply));
         } else {
-            debugf("Could not find target (%" PRIu64 ") for reply, might be disconnected", source_id.value());
+            logInfo("Could not find target (%" PRIu64 ") for reply, might be disconnected", source_id.value());
         }
     }
 
-    debugf("task %" PRIu64 " done", task_id.value());
+    logDebug("task %" PRIu64 " done", task_id.value());
     auto res = m_running.erase(task_id);
     GUARANTEE(res == 1);
 }
@@ -59,7 +59,8 @@ void message_hub_t::spawn_task(read_message_t msg) {
         if (reply_it != m_replies.end()) {
             reply_it->second.fulfill(std::move(msg));
         } else {
-            debugf("Orphan reply encountered, no promise found.");
+            logInfo("Orphan reply encountered for request %" PRIu64 ":%" PRIu64,
+                    msg.source_id.value(), msg.request_id.value());
         }
     } else {
         if (msg.source_id.is_local()) {
@@ -79,7 +80,7 @@ void message_hub_t::spawn_task(read_message_t msg) {
             );
             GUARANTEE(insert.second);
         } else {
-            debugf("No registered RPC for rpc_id (%lu).", msg.rpc_id.value());
+            logError("No registered RPC for rpc_id (%lu).", msg.rpc_id.value());
         }
     }
 }

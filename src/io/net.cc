@@ -102,18 +102,18 @@ private:
         resolve_data_t *out = reinterpret_cast<resolve_data_t *>(param);
         if (result == nullptr) {
             switch (dns_status(ctx)) {
-            case DNS_E_TEMPFAIL: debugf("DNS_E_TEMPFAIL"); break;
-            case DNS_E_PROTOCOL: debugf("DNS_E_PROTOCOL"); break;
-            case DNS_E_NXDOMAIN: debugf("DNS_E_NXDOMAIN"); break;
-            case DNS_E_NODATA: debugf("DNS_E_NODATA"); break;
-            case DNS_E_NOMEM: debugf("DNS_E_NOMEM"); break;
-            case DNS_E_BADQUERY: debugf("DNS_E_BADQUERY"); break;
-            default: debugf("DNS_E_UNKNOWN"); break;
+            case DNS_E_TEMPFAIL: logDebug("DNS_E_TEMPFAIL"); break;
+            case DNS_E_PROTOCOL: logDebug("DNS_E_PROTOCOL"); break;
+            case DNS_E_NXDOMAIN: logDebug("DNS_E_NXDOMAIN"); break;
+            case DNS_E_NODATA: logDebug("DNS_E_NODATA"); break;
+            case DNS_E_NOMEM: logDebug("DNS_E_NOMEM"); break;
+            case DNS_E_BADQUERY: logDebug("DNS_E_BADQUERY"); break;
+            default: logDebug("DNS_E_UNKNOWN"); break;
             }
             out->result = result_t::Error;
         } else {
             assert(dns_status(ctx) == 0);
-            debugf("Got %d IPv4 addresses", result->dnsa4_nrr);
+            logDebug("Got %d IPv4 addresses", result->dnsa4_nrr);
             out->result = result_t::Success;
         }
     }
@@ -122,18 +122,18 @@ private:
         resolve_data_t *out = reinterpret_cast<resolve_data_t *>(param);
         if (result == nullptr) {
             switch (dns_status(ctx)) {
-            case DNS_E_TEMPFAIL: debugf("DNS_E_TEMPFAIL"); break;
-            case DNS_E_PROTOCOL: debugf("DNS_E_PROTOCOL"); break;
-            case DNS_E_NXDOMAIN: debugf("DNS_E_NXDOMAIN"); break;
-            case DNS_E_NODATA: debugf("DNS_E_NODATA"); break;
-            case DNS_E_NOMEM: debugf("DNS_E_NOMEM"); break;
-            case DNS_E_BADQUERY: debugf("DNS_E_BADQUERY"); break;
-            default: debugf("DNS_E_UNKNOWN"); break;
+            case DNS_E_TEMPFAIL: logDebug("DNS_E_TEMPFAIL"); break;
+            case DNS_E_PROTOCOL: logDebug("DNS_E_PROTOCOL"); break;
+            case DNS_E_NXDOMAIN: logDebug("DNS_E_NXDOMAIN"); break;
+            case DNS_E_NODATA: logDebug("DNS_E_NODATA"); break;
+            case DNS_E_NOMEM: logDebug("DNS_E_NOMEM"); break;
+            case DNS_E_BADQUERY: logDebug("DNS_E_BADQUERY"); break;
+            default: logDebug("DNS_E_UNKNOWN"); break;
             }
             out->result = result_t::Error;
         } else {
             assert(dns_status(ctx) == 0);
-            debugf("Got %d IPv6 addresses", result->dnsa6_nrr);
+            logDebug("Got %d IPv6 addresses", result->dnsa6_nrr);
             for (int i = 0; i < result->dnsa6_nrr; ++i) {
                 out->addrs.push_back(ip_address_t(result->dnsa6_addr[i], 0));
             }
