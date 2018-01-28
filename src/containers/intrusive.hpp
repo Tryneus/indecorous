@@ -26,6 +26,7 @@ public:
         other.m_next = nullptr;
         other.m_prev = nullptr;
     }
+
     virtual ~intrusive_node_t() {
         assert(!in_a_list());
     }
@@ -68,7 +69,30 @@ public:
         other.set_prev_node(&other);
         other.m_size = 0;
     }
-    ~intrusive_list_t() {
+
+    intrusive_list_t& operator = (intrusive_list_t<T> &&other) {
+        assert(m_size == 0);
+        assert(this->next_node() == this);
+        assert(this->prev_node() == this);
+
+        this->set_prev_node(other.prev_node());
+        this->set_next_node(other.next_node());
+
+        if (this->next_node() == &other) {
+            assert(m_size == 0);
+            assert(this->prev_node() == &other);
+            this->set_prev_node(this);
+            this->set_next_node(this);
+        }
+
+        other.set_next_node(&other);
+        other.set_prev_node(&other);
+        other.m_size = 0;
+
+        return *this;
+    }
+
+    virtual ~intrusive_list_t() {
         assert(m_size == 0);
         assert(this->next_node() == this);
         assert(this->prev_node() == this);

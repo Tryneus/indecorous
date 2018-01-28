@@ -22,7 +22,7 @@ class dispatcher_t;
 class interruptor_t;
 class shutdown_t;
 
-typedef void(coro_t::*hook_fn_t)(void*);
+typedef void(coro_t::*hook_fn_t)(drainer_lock_t *, void*);
 
 [[noreturn]] void launch_coro(coro_start_t *);
 
@@ -232,9 +232,12 @@ private:
     }
 
     template <typename Res, typename Tuple, size_t ArgOffset>
-    void hook(void *p) {
+    void hook(drainer_lock_t *lock, void *p) {
         auto params = reinterpret_cast<Tuple *>(p);
-        runner_t<Res>::run(std::make_index_sequence<std::tuple_size<Tuple>::value - ArgOffset>{}, params);
+        runner_t<Res>::run(
+                lock,
+                std::make_index_sequence<std::tuple_size<Tuple>::value - ArgOffset>{},
+                params);
         delete params;
     }
 
@@ -243,16 +246,20 @@ private:
     public:
         template <size_t... N, typename Callable, typename... Args>
         static typename std::enable_if<!std::is_member_function_pointer<Callable>::value, void>::type
-        run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
+        run(drainer_lock_t *lock, std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
             promise_t<Res> promise(std::get<0>(std::move(*args)));
-            promise.fulfill(std::get<1>(*args)(std::get<N+2>(std::move(*args))...));
+            auto res = std::get<1>(*args)(std::get<N+2>(std::move(*args))...);
+            lock->release(); // We release the lock so chained promises can destroy the drainer
+            promise.fulfill(res);
         }
 
         template <size_t... N, typename Callable, typename... Args>
         static typename std::enable_if<std::is_member_function_pointer<Callable>::value, void>::type
-        run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
+        run(drainer_lock_t *lock, std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
             promise_t<Res> promise(std::get<0>(std::move(*args)));
-            promise.fulfill((std::get<2>(std::move(*args))->*std::get<1>(std::move(*args)))(std::get<N+3>(std::move(*args))...));
+            auto res = (std::get<2>(std::move(*args))->*std::get<1>(std::move(*args)))(std::get<N+3>(std::move(*args))...);
+            lock->release(); // We release the lock so chained promises can destroy the drainer
+            promise.fulfill(res);
         }
     };
 
@@ -299,6 +306,8 @@ private:
     int m_valgrind_stack_id;
     coro_wait_callback_t m_wait_callback;
     wait_result_t m_wait_result;
+
+    friend class interruptor_clear_t;
     intrusive_list_t<interruptor_t> m_interruptors;
 
     DISABLE_COPYING(coro_t);
@@ -309,17 +318,19 @@ template <> class coro_t::runner_t<void> {
 public:
     template <size_t... N, typename Callable, typename... Args>
     static typename std::enable_if<!std::is_member_function_pointer<Callable>::value, void>::type
-    run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
+    run(drainer_lock_t *lock, std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
         promise_t<void> promise(std::get<0>(std::move(*args)));
         std::get<1>(std::move(*args))(std::get<N+2>(std::move(*args))...);
+        lock->release();
         promise.fulfill();
     }
 
     template <size_t... N, typename Callable, typename... Args>
     static typename std::enable_if<std::is_member_function_pointer<Callable>::value, void>::type
-    run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
+    run(drainer_lock_t *lock, std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
         promise_t<void> promise(std::get<0>(std::move(*args)));
         (std::get<2>(std::move(*args))->*std::get<1>(std::move(*args)))(std::get<N+3>(std::move(*args))...);
+        lock->release();
         promise.fulfill();
     }
 };

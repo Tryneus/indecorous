@@ -67,6 +67,8 @@ public:
     ~interruptor_clear_t();
 
 private:
+    intrusive_list_t<interruptor_t> m_old_interruptors;
+
     DISABLE_COPYING(interruptor_clear_t);
 };
 

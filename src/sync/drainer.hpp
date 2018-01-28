@@ -9,7 +9,9 @@ namespace indecorous {
 
 class drainer_t;
 
-class drainer_lock_t final : public waitable_t, public intrusive_node_t<drainer_lock_t> {
+class drainer_lock_t final : public waitable_t,
+                             public wait_callback_t,
+                             public intrusive_node_t<drainer_lock_t> {
 public:
     drainer_lock_t(drainer_lock_t &&other);
     drainer_lock_t(const drainer_lock_t &other);
@@ -17,14 +19,20 @@ public:
     ~drainer_lock_t();
 
     bool draining() const;
+    void release();
 
 private:
     friend class drainer_t;
     explicit drainer_lock_t(drainer_t *parent);
 
+    // wait_callback_t implementation - called when m_waitable has completed
+    void wait_done(wait_result_t result) override final;
+    void object_moved(waitable_t *new_ptr) override final;
+
     void add_wait(wait_callback_t *cb) override final;
     void remove_wait(wait_callback_t *cb) override final;
 
+    intrusive_list_t<wait_callback_t> m_waiters;
     drainer_t *m_parent;
 };
 
@@ -44,6 +52,7 @@ private:
     void remove_wait(wait_callback_t *cb) override final;
 
     friend class drainer_lock_t;
+
     void add_lock(drainer_lock_t *l);
     void remove_lock(drainer_lock_t *l);
 

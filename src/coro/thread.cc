@@ -155,7 +155,7 @@ void io_thread_t::inner_main() {
     while (m_thread.dispatcher()->m_coro_cache.extant() > 2) {
         m_thread.events()->check(m_thread.dispatcher()->m_run_queue.empty());
         m_thread.dispatcher()->run();
-    } 
+    }
 }
 
 } // namespace indecorous

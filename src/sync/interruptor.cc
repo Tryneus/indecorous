@@ -104,10 +104,16 @@ void interruptor_t::prev_waiter_t::object_moved(waitable_t *new_ptr) {
     m_prev_interruptor = new_ptr;
 }
 
-interruptor_clear_t::interruptor_clear_t() {
+interruptor_clear_t::interruptor_clear_t() :
+        m_old_interruptors(std::move(coro_t::self()->m_interruptors)) {
 }
 
 interruptor_clear_t::~interruptor_clear_t() {
+    // TODO: assert that no one else has done something stupid like
+    // instantiate an interruptor_clear_t in the heap - this may be good
+    // enough for now
+    assert(coro_t::self()->m_interruptors.empty());
+    coro_t::self()->m_interruptors = std::move(m_old_interruptors);
 }
 
 } // namespace indecorous

@@ -6,22 +6,31 @@
 namespace indecorous {
 
 drainer_lock_t::drainer_lock_t(drainer_t *parent) :
+        m_waiters(),
         m_parent(parent) {
     assert(m_parent != nullptr);
+     // Kinda silly we double-track locks, but ok I guess
     m_parent->add_lock(this);
+    m_parent->add_wait(this);
 }
 
 drainer_lock_t::drainer_lock_t(drainer_lock_t &&other) :
+        wait_callback_t(std::move(other)),
         intrusive_node_t<drainer_lock_t>(std::move(other)),
+        m_waiters(std::move(other.m_waiters)),
         m_parent(other.m_parent) {
     other.m_parent = nullptr;
+    m_waiters.each([this] (auto w) { w->object_moved(this); });
 }
 
 drainer_lock_t::drainer_lock_t(const drainer_lock_t &other) :
+        wait_callback_t(),
         intrusive_node_t<drainer_lock_t>(),
+        m_waiters(),
         m_parent(other.m_parent) {
     assert(m_parent != nullptr);
     m_parent->add_lock(this);
+    m_parent->add_wait(this);
 }
 
 drainer_lock_t::~drainer_lock_t() {
@@ -35,15 +44,29 @@ bool drainer_lock_t::draining() const {
     return m_parent->draining();
 }
 
+void drainer_lock_t::release() {
+    drainer_lock_t lock(std::move(*this));
+}
+
 void drainer_lock_t::add_wait(wait_callback_t *cb) {
-    assert(m_parent != nullptr);
-    m_parent->add_wait(cb);
+    if (m_parent->draining()) {
+        cb->wait_done(wait_result_t::Success);
+    } else {
+        m_waiters.push_back(cb);
+    }
 }
 
 void drainer_lock_t::remove_wait(wait_callback_t *cb) {
     assert(m_parent != nullptr);
-    m_parent->remove_wait(cb);
+    m_waiters.remove(cb);
 }
+
+void drainer_lock_t::wait_done(wait_result_t result) {
+    m_waiters.clear([&] (auto w) { w->wait_done(result); });
+}
+
+// TODO: do we need to do anything here?
+void drainer_lock_t::object_moved(waitable_t *) { }
 
 drainer_t::drainer_t(drainer_t &&other) :
         m_locks(std::move(other.m_locks)),

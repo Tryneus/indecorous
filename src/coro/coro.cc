@@ -122,6 +122,7 @@ void dispatcher_t::run() {
 
     assert(m_running == nullptr);
     if (m_coro_delta != 0) {
+        logDebug("updating shutdown_t with delta: %" PRIi64, m_coro_delta);
         m_shutdown->update(m_coro_delta);
     }
 }
@@ -178,6 +179,7 @@ coro_t::~coro_t() {
 
 [[ noreturn ]]
 void launch_coro(coro_start_t *start) {
+    logDebug("Launching coroutine");
     auto self = start->self;
     auto hook = start->hook;
 
@@ -194,12 +196,13 @@ void launch_coro(coro_start_t *start) {
     {
         // Set the base interruptor (this will trigger if the coro_result_t is destroyed)
         interruptor_t interruptor(&start->lock);
-        (self->*hook)(start->params);
+        (self->*hook)(&start->lock, start->params);
     }
 
     delete start;
 
     assert(self->m_interruptors.size() == 0);
+    logDebug("Releasing coroutine");
     self->m_dispatch->enqueue_release(self);
     self->swap(nullptr);
     ::abort();

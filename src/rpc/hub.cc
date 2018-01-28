@@ -25,7 +25,7 @@ message_hub_t::~message_hub_t() { }
 
 void message_hub_t::handle(task_id_t task_id, rpc_callback_t *rpc, read_message_t msg) {
     target_id_t source_id = msg.source_id;
-    logDebug("task %" PRIu64 " starting", task_id.value());
+    logDebug("Starting task %" PRIu64, task_id.value());
 
     if (msg.request_id == request_id_t::noreply()) {
         rpc->handle_noreply(std::move(msg));
@@ -40,7 +40,8 @@ void message_hub_t::handle(task_id_t task_id, rpc_callback_t *rpc, read_message_
         }
     }
 
-    logDebug("task %" PRIu64 " done", task_id.value());
+    logDebug("Finishing task %" PRIu64, task_id.value());
+    // TODO: this is really bad - we can't delete our drainer within the same coroutine
     auto res = m_running.erase(task_id);
     GUARANTEE(res == 1);
 }
