@@ -52,8 +52,13 @@ drainer_lock_t::~drainer_lock_t() {
     m_waiters.clear([&] (auto w) { w->wait_done(wait_result_t::Success); });
 
     if (m_parent != nullptr) {
-        m_parent->remove_lock(this);
-        m_parent->remove_wait(this);
+        if (static_cast<intrusive_node_t<drainer_lock_t>*>(this)->in_a_list()) {
+            m_parent->remove_lock(this);
+        }
+
+        if (static_cast<intrusive_node_t<wait_callback_t>*>(this)->in_a_list()) {
+            m_parent->remove_wait(this);
+        }
     }
 }
 
