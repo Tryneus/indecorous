@@ -21,8 +21,10 @@ public:
     intrusive_node_t(intrusive_node_t &&other) :
             m_next(other.m_next),
             m_prev(other.m_prev) {
-        m_next->m_prev = this;
-        m_prev->m_next = this;
+        if (m_next != nullptr) {
+            m_next->m_prev = this;
+            m_prev->m_next = this;
+        }
         other.m_next = nullptr;
         other.m_prev = nullptr;
     }
@@ -31,14 +33,33 @@ public:
         assert(!in_a_list());
     }
 
-    bool in_a_list() { return (m_next != nullptr) || (m_prev != nullptr); }
+    bool in_a_list() {
+        assert((m_next == nullptr) == (m_prev == nullptr));
+        return m_next != nullptr;
+    }
 
+    // TODO: make these private?  they shouldn't be used by anyone but the list
     void clear() { m_next = nullptr; m_prev = nullptr; }
 
     void set_next_node(intrusive_node_t *next) { m_next = next; }
     void set_prev_node(intrusive_node_t *prev) { m_prev = prev; }
     intrusive_node_t *next_node() const { return m_next; }
     intrusive_node_t *prev_node() const { return m_prev; }
+
+    void swap_node(intrusive_node_t *other) {
+        std::swap(m_next, other->m_next);
+        std::swap(m_prev, other->m_prev);
+
+        if (m_next != nullptr) {
+            m_next->m_prev = this;
+            m_prev->m_next = this;
+        }
+
+        if (other->m_next != nullptr) {
+            other->m_next->m_prev = other;
+            other->m_prev->m_next = other;
+        }
+    }
 
 private:
     intrusive_node_t* m_next;
@@ -70,34 +91,18 @@ public:
         other.m_size = 0;
     }
 
-    intrusive_list_t& operator = (intrusive_list_t<T> &&other) {
-        assert(m_size == 0);
-        assert(this->next_node() == this);
-        assert(this->prev_node() == this);
-
-        this->set_prev_node(other.prev_node());
-        this->set_next_node(other.next_node());
-
-        if (this->next_node() == &other) {
-            assert(m_size == 0);
-            assert(this->prev_node() == &other);
-            this->set_prev_node(this);
-            this->set_next_node(this);
-        }
-
-        other.set_next_node(&other);
-        other.set_prev_node(&other);
-        other.m_size = 0;
-
-        return *this;
-    }
-
     virtual ~intrusive_list_t() {
         assert(m_size == 0);
         assert(this->next_node() == this);
         assert(this->prev_node() == this);
         this->set_next_node(nullptr);
         this->set_prev_node(nullptr);
+    }
+
+    void swap(intrusive_list_t<T> *other) {
+        logDebug("swapping lists, this.size = %zu, other.size = %zu", m_size, other->m_size);
+        this->swap_node(other);
+        std::swap(m_size, other->m_size);
     }
 
     size_t size() const {

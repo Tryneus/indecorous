@@ -92,7 +92,6 @@ private:
 
     id_generator_t<request_id_t> m_request_gen;
     id_generator_t<task_id_t> m_task_gen;
-    std::unordered_map<task_id_t, coro_result_t<void>> m_running;
     std::unordered_map<request_id_t, promise_t<read_message_t> > m_replies;
 
     DISABLE_COPYING(message_hub_t);

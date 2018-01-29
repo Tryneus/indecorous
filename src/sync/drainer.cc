@@ -5,13 +5,22 @@
 
 namespace indecorous {
 
+// Create a drainer lock which is not associated with a drainer (and will
+// never be triggered).  Useful if a function requires a drainer lock but
+// you don't have a drainer.  Probably shouldn't use this still without a
+// good reason.
+drainer_lock_t drainer_lock_t::detached() {
+    return drainer_lock_t(nullptr);
+}
+
 drainer_lock_t::drainer_lock_t(drainer_t *parent) :
         m_waiters(),
         m_parent(parent) {
-    assert(m_parent != nullptr);
-     // Kinda silly we double-track locks, but ok I guess
-    m_parent->add_lock(this);
-    m_parent->add_wait(this);
+    if (m_parent != nullptr) {
+        // Kinda silly we double-track locks, but ok I guess
+        m_parent->add_lock(this);
+        m_parent->add_wait(this);
+    }
 }
 
 drainer_lock_t::drainer_lock_t(drainer_lock_t &&other) :
@@ -28,15 +37,18 @@ drainer_lock_t::drainer_lock_t(const drainer_lock_t &other) :
         intrusive_node_t<drainer_lock_t>(),
         m_waiters(),
         m_parent(other.m_parent) {
-    assert(m_parent != nullptr);
-    m_parent->add_lock(this);
-    m_parent->add_wait(this);
+    if (m_parent != nullptr) {
+        m_parent->add_lock(this);
+        m_parent->add_wait(this);
+    }
 }
 
 drainer_lock_t::~drainer_lock_t() {
     // TODO: this shouldn't happen except we do some sketchy shit for remote
     // tasks to clear their own drainer (by destructing their drainer lock
     // while an interruptor currently listens to it) - this is not great RAII
+    // TODO: shouldn't be doing this sketchy stuff anymore - but we do allow
+    // 'detached' drainer locks - could we get rid of those as well?
     m_waiters.clear([&] (auto w) { w->wait_done(wait_result_t::Success); });
 
     if (m_parent != nullptr) {
@@ -46,16 +58,15 @@ drainer_lock_t::~drainer_lock_t() {
 }
 
 bool drainer_lock_t::draining() const {
-    assert(m_parent != nullptr);
-    return m_parent->draining();
-}
-
-void drainer_lock_t::release() {
-    drainer_lock_t lock(std::move(*this));
+    if (m_parent != nullptr) {
+        return m_parent->draining();
+    } else {
+        return false;
+    }
 }
 
 void drainer_lock_t::add_wait(wait_callback_t *cb) {
-    if (m_parent->draining()) {
+    if (m_parent != nullptr && m_parent->draining()) {
         cb->wait_done(wait_result_t::Success);
     } else {
         m_waiters.push_back(cb);
@@ -63,7 +74,6 @@ void drainer_lock_t::add_wait(wait_callback_t *cb) {
 }
 
 void drainer_lock_t::remove_wait(wait_callback_t *cb) {
-    assert(m_parent != nullptr);
     m_waiters.remove(cb);
 }
 

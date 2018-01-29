@@ -13,15 +13,14 @@ class drainer_lock_t final : public waitable_t,
                              public wait_callback_t,
                              public intrusive_node_t<drainer_lock_t> {
 public:
+    static drainer_lock_t detached();
+
     drainer_lock_t(drainer_lock_t &&other);
     drainer_lock_t(const drainer_lock_t &other);
     drainer_lock_t &operator = (const drainer_lock_t &other);
     ~drainer_lock_t();
 
     bool draining() const;
-
-    // Do not use this, just do your standard RAII stuff
-    void release();
 
 private:
     friend class drainer_t;

@@ -22,9 +22,15 @@ class dispatcher_t;
 class interruptor_t;
 class shutdown_t;
 
-typedef void(coro_t::*hook_fn_t)(drainer_lock_t *, void*);
+typedef void(coro_t::*hook_fn_t)(void*);
 
 [[noreturn]] void launch_coro(coro_start_t *);
+
+enum class spawn_type_t {
+    Immediate,
+    Detached,
+    Delayed,
+};
 
 // Used internally for handing over data when spawning a new coroutine
 struct coro_start_t {
@@ -32,20 +38,20 @@ struct coro_start_t {
             hook_fn_t _hook,
             void *_params,
             coro_t *_parent,
-            bool _immediate,
+            spawn_type_t _type,
             drainer_lock_t &&_lock) :
         self(_self),
         hook(_hook),
         params(_params),
         parent(_parent),
-        immediate(_immediate),
+        type(_type),
         lock(std::move(_lock)) { }
 
     coro_t *self;
     hook_fn_t hook;
     void *params;
     coro_t *parent;
-    bool immediate;
+    spawn_type_t type;
     drainer_lock_t lock;
 
     DISABLE_COPYING(coro_start_t);
@@ -147,13 +153,27 @@ public:
     // Create a coroutine and put it on the queue to run
     template <typename Callable, typename... Args>
     static auto spawn(Callable &&cb, Args &&...args) {
-        return coro_t::self()->spawn_internal(false, std::forward<Callable>(cb),
-                                              std::forward<Args>(args)...);
+        return coro_t::self()->spawn_internal(
+            spawn_type_t::Delayed,
+            std::forward<Callable>(cb),
+            std::forward<Args>(args)...
+        );
     }
     template <typename Callable, typename... Args>
     static auto spawn_now(Callable &&cb, Args &&...args) {
-        return coro_t::self()->spawn_internal(true, std::forward<Callable>(cb),
-                                              std::forward<Args>(args)...);
+        return coro_t::self()->spawn_internal(
+            spawn_type_t::Immediate,
+            std::forward<Callable>(cb),
+            std::forward<Args>(args)...
+        );
+    }
+    template <typename Callable, typename... Args>
+    static void spawn_detached(Callable &&cb, Args &&...args) {
+        coro_t::self()->spawn_internal(
+            spawn_type_t::Detached,
+            std::forward<Callable>(cb),
+            std::forward<Args>(args)...
+        );
     }
 
     // These are typically used by synchronization primitives
@@ -174,7 +194,7 @@ private:
                        typename std::remove_reference<Callable>::type,
                        typename std::remove_reference<Args>::type... >>
     typename std::enable_if<!std::is_member_function_pointer<Callable>::value, coro_result_t<Res> >::type
-    spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
+    spawn_internal(spawn_type_t type, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         coro_t *coro = coro_t::create();
         coro_result_t<Res> res(promise.get_future());
@@ -185,13 +205,13 @@ private:
             &coro_t::hook<Res, Tuple, 2>,
             new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...),
             this,
-            immediate,
-            res.m_drainer.lock()
+            type,
+            type == spawn_type_t::Detached ? drainer_lock_t::detached() : res.m_drainer.lock()
         );
 
         coro->begin(start);
 
-        if (immediate) {
+        if (type == spawn_type_t::Immediate) {
             swap(coro);
         } else {
             m_dispatch->m_run_queue.push_back(coro);
@@ -206,7 +226,7 @@ private:
                        typename std::remove_reference<Callable>::type,
                        typename std::remove_reference<Args>::type... >>
     typename std::enable_if<std::is_member_function_pointer<Callable>::value, coro_result_t<Res> >::type
-    spawn_internal(bool immediate, Callable &&cb, Args &&...args) {
+    spawn_internal(spawn_type_t type, Callable &&cb, Args &&...args) {
         promise_t<Res> promise;
         coro_t *coro = coro_t::create();
         coro_result_t<Res> res(promise.get_future());
@@ -217,13 +237,13 @@ private:
             &coro_t::hook<Res, Tuple, 3>,
             new Tuple(std::move(promise), std::forward<Callable>(cb), std::forward<Args>(args)...),
             this,
-            immediate,
-            res.m_drainer.lock()
+            type,
+            type == spawn_type_t::Detached ? drainer_lock_t::detached() : res.m_drainer.lock()
         );
 
         coro->begin(start);
 
-        if (immediate) {
+        if (type == spawn_type_t::Immediate) {
             swap(coro);
         } else {
             m_dispatch->m_run_queue.push_back(coro);
@@ -232,10 +252,9 @@ private:
     }
 
     template <typename Res, typename Tuple, size_t ArgOffset>
-    void hook(drainer_lock_t *lock, void *p) {
+    void hook(void *p) {
         auto params = reinterpret_cast<Tuple *>(p);
         runner_t<Res>::run(
-                lock,
                 std::make_index_sequence<std::tuple_size<Tuple>::value - ArgOffset>{},
                 params);
         delete params;
@@ -246,20 +265,16 @@ private:
     public:
         template <size_t... N, typename Callable, typename... Args>
         static typename std::enable_if<!std::is_member_function_pointer<Callable>::value, void>::type
-        run(drainer_lock_t *lock, std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
+        run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
             promise_t<Res> promise(std::get<0>(std::move(*args)));
-            auto res = std::get<1>(*args)(std::get<N+2>(std::move(*args))...);
-            lock->release(); // We release the lock so chained promises can destroy the drainer
-            promise.fulfill(res);
+            promise.fulfill(std::get<1>(*args)(std::get<N+2>(std::move(*args))...));
         }
 
         template <size_t... N, typename Callable, typename... Args>
         static typename std::enable_if<std::is_member_function_pointer<Callable>::value, void>::type
-        run(drainer_lock_t *lock, std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
+        run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<Res>, Callable, Args...> *args) {
             promise_t<Res> promise(std::get<0>(std::move(*args)));
-            auto res = (std::get<2>(std::move(*args))->*std::get<1>(std::move(*args)))(std::get<N+3>(std::move(*args))...);
-            lock->release(); // We release the lock so chained promises can destroy the drainer
-            promise.fulfill(res);
+            promise.fulfill((std::get<2>(std::move(*args))->*std::get<1>(std::move(*args)))(std::get<N+3>(std::move(*args))...));
         }
     };
 
@@ -318,19 +333,17 @@ template <> class coro_t::runner_t<void> {
 public:
     template <size_t... N, typename Callable, typename... Args>
     static typename std::enable_if<!std::is_member_function_pointer<Callable>::value, void>::type
-    run(drainer_lock_t *lock, std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
+    run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
         promise_t<void> promise(std::get<0>(std::move(*args)));
         std::get<1>(std::move(*args))(std::get<N+2>(std::move(*args))...);
-        lock->release();
         promise.fulfill();
     }
 
     template <size_t... N, typename Callable, typename... Args>
     static typename std::enable_if<std::is_member_function_pointer<Callable>::value, void>::type
-    run(drainer_lock_t *lock, std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
+    run(std::integer_sequence<size_t, N...>, std::tuple<promise_t<void>, Callable, Args...> *args) {
         promise_t<void> promise(std::get<0>(std::move(*args)));
         (std::get<2>(std::move(*args))->*std::get<1>(std::move(*args)))(std::get<N+3>(std::move(*args))...);
-        lock->release();
         promise.fulfill();
     }
 };

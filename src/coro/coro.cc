@@ -188,7 +188,7 @@ void launch_coro(coro_start_t *start) {
         self->m_dispatch->m_release = nullptr;
     }
 
-    if (start->immediate) {
+    if (start->type == spawn_type_t::Immediate) {
         // We're running immediately, put our parent on the back of the run queue
         self->m_dispatch->m_run_queue.push_back(start->parent);
     }
@@ -196,7 +196,7 @@ void launch_coro(coro_start_t *start) {
     {
         // Set the base interruptor (this will trigger if the coro_result_t is destroyed)
         interruptor_t interruptor(&start->lock);
-        (self->*hook)(&start->lock, start->params);
+        (self->*hook)(start->params);
     }
 
     delete start;

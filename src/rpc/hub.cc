@@ -18,7 +18,6 @@ message_hub_t::message_hub_t(target_t *self_target, target_t *_io_target) :
     m_rpcs(register_callback(nullptr)),
     m_request_gen(),
     m_task_gen(),
-    m_running(),
     m_replies() { }
 
 message_hub_t::~message_hub_t() { }
@@ -68,20 +67,7 @@ void message_hub_t::spawn_task(read_message_t msg) {
         auto cb_it = m_rpcs.find(msg.rpc_id);
         if (msg.request_id == request_id_t::noreply() || cb_it != m_rpcs.end()) {
             const task_id_t task_id = m_task_gen.next();
-            auto result = coro_t::spawn(&message_hub_t::handle, this, task_id, cb_it->second, std::move(msg));
-
-            result.then([this, task_id] () {
-                    auto res = m_running.erase(task_id);
-                    GUARANTEE(res == 1);
-                });
-
-            auto insert = m_running.insert(
-                std::make_pair(
-                    task_id,
-                    std::move(result)
-                )
-            );
-            GUARANTEE(insert.second);
+            coro_t::spawn_detached(&message_hub_t::handle, this, task_id, cb_it->second, std::move(msg));
         } else {
             logError("No registered RPC for rpc_id (%lu).", msg.rpc_id.value());
         }
