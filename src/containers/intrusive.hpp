@@ -85,8 +85,6 @@ public:
     }
 
     void swap(intrusive_list_t<T> *other) {
-        logDebug("swapping lists, this.size = %zu, other.size = %zu", m_size, other->m_size);
-
         if (m_size == 0) {
             if (other->m_size == 0) {
                 // Both lists empty - do nothing
