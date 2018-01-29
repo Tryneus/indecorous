@@ -46,21 +46,6 @@ public:
     intrusive_node_t *next_node() const { return m_next; }
     intrusive_node_t *prev_node() const { return m_prev; }
 
-    void swap_node(intrusive_node_t *other) {
-        std::swap(m_next, other->m_next);
-        std::swap(m_prev, other->m_prev);
-
-        if (m_next != nullptr) {
-            m_next->m_prev = this;
-            m_prev->m_next = this;
-        }
-
-        if (other->m_next != nullptr) {
-            other->m_next->m_prev = other;
-            other->m_prev->m_next = other;
-        }
-    }
-
 private:
     intrusive_node_t* m_next;
     intrusive_node_t* m_prev;
@@ -101,7 +86,45 @@ public:
 
     void swap(intrusive_list_t<T> *other) {
         logDebug("swapping lists, this.size = %zu, other.size = %zu", m_size, other->m_size);
-        this->swap_node(other);
+
+        if (m_size == 0) {
+            if (other->m_size == 0) {
+                // Both lists empty - do nothing
+            } else {
+                // This list empty, other has entries
+                this->set_next_node(other->next_node());
+                this->set_prev_node(other->prev_node());
+                this->next_node()->set_prev_node(this);
+                this->prev_node()->set_next_node(this);
+                other->set_next_node(other);
+                other->set_prev_node(other);
+            }
+        } else {
+            if (other->m_size == 0) {
+                // This list has entries, other is empty
+                other->set_next_node(this->next_node());
+                other->set_prev_node(this->prev_node());
+                other->next_node()->set_prev_node(other);
+                other->prev_node()->set_next_node(other);
+                this->set_next_node(this);
+                this->set_prev_node(this);
+            } else {
+                // Both lists have entries
+                intrusive_node_t<T> *tmp;
+                tmp = this->next_node();
+                this->set_next_node(other->next_node());
+                other->set_next_node(tmp);
+
+                tmp = this->prev_node();
+                this->set_prev_node(other->prev_node());
+                other->set_prev_node(tmp);
+
+                other->next_node()->set_prev_node(other);
+                other->prev_node()->set_next_node(other);
+                this->next_node()->set_prev_node(this);
+                this->prev_node()->set_next_node(this);
+            }
+        }
         std::swap(m_size, other->m_size);
     }
 
