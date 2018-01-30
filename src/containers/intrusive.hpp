@@ -21,10 +21,8 @@ public:
     intrusive_node_t(intrusive_node_t &&other) :
             m_next(other.m_next),
             m_prev(other.m_prev) {
-        if (m_next != nullptr) {
-            m_next->m_prev = this;
-            m_prev->m_next = this;
-        }
+        if (m_next != nullptr) { m_next->m_prev = this; }
+        if (m_prev != nullptr) { m_prev->m_next = this; }
         other.m_next = nullptr;
         other.m_prev = nullptr;
     }
@@ -34,8 +32,7 @@ public:
     }
 
     bool in_a_list() {
-        assert((m_next == nullptr) == (m_prev == nullptr));
-        return m_next != nullptr;
+        return (m_next != nullptr) || (m_prev != nullptr);
     }
 
     // TODO: make these private?  they shouldn't be used by anyone but the list
@@ -241,6 +238,7 @@ public:
     }
 
     void push(T *item) {
+        logDebug("mpsc_queue_t enqueueing %p", item);
         item->set_next_node(nullptr);
         intrusive_node_t<T> *prev = exchange_back(item);
         prev->set_next_node(item);
@@ -262,6 +260,7 @@ public:
             assert(node != this);
             m_front = next;
             node->set_next_node(nullptr);
+            logDebug("mpsc_queue_t popped %p", node);
             return static_cast<T *>(node);
         }
 
@@ -275,6 +274,7 @@ public:
         if (next != nullptr) {
             m_front = next;
             node->set_next_node(nullptr);
+            logDebug("mpsc_queue_t popped %p", node);
             return static_cast<T *>(node);
         }
 

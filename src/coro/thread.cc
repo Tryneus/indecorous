@@ -68,6 +68,7 @@ public:
 };
 
 void thread_t::main() {
+    logDebug("Starting");
     s_instance = this;
 
     m_parent->m_barrier.wait(); // Barrier for the scheduler_t constructor, thread ready
@@ -103,15 +104,18 @@ void thread_t::main() {
         });
 
     while (!m_parent->m_destroying.load()) {
+        logDebug("Running");
         while (!m_stop_immediately) {
             m_inner_main();
         }
 
+        logDebug("Pausing");
         m_parent->m_barrier.wait(); // Wait for other threads to finish
         m_parent->m_barrier.wait(); // Wait for run or ~scheduler_t
     }
 
 
+    logDebug("Exiting");
     close_event.set();
     m_dispatcher->run();
     m_dispatcher.reset();

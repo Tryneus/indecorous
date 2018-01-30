@@ -20,10 +20,14 @@ const size_t num_threads = 8;
 using namespace indecorous;
 
 struct coro_test_t {
+    static std::atomic<uint64_t> count;
+
     DECLARE_STATIC_RPC(log)(std::string, std::string, int) -> void;
     DECLARE_STATIC_RPC(wait)() -> void;
     DECLARE_STATIC_RPC(suicide)(pid_t parent_pid, int signum) -> void;
 };
+
+std::atomic<uint64_t> coro_test_t::count(0);
 
 IMPL_STATIC_RPC(coro_test_t::log)(std::string a, std::string b, int value) -> void {
     logDebug("Got called with %s, %s, %d", a.c_str(), b.c_str(), value);
@@ -38,15 +42,24 @@ IMPL_STATIC_RPC(coro_test_t::wait)() -> void {
     logDebug("coro_test_t::wait waiting");
     wait_any(&timer_a, timer_b);
     wait_all(timer_a, &timer_b);
+    count += 1;
 }
 
 IMPL_STATIC_RPC(coro_test_t::suicide)(pid_t parent_pid, int signum) -> void {
     kill(parent_pid, signum);
 }
 
+TEST_CASE("coro/none", "[coro][shutdown]") {
+    for (size_t i = 1; i < 16; ++i) {
+        scheduler_t sched(i, shutdown_policy_t::Eager);
+    }
+}
+
 TEST_CASE("coro/empty", "[coro][shutdown]") {
     for (size_t i = 1; i < 16; ++i) {
         scheduler_t sched(i, shutdown_policy_t::Eager);
+        // TODO: remove sleep, debugging only
+        usleep(10000);
         sched.run();
         sched.run();
         sched.run();
@@ -64,17 +77,21 @@ TEST_CASE("coro/spawn", "[coro][shutdown]") {
 }
 
 TEST_CASE("coro/wait", "[coro][sync]") {
+    coro_test_t::count.store(0);
+
     scheduler_t sched(num_threads, shutdown_policy_t::Eager);
     logDebug("broadcasting wait");
     sched.broadcast_local<coro_test_t::wait>();
     logDebug("running");
     sched.run();
+    CHECK(coro_test_t::count.load() == num_threads);
 
     logDebug("broadcasting wait");
     sched.broadcast_local<coro_test_t::wait>();
     logDebug("running");
     sched.run();
     logDebug("done");
+    CHECK(coro_test_t::count.load() == num_threads * 2);
 }
 
 // Disabled by default as it causes complications in a debugger
