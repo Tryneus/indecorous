@@ -127,6 +127,7 @@ void events_t::update_epoll() {
 
 void events_t::do_epoll_wait(int timeout) {
     size_t events_size = std::max<size_t>(m_file_map.size(), 1);
+    logDebug("Waiting on %zu file descriptors with timeout %d", m_file_map.size(), timeout);
     std::unique_ptr<epoll_event[]> events(new epoll_event[events_size]);
     int res = ::epoll_wait(m_epoll_set.get(), events.get(), events_size, timeout);
     if (res <= 0) {

@@ -69,14 +69,6 @@ void coro_cache_t::release(coro_t *coro) {
     }
 }
 
-void dispatcher_t::run_initial_coro() {
-    dispatcher_t *dispatcher = thread_t::self()->dispatcher();
-    coro_t *coro = dispatcher->m_running;
-    dispatcher->m_initial_fn();
-    dispatcher->enqueue_release(coro);
-    coro->swap(nullptr);
-}
-
 dispatcher_t::dispatcher_t(shutdown_t *shutdown,
                            std::function<void()> initial_fn) :
         m_shutdown(shutdown),
@@ -104,6 +96,14 @@ dispatcher_t::~dispatcher_t() {
     assert(m_coro_cache.extant() == 0);
 }
 
+void dispatcher_t::run_initial_coro() {
+    dispatcher_t *dispatcher = thread_t::self()->dispatcher();
+    coro_t *coro = dispatcher->m_running;
+    dispatcher->m_initial_fn();
+    dispatcher->enqueue_release(coro);
+    coro->swap(nullptr);
+}
+
 void dispatcher_t::run() {
     assert(m_running == nullptr);
     m_swap_count = 0;
@@ -122,7 +122,6 @@ void dispatcher_t::run() {
 
     assert(m_running == nullptr);
     if (m_coro_delta != 0) {
-        logDebug("updating shutdown_t with delta: %" PRIi64, m_coro_delta);
         m_shutdown->update(m_coro_delta);
     }
 }
@@ -179,7 +178,6 @@ coro_t::~coro_t() {
 
 [[ noreturn ]]
 void launch_coro(coro_start_t *start) {
-    logDebug("Launching coroutine");
     auto self = start->self;
     auto hook = start->hook;
 
@@ -202,7 +200,6 @@ void launch_coro(coro_start_t *start) {
     delete start;
 
     assert(self->m_interruptors.size() == 0);
-    logDebug("Releasing coroutine");
     self->m_dispatch->enqueue_release(self);
     self->swap(nullptr);
     ::abort();

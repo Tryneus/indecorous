@@ -68,8 +68,8 @@ public:
 };
 
 void thread_t::main() {
-    logDebug("Starting");
     s_instance = this;
+    logDebug("Starting");
 
     m_parent->m_barrier.wait(); // Barrier for the scheduler_t constructor, thread ready
     m_parent->m_barrier.wait(); // Wait for run or ~scheduler_t
@@ -99,11 +99,13 @@ void thread_t::main() {
                     }
                 }
             } catch (wait_interrupted_exc_t &) {
+                logDebug("main coro interrupted");
                 // Do nothing
             }
         });
 
     while (!m_parent->m_destroying.load()) {
+        m_stop_immediately = false;
         logDebug("Running");
         while (!m_stop_immediately) {
             m_inner_main();

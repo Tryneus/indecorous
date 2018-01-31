@@ -12,10 +12,12 @@ public:
 };
 
 IMPL_STATIC_RPC(shutdown_rpc_t::begin_shutdown)() -> void {
+    logDebug("Beginning shutdown");
     thread_t::self()->begin_shutdown();
 }
 
 IMPL_STATIC_RPC(shutdown_rpc_t::finish_shutdown)() -> void {
+    logDebug("Finishing shutdown");
     thread_t::self()->finish_shutdown();
 }
 
@@ -32,10 +34,10 @@ void shutdown_t::reset(size_t initial_count) {
 
 void shutdown_t::begin_shutdown() {
     // This is called outside the context of a thread_t, so update manually
+    update(m_targets.size() - 1);
     for (auto &&t : m_targets) {
         t->call_noreply<shutdown_rpc_t::begin_shutdown>();
     }
-    update(m_targets.size() - 1);
 }
 
 void shutdown_t::update(int64_t active_delta) {
